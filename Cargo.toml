@@ -1,0 +1,41 @@
+[workspace]
+resolver = "2"
+members = ["rudi", "rudi-macro", "examples/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["zihan <ZihanType@proton.me>"]
+license = "MIT/Apache-2.0"
+homepage = "https://github.com/ZihanType/rudi"
+repository = "https://github.com/ZihanType/rudi"
+include = ["src/**/*", "Cargo.toml"]
+
+[workspace.dependencies]
+# self
+rudi = { version = "0.1.0", path = "./rudi", default-features = false }
+rudi-macro = { version = "0.1.0", path = "./rudi-macro", default-features = false }
+
+# dependencies
+proc-macro2 = { version = "1", default-features = false }
+quote = { version = "1", default-features = false }
+syn = { version = "2", default-features = false }
+
+# optional dependencies
+inventory = { version = "0.3", default-features = false }
+tracing = { version = "0.1", default-features = false }
+
+# dev dependencies
+tokio = { version = "1", default-features = false, features = [
+    "macros",
+    "rt-multi-thread",
+] }
+poem = { version = "1", default-features = false }
+poem-openapi = { version = "3", default-features = false }
+axum = { version = "0.6", default-features = false }
+tracing-subscriber = { version = "0.3", default-features = false, features = [
+    "fmt",
+    "ansi",
+    "env-filter",
+] }
+leptos = { version = "0.5.0-beta", default-features = false }

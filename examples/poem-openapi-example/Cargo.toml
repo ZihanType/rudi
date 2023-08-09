@@ -1,0 +1,18 @@
+[package]
+name = "poem-openapi-example"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+include.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rudi = { workspace = true, features = ["auto-register"] }
+poem = { workspace = true }
+poem-openapi = { workspace = true, features = ["swagger-ui"] }
+tokio = { workspace = true }
+tracing-subscriber = { workspace = true }

@@ -1,0 +1,31 @@
+[package]
+name = "rudi"
+description = "Rudi - an out-of-the-box dependency injection framework for Rust."
+keywords = ["dependency-injection", "ioc", "di", "dependency"]
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+include.workspace = true
+readme = "../README.md"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rudi-macro = { workspace = true }
+inventory = { workspace = true, optional = true }
+tracing = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+
+[features]
+default = ["auto-register"]
+auto-register = ["dep:inventory", "rudi-macro/auto-register"]
+debug-print = ["dep:tracing"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
