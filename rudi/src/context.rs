@@ -1,10 +1,10 @@
-use std::{any::TypeId, borrow::Cow, collections::hash_map::Iter};
+use std::{any::TypeId, borrow::Cow, collections::hash_map::Iter, rc::Rc};
 
 use crate::{
     module::ResolveModule,
     provider::{DynProvider, Provider},
-    Constructor, Definition, EagerCreateFunction, Key, ProviderRegistry, Scope, SingletonInstance,
-    SingletonRegistry,
+    BoxFuture, Constructor, Definition, EagerCreateFunction, Key, ProviderRegistry, Scope,
+    SingletonInstance, SingletonRegistry,
 };
 
 /// A context is a container for all the providers and singletons.
@@ -118,6 +118,7 @@ pub struct Context {
     provider_registry: ProviderRegistry,
 
     eager_create_functions: Vec<(Definition, EagerCreateFunction)>,
+    dependency_chain: DependencyChain,
 }
 
 impl Default for Context {
@@ -129,6 +130,7 @@ impl Default for Context {
             singleton_registry: Default::default(),
             provider_registry: Default::default(),
             eager_create_functions: Default::default(),
+            dependency_chain: Default::default(),
         }
     }
 }
@@ -996,7 +998,7 @@ please check all the references to the above type, there are 3 scenarios that wi
                     provider.definition()
                 )
             }
-            Constructor::Sync(constructor) => constructor(self),
+            Constructor::Sync(constructor) => self.resolve_instance(key.clone(), constructor),
         };
 
         if let Some(clone_instance) = clone_instance {
@@ -1020,8 +1022,10 @@ please check all the references to the above type, there are 3 scenarios that wi
         let clone_instance = provider.clone_instance();
 
         let instance = match constructor {
-            Constructor::Async(constructor) => constructor(self).await,
-            Constructor::Sync(constructor) => constructor(self),
+            Constructor::Async(constructor) => {
+                self.resolve_instance_async(key.clone(), constructor).await
+            }
+            Constructor::Sync(constructor) => self.resolve_instance(key.clone(), constructor),
         };
 
         if let Some(clone_instance) = clone_instance {
@@ -1030,6 +1034,30 @@ please check all the references to the above type, there are 3 scenarios that wi
         }
 
         Some(instance)
+    }
+
+    #[track_caller]
+    fn resolve_instance<T: 'static>(
+        &mut self,
+        key: Key,
+        constructor: Rc<dyn Fn(&mut Context) -> T>,
+    ) -> T {
+        self.dependency_chain.push(key);
+        let instance = constructor(self);
+        self.dependency_chain.pop();
+        instance
+    }
+
+    #[allow(clippy::type_complexity)]
+    async fn resolve_instance_async<T: 'static>(
+        &mut self,
+        key: Key,
+        constructor: Rc<dyn for<'a> Fn(&'a mut Context) -> BoxFuture<'a, T>>,
+    ) -> T {
+        self.dependency_chain.push(key);
+        let instance = constructor(self).await;
+        self.dependency_chain.pop();
+        instance
     }
 
     fn keys<T: 'static>(&self) -> Vec<Key> {
@@ -1399,5 +1427,44 @@ impl ContextOptions {
 
         cx.create_eager_instances_async().await;
         cx
+    }
+}
+
+#[derive(Default)]
+struct DependencyChain {
+    stack: Vec<Key>,
+}
+
+impl DependencyChain {
+    fn push(&mut self, key: Key) {
+        let already_contains = self.stack.contains(&key);
+        self.stack.push(key);
+
+        if already_contains {
+            let key = self.stack.last().unwrap();
+
+            let mut buf = String::with_capacity(1024);
+            buf.push('[');
+            buf.push('\n');
+
+            self.stack.iter().for_each(|k| {
+                if key == k {
+                    buf.push_str(" --> ")
+                } else {
+                    buf.push_str("     ")
+                }
+
+                buf.push_str(format!("{:?}", k).as_str());
+                buf.push('\n');
+            });
+
+            buf.push(']');
+
+            panic!("circular dependency detected: {}", buf);
+        }
+    }
+
+    fn pop(&mut self) {
+        self.stack.pop();
     }
 }
