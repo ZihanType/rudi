@@ -6,13 +6,9 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 impl<T: ?Sized> FutureExt for T where T: Future {}
 
-/// An extension trait for `Future`s that provides a variety of convenient
-/// adapters.
+/// An extension trait for `Future`s that provides a convenient adapter.
 pub trait FutureExt: Future {
     /// Wrap the future in a Box, pinning it.
-    ///
-    /// This method is only available when the `std` or `alloc` feature of this
-    /// library is activated, and it is activated by default.
     fn boxed<'a>(self) -> BoxFuture<'a, Self::Output>
     where
         Self: Sized + 'a,
