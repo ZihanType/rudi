@@ -67,7 +67,7 @@ fn EmptyVec() -> Arc<Mutex<Vec<String>>> {
 }
 
 #[Singleton]
-async fn run(svc: Arc<dyn Service>) {
+async fn Run(svc: Arc<dyn Service>) {
     let app = Router::new()
         .route("/insert/:name", post(insert))
         .route("/search/:name", get(search))

@@ -86,7 +86,7 @@ impl Bar {
 }
 
 #[Singleton]
-async fn run(bar: Bar, debug: Rc<dyn Debug>, #[di("foo")] f: Foo) {
+async fn Run(bar: Bar, debug: Rc<dyn Debug>, #[di("foo")] f: Foo) {
     println!("{:?}", bar);
     assert_eq!(format!("{:?}", bar), format!("{:?}", debug));
     assert_eq!(format!("{:?}", bar.0.number), format!("{:?}", f.number));
