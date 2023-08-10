@@ -4,9 +4,9 @@ Both [`Singleton`] and [`Transient`] are attribute macros used to define a [`Pro
 
 These two macros can be used on `struct`, `impl struct`, and `fn`.
 
-When used on `struct` and `impl struct`, a [`DefaultProvider`] implementation will be generated for the struct, and the associated type [`DefaultProvider::Type`] is the struct itself.
+- When used on `struct` and `impl struct`, a [`DefaultProvider`] implementation is generated for the struct, and the associated type [`DefaultProvider::Type`] is the struct itself.
 
-When used on `fn`, a struct with the same name as the function will be created, and then a [`DefaultProvider`] implementation will be generated for the struct, and the associated type [`DefaultProvider::Type`] is the return type of the function.
+- When used on `fn`, a struct with the same name as the function is created, and then a [`DefaultProvider`] implementation is generated for the struct, with the associated type [`DefaultProvider::Type`] being the return type of the function. As mentioned above, it is recommended to use `CamelCase` when defining functions. Of course, you can still use `snake_case`.
 
 ## Example
 
@@ -28,7 +28,7 @@ impl A {
 struct B(#[di("a")] A);
 
 #[Transient]
-fn c(#[di("b")] b: B) -> i32 {
+fn C(#[di("b")] b: B) -> i32 {
     let _ = b;
     42
 }
@@ -145,7 +145,7 @@ fn dep_name() -> impl Into<Cow<'static, str>> {
 }
 
 #[Transient(name = crate::dep_name())]
-async fn dep() -> i32 {
+async fn Dep() -> i32 {
     42
 }
 
@@ -153,7 +153,7 @@ async fn dep() -> i32 {
 struct C(#[di(crate::dep_name())] i32);
 
 #[Transient(not_auto_register)]
-async fn d<T: 'static>(#[di(crate::dep_name())] t: T) -> bool {
+async fn D<T: 'static>(#[di(crate::dep_name())] t: T) -> bool {
     let _ = t;
     true
 }
@@ -162,7 +162,7 @@ struct MyModule<T>(PhantomData<T>);
 
 impl<T: 'static> Module for MyModule<T> {
     fn providers() -> Vec<rudi::DynProvider> {
-        components![d::<T>]
+        components![D::<T>]
     }
 }
 

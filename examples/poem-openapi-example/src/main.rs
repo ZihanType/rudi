@@ -74,12 +74,12 @@ impl Controller {
 }
 
 #[Singleton]
-fn empty_vec() -> Arc<Mutex<Vec<String>>> {
+fn EmptyVec() -> Arc<Mutex<Vec<String>>> {
     Arc::new(Mutex::new(Vec::new()))
 }
 
 #[Singleton]
-async fn run(controller: Controller) {
+async fn Run(controller: Controller) {
     let api_service =
         OpenApiService::new(controller, "Hello World", "1.0").server("http://localhost:3000/api");
     let ui = api_service.swagger_ui();

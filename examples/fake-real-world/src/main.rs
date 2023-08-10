@@ -8,7 +8,7 @@ use third_components::Middleware;
 
 #[allow(unused_variables)]
 #[Singleton]
-async fn run(
+async fn Run(
     #[di(di::log_name())] (): (),
     #[di(di::migrator_name())] (): (),
     controller: Controller,

@@ -9,7 +9,7 @@ mod tests {
         struct A;
 
         #[Singleton]
-        fn a() -> i32 {
+        fn Number() -> i32 {
             1
         }
 
@@ -34,7 +34,7 @@ mod tests {
         struct A;
 
         #[Singleton]
-        async fn a() -> i32 {
+        async fn Number() -> i32 {
             1
         }
 

@@ -47,7 +47,7 @@ impl Hello {
 }
 
 #[Singleton]
-fn run(#[di("controller")] controller: Controller, num: i32, success: bool, _: Hello) {
+fn Run(#[di("controller")] controller: Controller, num: i32, success: bool, _: Hello) {
     println!("{}", controller.hello());
 
     println!("num: {}", num);
@@ -59,7 +59,7 @@ struct MyModule;
 
 impl Module for MyModule {
     fn providers() -> Vec<rudi::DynProvider> {
-        components![ServiceImpl, Controller, Hello, run]
+        components![ServiceImpl, Controller, Hello, Run]
     }
 }
 

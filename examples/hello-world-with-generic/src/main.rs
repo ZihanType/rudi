@@ -35,7 +35,7 @@ where
 }
 
 #[Singleton(not_auto_register)]
-fn run<T>(controller: Controller<T>)
+fn Run<T>(controller: Controller<T>)
 where
     T: Service + Clone + 'static,
 {
@@ -49,7 +49,7 @@ where
     T: Service + Clone + 'static,
 {
     fn providers() -> Vec<rudi::DynProvider> {
-        components![ServiceImpl, Controller<T>, run<T>]
+        components![ServiceImpl, Controller<T>, Run<T>]
     }
 }
 

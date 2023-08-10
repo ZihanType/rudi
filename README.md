@@ -24,9 +24,9 @@ impl B {
     }
 }
 
-// Register `fn(cx) -> () { run(cx.resolve::<B>()) }` as the constructor for `()`
+// Register `fn(cx) -> () { Run(cx.resolve::<B>()) }` as the constructor for `()`
 #[Singleton]
-fn run(b: B) {
+fn Run(b: B) {
     println!("{:?}", b);
 }
 
@@ -34,7 +34,7 @@ fn main() {
     // Automatically register all types and functions with the `#[Singleton]` or `#[Transient]` attribute.
     let mut cx = Context::auto_register();
 
-    // Get an instance of `()` from the `Context`, which will call the `run` function.
+    // Get an instance of `()` from the `Context`, which will call the `Run` function.
     // This is equivalent to `cx.resolve::<()>();`
     cx.resolve()
 }
@@ -58,7 +58,7 @@ use rudi::{Context, Singleton, Transient};
 
 // Register async function and specify name
 #[Singleton(name = "number")]
-async fn number() -> i32 {
+async fn Number() -> i32 {
     42
 }
 

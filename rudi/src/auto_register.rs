@@ -143,7 +143,7 @@ macro_rules! register_provider {
 /// enable! {}
 ///
 /// #[Transient(name = "lib1")]
-/// fn lib1() -> i32 {
+/// fn Lib1() -> i32 {
 ///     5
 /// }
 ///
@@ -155,7 +155,7 @@ macro_rules! register_provider {
 /// }
 ///
 /// #[Transient(name = "lib2")]
-/// fn lib2() -> i32 {
+/// fn Lib2() -> i32 {
 ///     5
 /// }
 ///

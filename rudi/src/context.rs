@@ -90,7 +90,7 @@ use crate::{
 /// use rudi::{Context, Singleton, Transient};
 ///
 /// #[Singleton]
-/// async fn foo() -> i32 {
+/// async fn Foo() -> i32 {
 ///     1
 /// }
 ///
@@ -545,12 +545,12 @@ please use instead:
     /// use rudi::{Context, Transient};
     ///
     /// #[Transient(name = "a")]
-    /// fn a() -> i32 {
+    /// fn A() -> i32 {
     ///     1
     /// }
     ///
     /// #[Transient(name = "b")]
-    /// fn b() -> i32 {
+    /// fn B() -> i32 {
     ///     2
     /// }
     ///
@@ -580,7 +580,7 @@ please use instead:
     /// use rudi::{Context, Transient};
     ///
     /// #[Transient]
-    /// async fn a() -> i32 {
+    /// async fn Number() -> i32 {
     ///     1
     /// }
     ///
@@ -611,7 +611,7 @@ please use instead:
     /// use rudi::{Context, Transient};
     ///
     /// #[Transient(name = "a")]
-    /// async fn a() -> i32 {
+    /// async fn Number() -> i32 {
     ///     1
     /// }
     ///
@@ -647,7 +647,7 @@ please use instead:
     /// use rudi::{Context, Transient};
     ///
     /// #[Transient]
-    /// async fn a() -> i32 {
+    /// async fn Number() -> i32 {
     ///     1
     /// }
     ///
@@ -677,7 +677,7 @@ please use instead:
     /// use rudi::{Context, Transient};
     ///
     /// #[Transient(name = "a")]
-    /// async fn a() -> i32 {
+    /// async fn Number() -> i32 {
     ///     1
     /// }
     ///
@@ -711,12 +711,12 @@ please use instead:
     /// use rudi::{Context, Transient};
     ///
     /// #[Transient(name = "a")]
-    /// async fn a() -> i32 {
+    /// async fn A() -> i32 {
     ///     1
     /// }
     ///
     /// #[Transient(name = "b")]
-    /// async fn b() -> i32 {
+    /// async fn B() -> i32 {
     ///     2
     /// }
     ///
@@ -796,12 +796,12 @@ please use instead:
     /// use rudi::{Context, Transient};
     ///
     /// #[Transient(name = "a")]
-    /// fn a() -> i32 {
+    /// fn A() -> i32 {
     ///     1
     /// }
     ///
     /// #[Transient(name = "b")]
-    /// fn b() -> i32 {
+    /// fn B() -> i32 {
     ///     2
     /// }
     ///

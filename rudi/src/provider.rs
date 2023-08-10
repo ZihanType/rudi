@@ -20,13 +20,13 @@ use crate::{
 /// struct A;
 ///
 /// #[Singleton]
-/// fn number() -> i32 {
+/// fn Number() -> i32 {
 ///     42
 /// }
 ///
 /// fn main() {
 ///     let _: Provider<A> = <A as DefaultProvider>::provider();
-///     let _: Provider<i32> = <number as DefaultProvider>::provider();
+///     let _: Provider<i32> = <Number as DefaultProvider>::provider();
 /// }
 /// ```
 pub trait DefaultProvider {

@@ -16,12 +16,12 @@ pub fn SimpleCounter(initial_value: i32, step: i32) -> impl IntoView {
 }
 
 #[Singleton]
-fn number() -> i32 {
+fn Number() -> i32 {
     42
 }
 
 #[Singleton]
-fn run(initial_value: i32) {
+fn Run(initial_value: i32) {
     mount_to_body(move || {
         view! {
             <SimpleCounter
@@ -36,7 +36,7 @@ struct MyModule;
 
 impl Module for MyModule {
     fn providers() -> Vec<DynProvider> {
-        components![number, run]
+        components![Number, Run]
     }
 }
 

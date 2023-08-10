@@ -62,7 +62,7 @@ async fn del(Path(name): Path<String>, State(svc): State<Arc<dyn Service>>) {
 }
 
 #[Singleton]
-fn empty_vec() -> Arc<Mutex<Vec<String>>> {
+fn EmptyVec() -> Arc<Mutex<Vec<String>>> {
     Arc::new(Mutex::new(Vec::new()))
 }
 

@@ -8,7 +8,7 @@ use crate::{
 };
 
 // #[Singleton]
-// fn one(#[di("hello")] i: i32) -> String {
+// fn One(#[di("hello")] i: i32) -> String {
 //     i.to_string()
 // }
 
@@ -134,6 +134,7 @@ pub(crate) fn generate(
             type Type = #return_type_ident;
 
             fn provider() -> ::rudi::Provider<Self::Type> {
+                #[allow(non_snake_case, clippy::too_many_arguments)]
                 #item_fn
 
                 <::rudi::Provider<_> as ::core::convert::From<_>>::from(

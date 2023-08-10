@@ -15,7 +15,7 @@ struct A;
 impl Trait for A {}
 
 #[Singleton(eager_create)]
-fn new_a() -> Rc<dyn Trait> {
+fn NewA() -> Rc<dyn Trait> {
     COUNT.with(|c| {
         let mut c = c.borrow_mut();
         *c += 1;
@@ -35,7 +35,7 @@ struct B;
 impl Trait for B {}
 
 #[Singleton(eager_create)]
-fn new_b() -> Rc<dyn Trait> {
+fn NewB() -> Rc<dyn Trait> {
     COUNT.with(|c| {
         let mut c = c.borrow_mut();
         *c += 1;
@@ -55,7 +55,7 @@ fn test() {
 
     impl Module for MyModule1 {
         fn providers() -> Vec<rudi::DynProvider> {
-            components![new_a]
+            components![NewA]
         }
     }
 
@@ -63,7 +63,7 @@ fn test() {
 
     impl Module for MyModule2 {
         fn providers() -> Vec<rudi::DynProvider> {
-            components![new_b]
+            components![NewB]
         }
     }
 

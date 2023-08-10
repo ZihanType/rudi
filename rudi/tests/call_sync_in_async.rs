@@ -16,7 +16,7 @@ async fn resolve_in_async_context() {
     }
 
     #[Singleton]
-    fn abc() -> i32 {
+    fn Number() -> i32 {
         42
     }
 
@@ -24,7 +24,7 @@ async fn resolve_in_async_context() {
 
     impl Module for MyModule {
         fn providers() -> Vec<DynProvider> {
-            components![A, B, abc]
+            components![A, B, Number]
         }
     }
 
@@ -51,7 +51,7 @@ async fn create_eager_instance_in_async_context() {
     }
 
     #[Singleton]
-    fn abc() -> i32 {
+    fn Number() -> i32 {
         42
     }
 
@@ -59,7 +59,7 @@ async fn create_eager_instance_in_async_context() {
 
     impl Module for MyModule {
         fn providers() -> Vec<DynProvider> {
-            components![A, B, abc]
+            components![A, B, Number]
         }
     }
 

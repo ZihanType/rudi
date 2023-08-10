@@ -47,7 +47,7 @@ impl Hello {
 }
 
 #[Singleton]
-fn run(#[di("controller")] controller: Controller, num: i32, success: bool, _: Hello) {
+fn Run(#[di("controller")] controller: Controller, num: i32, success: bool, _: Hello) {
     println!("{}", controller.hello());
 
     println!("num: {}", num);
