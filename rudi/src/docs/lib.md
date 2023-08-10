@@ -42,7 +42,7 @@ fn run(b: B) {
 }
 
 fn main() {
-    // Automatically register all types with `#[Singleton]` and `#[Transient]` attributes
+    // Automatically register all types and functions with the `#[Singleton]` or `#[Transient]` attribute.
     let mut cx = Context::auto_register();
 
     // Get an instance of `()` from the `Context`, which will call the `run` function.
