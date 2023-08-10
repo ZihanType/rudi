@@ -75,20 +75,21 @@ impl ProviderRegistry {
         let definition = provider.definition();
         let key = provider.key().clone();
 
-        if self.registry.contains_key(&key) {
-            if !allow_override {
-                panic!(
-                    "already existing provider for: {:?}\n-> {:?}",
-                    key, definition,
-                );
-            } else {
-                #[cfg(feature = "debug-print")]
-                tracing::warn!("(+) override {:?}\n-> {:?}", key, definition);
-            }
+        if !self.registry.contains_key(&key) {
+            #[cfg(feature = "debug-print")]
+            tracing::debug!("(+) {:?}", definition);
+        } else if allow_override {
+            #[cfg(feature = "debug-print")]
+            tracing::warn!(
+                "(+) overrides a provider with the same `key` as {:?}",
+                definition
+            );
+        } else {
+            panic!(
+                "already existing a provider with the same `key` as {:?}",
+                definition
+            );
         }
-
-        #[cfg(feature = "debug-print")]
-        tracing::debug!("(+) {:?}\n-> {:?}", key, definition);
 
         self.registry.insert(key, provider);
     }
