@@ -43,11 +43,11 @@ fn main() {
 ## Features
 
 - Two lifetimes: `singleton` and `transient`.
-- Async constructor.
+- Async functions and async constructors.
 - Manual and automatic registration (thanks to [inventory](https://github.com/dtolnay/inventory)).
-- Easy binding of trait objects.
+- Easy binding of trait implementations and trait objects.
 - Distinguishing different instances with types and names.
-- Support for generics (but not for automatic registration).
+- Generics (but must be monomorphized and manually registered)
 
 ## More complex example
 
