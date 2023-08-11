@@ -65,7 +65,7 @@ async fn Number() -> i32 {
 #[derive(Debug, Clone)]
 #[Singleton(async_constructor, name = "foo")] // Register async constructor and specify name
 struct Foo {
-    #[di("number")] // Specify the name of the dependency
+    #[di(name = "number")] // Specify the name of the dependency
     number: i32,
 }
 
@@ -80,13 +80,13 @@ impl Bar {
 
 #[Transient(binds = [Self::into_debug])] // Bind the implementation of the `Debug` trait and the trait object of the `Debug` trait
 impl Bar {
-    async fn new(#[di("foo")] f: Foo) -> Bar { // Register async constructor
+    async fn new(#[di(name = "foo")] f: Foo) -> Bar { // Register async constructor
         Bar(f)
     }
 }
 
 #[Singleton]
-async fn Run(bar: Bar, debug: Rc<dyn Debug>, #[di("foo")] f: Foo) {
+async fn Run(bar: Bar, debug: Rc<dyn Debug>, #[di(name = "foo")] f: Foo) {
     println!("{:?}", bar);
     assert_eq!(format!("{:?}", bar), format!("{:?}", debug));
     assert_eq!(format!("{:?}", bar.0.number), format!("{:?}", f.number));
