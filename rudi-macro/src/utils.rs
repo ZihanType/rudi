@@ -1,8 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{punctuated::Punctuated, spanned::Spanned, Attribute, FnArg, PatType, Token};
-
-use crate::name::Name;
+use syn::{punctuated::Punctuated, spanned::Spanned, Attribute, Expr, FnArg, PatType, Token};
 
 #[derive(Clone, Copy)]
 pub(crate) enum Scope {
@@ -56,7 +54,7 @@ pub(crate) fn get_one_arg_or_field_resolve_expr(
     }
 
     let name = match attrs.pop() {
-        Some(attr) => Some(attr.parse_args::<Name>()?),
+        Some(attr) => Some(attr.parse_args::<Expr>()?),
         _ => None,
     };
 

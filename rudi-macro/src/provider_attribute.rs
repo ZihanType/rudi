@@ -7,10 +7,8 @@ use syn::{
     Expr, ExprPath, Meta, MetaNameValue, Path, Token,
 };
 
-use crate::name::Name;
-
 pub(crate) struct ProviderAttribute {
-    name: Option<(Path, Name)>,
+    name: Option<(Path, Expr)>,
     eager_create: Option<Path>,
     binds: Option<(Path, Vec<ExprPath>)>,
     pub(crate) async_constructor: Option<Path>,
@@ -19,7 +17,7 @@ pub(crate) struct ProviderAttribute {
 
 impl Parse for ProviderAttribute {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut name: Option<(Path, Name)> = None;
+        let mut name: Option<(Path, Expr)> = None;
         let mut eager_create: Option<Path> = None;
         let mut binds: Option<(Path, Vec<ExprPath>)> = None;
         let mut async_constructor: Option<Path> = None;
@@ -51,12 +49,7 @@ impl Parse for ProviderAttribute {
 
                 let MetaNameValue { path, value, .. } = require_name_value(meta)?;
 
-                let _name = Name::try_from((
-                    value,
-                    "the value of `name` must be a literal string or an expression call",
-                ))?;
-
-                name = Some((path, _name));
+                name = Some((path, value));
                 continue;
             }
 

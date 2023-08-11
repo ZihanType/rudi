@@ -5,15 +5,13 @@ use crate::{
     third_components::{DatabaseConnection, Middleware, RedisClient},
 };
 
-pub const fn log_name() -> &'static str {
-    "log"
-}
+pub const LOG_NAME: &str = "log";
 
 pub const fn migrator_name() -> &'static str {
     "migrator"
 }
 
-#[Singleton(name = log_name())]
+#[Singleton(name = LOG_NAME)]
 fn InitLog() {}
 
 #[Singleton]

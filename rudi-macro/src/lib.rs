@@ -1,7 +1,6 @@
 mod item_fn_gen;
 mod item_impl_gen;
 mod item_struct_gen;
-mod name;
 mod provider_attribute;
 mod utils;
 

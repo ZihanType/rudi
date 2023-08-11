@@ -9,7 +9,7 @@ use third_components::Middleware;
 #[allow(unused_variables)]
 #[Singleton]
 async fn Run(
-    #[di(di::log_name())] (): (),
+    #[di(di::LOG_NAME)] (): (),
     #[di(di::migrator_name())] (): (),
     controller: Controller,
     middleware: Middleware,

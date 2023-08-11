@@ -47,8 +47,8 @@ fn main() {
 #### Generic attributes that can be used on `struct`, `impl struct`, and `fn`
 
 - name
-  - type: string literal, or expression call to a function of type `fn(T) -> impl Into<Cow<'static, str>>`.
-  - example: `#[Singleton(name = "abc")]` / `#[Transient(name = a::b::c())]` / `#[Transient(name = nth(42))]`
+  - type: any expression that implements `Into<Cow<'static, str>>`.
+  - example: `#[Singleton(name = "abc")]` / `#[Transient(name = a::b::NAME)]` / `#[Transient(name = nth(42))]`
   - optional: true
   - default: ""
   - description: Specifies the name of the defined `Provider`.
@@ -103,8 +103,8 @@ fn main() {
 When adding attributes to `field` of struct and `parameter` of function, you need to use `#[di(...)] `. Since there is only one attribute at the moment, there is no attribute name, just use `#[di(...)] ` is sufficient.
 
 - name (Actually there is no such name, here it is just for the sake of clarification)
-  - type: string literal, or expression call to a function of type `fn(T) -> impl Into<Cow<'static, str>>`.
-  - example: `#[di("abc")]` / `#[di(a::b::c())]` / `#[di(nth(42))]`
+  - type: any expression that implements `Into<Cow<'static, str>>`.
+  - example: `#[di("abc")]` / `#[di(a::b::NAME)]` / `#[di(nth(42))]`
   - optional: true
   - default: ""
   - description: Specifies the name of the dependency to be taken out of `Context`.
