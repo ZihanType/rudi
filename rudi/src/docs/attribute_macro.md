@@ -25,10 +25,10 @@ impl A {
 
 #[Singleton(name = "b")]
 #[derive(Clone)]
-struct B(#[di("a")] A);
+struct B(#[di(name = "a")] A);
 
 #[Transient]
-fn C(#[di("b")] b: B) -> i32 {
+fn C(#[di(name = "b")] b: B) -> i32 {
     let _ = b;
     42
 }
@@ -98,71 +98,145 @@ fn main() {
   - default: false
   - description: Specifies whether the constructor method of a defined `Provider` is asynchronous. Only valid when used on `struct`, for `impl struct` and `fn` cases use `async fn`.
 
-### On `field` of struct and `parameter` of function
+### On `field` of struct and `argument` of function
 
-When adding attributes to `field` of struct and `parameter` of function, you need to use `#[di(...)] `. Since there is only one attribute at the moment, there is no attribute name, just use `#[di(...)] ` is sufficient.
+When adding attributes to `field` of struct and `argument` of function, you need to use `#[di(...)] `.
 
-- name (Actually there is no such name, here it is just for the sake of clarification)
+- name
+  - conflict: `vector`
   - type: any expression that implements `Into<Cow<'static, str>>`.
-  - example: `#[di("abc")]` / `#[di(a::b::NAME)]` / `#[di(nth(42))]`
+  - example: `#[di(name = "abc")]` / `#[di(name = a::b::NAME)]` / `#[di(name = nth(42))]`
   - optional: true
   - default: ""
   - description: Specifies the name of the dependency to be taken out of `Context`.
   - refer:
     - [`Context::resolve_with_name`]
-    - [`Context::resolve_option_with_name`]
-    - [`Context::resolve_with_name_async`]
     - [`Context::resolve_with_name_async`]
 
-## Attributes examples
+- option
+  - conflict: `default`, `vector`
+  - require: The current `field` or `argument`, which must be of type [`Option<T>`].
+  - type: `T`.
+  - example: `#[di(option(i32))]` / `#[di(option(String))]`
+  - optional: true
+  - default: None
+  - description:
+
+    From the call to the following method
+    - `cx.resolve_with_name::<Option<T>>(name)`
+    - `cx.resolve_with_name_async::<Option<T>>(name).await`
+
+    Instead, call the following method
+    - `cx.resolve_option_with_name::<T>(name)`
+    - `cx.resolve_option_with_name_async::<T>(name).await`
+
+  - refer:
+    - [`Context::resolve_option_with_name`]
+    - [`Context::resolve_option_with_name_async`]
+
+- default
+  - conflict: `option`, `vector`
+  - require: If no default value is specified, the current `field` or `argument` must implement the [`Default`] trait.
+  - type: empty, or an arbitrary expression type.
+  - example: `#[di(default)]` / `#[di(default = 42)]` / `#[di(default = a::b::func())]`
+  - optional: true
+  - default: None
+  - description:
+
+    From the call to the following method
+    - `cx.resolve_with_name(name)`
+    - `cx.resolve_with_name_async(name).await`
+
+    Instead, call the following method
+    - `match cx.resolve_option_with_name(name) { ... }`
+    - `match cx.resolve_option_with_name_async(name).await { ... }`
+
+  - refer:
+    - [`Context::resolve_option_with_name`]
+    - [`Context::resolve_option_with_name_async`]
+
+- vector
+  - conflict: `name`, `option`, `default`
+  - require: The current `field` or `argument`, which must be of type [`Vec<T>`].
+  - type: `T`.
+  - example: `#[di(vector(i32))]` / `#[di(vector(String))]`
+  - optional: true
+  - default: None
+  - description:
+
+    From the call to the following method
+    - `cx.resolve_with_name::<Vec<T>>(name)`
+    - `cx.resolve_with_name_async::<Vec<T>>(name).await`
+
+    Instead, call the following method
+    - `cx.resolve_by_type::<T>()`
+    - `cx.resolve_by_type_async::<T>()`
+
+  - refer:
+    - [`Context::resolve_by_type`]
+    - [`Context::resolve_by_type_async`]
+
+## Struct or function attributes examples
 
 ```rust
-use std::{any::Any, borrow::Cow, marker::PhantomData, rc::Rc};
+use std::{borrow::Cow, fmt::Debug, marker::PhantomData, rc::Rc};
 
 use rudi::{components, modules, AutoRegisterModule, Context, Module, Singleton, Transient};
 
-#[derive(Clone)]
-#[Singleton(name = "a", eager_create)]
-struct A;
+const NAME_A: &str = "a";
 
-const SOME_NAME: &str = "abc";
-
-const fn some_name() -> &'static str {
-    SOME_NAME
+const fn name_b() -> &'static str {
+    "b"
 }
 
-#[Transient(name = crate::some_name(), binds = [Self::any])]
-struct B;
-
-impl B {
-    fn any(self) -> Rc<dyn Any> {
-        Rc::new(self)
-    }
+fn name_c() -> impl Into<Cow<'static, str>> {
+    "c"
 }
 
-fn dep_name() -> impl Into<Cow<'static, str>> {
-    "dep"
+fn transform<T: Debug + 'static>(t: T) -> Rc<dyn Debug> {
+    Rc::new(t)
 }
 
-#[Transient(name = crate::dep_name())]
-async fn Dep() -> i32 {
+#[derive(Clone, Debug)]
+#[Singleton(name = NAME_A, eager_create)]
+struct NameAndEagerCreate;
+
+#[derive(Debug)]
+#[Transient(name = name_b(), binds = [transform])]
+struct NameAndBinds;
+
+#[Transient(name = name_c())]
+async fn AsyncDep() -> i32 {
     42
 }
 
+#[derive(Debug)]
 #[Transient(async_constructor)]
-struct C(#[di(crate::dep_name())] i32);
+struct Async(#[di(name = name_c())] i32);
 
 #[Transient(not_auto_register)]
-async fn D<T: 'static>(#[di(crate::dep_name())] t: T) -> bool {
-    let _ = t;
-    true
+async fn NotAutoRegister<T: Debug + 'static>(#[di(name = name_c())] t: T) -> T {
+    t
+}
+
+#[Singleton(not_auto_register)]
+async fn Run<T: Debug + 'static>(
+    #[di(name = NAME_A)] _name_and_eager_create: NameAndEagerCreate,
+    #[di(name = name_b())] name_and_binds: NameAndBinds,
+    #[di(name = name_b())] dyn_debug: Rc<dyn Debug>,
+    async_: Async,
+    not_auto_register: T,
+) {
+    assert_eq!(format!("{:?}", name_and_binds), format!("{:?}", dyn_debug));
+    assert_eq!(async_.0, 42);
+    println!("not_auto_register: {:?}", not_auto_register);
 }
 
 struct MyModule<T>(PhantomData<T>);
 
-impl<T: 'static> Module for MyModule<T> {
+impl<T: Debug + 'static> Module for MyModule<T> {
     fn providers() -> Vec<rudi::DynProvider> {
-        components![D::<T>]
+        components![NotAutoRegister<T>, Run<T>]
     }
 }
 
@@ -170,12 +244,96 @@ impl<T: 'static> Module for MyModule<T> {
 async fn main() {
     let mut cx = Context::create(modules![AutoRegisterModule, MyModule<i32>]);
 
-    assert!(cx.resolve_option_with_name::<A>("a").is_some());
-    assert!(cx.resolve_option_with_name::<B>(some_name()).is_some());
-    assert!(cx
-        .resolve_option_with_name::<Rc<dyn Any>>(some_name())
-        .is_some());
-    assert!(cx.resolve_option_async::<C>().await.is_some());
-    assert!(cx.resolve_option_async::<bool>().await.is_some());
+    cx.resolve_async().await
+}
+```
+
+## Field or argument attributes examples
+
+Although the following example only shows how to use attributes on `field`, it is the same as using them on `argument`.
+
+```rust
+use rudi::{Context, Singleton, Transient};
+
+// name
+
+#[Singleton]
+fn One() -> i8 {
+    1
+}
+
+#[Singleton(name = "2")]
+fn Two() -> i8 {
+    2
+}
+
+#[Transient]
+struct A(i8);
+
+#[Transient]
+struct B(#[di(name = "2")] i8);
+
+// option
+
+#[Singleton]
+fn Three() -> Option<i16> {
+    Some(3)
+}
+
+#[Singleton]
+fn Four() -> i16 {
+    4
+}
+
+#[Transient]
+struct C(Option<i16>);
+
+#[Transient]
+struct D(#[di(option(i16))] Option<i16>);
+
+// default
+
+#[Transient]
+struct E(#[di(default)] i32);
+
+#[Transient]
+struct F(#[di(default = 42)] i32);
+
+// vector
+
+#[Singleton]
+fn Five() -> Vec<i64> {
+    vec![5]
+}
+
+#[Singleton]
+fn Six() -> i64 {
+    6
+}
+
+#[Transient]
+struct G(Vec<i64>);
+
+#[Transient]
+struct H(#[di(vector(i64))] Vec<i64>);
+
+#[Singleton]
+fn Run(a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: G) {
+    assert_eq!(a.0, 1);
+    assert_eq!(b.0, 2);
+
+    assert_eq!(c.0.unwrap(), 3);
+    assert_eq!(d.0.unwrap(), 4);
+
+    assert_eq!(e.0, 0);
+    assert_eq!(f.0, 42);
+
+    assert_eq!(g.0[0], 5);
+    assert_eq!(h.0[0], 5);
+}
+
+fn main() {
+    let mut cx = Context::auto_register();
+    cx.resolve()
 }
 ```

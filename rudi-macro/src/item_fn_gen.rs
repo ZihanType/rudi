@@ -3,7 +3,7 @@ use quote::quote;
 use syn::{spanned::Spanned, GenericParam, ItemFn, ReturnType};
 
 use crate::{
-    provider_attribute::{ProviderAttribute, SimpleAttribute},
+    struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
     utils::{Color, Scope},
 };
 
@@ -13,7 +13,7 @@ use crate::{
 // }
 
 pub(crate) fn generate(
-    attribute: ProviderAttribute,
+    attribute: StructOrFunctionAttribute,
     mut item_fn: ItemFn,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
@@ -24,7 +24,7 @@ pub(crate) fn generate(
         ));
     }
 
-    let SimpleAttribute {
+    let SimpleStructOrFunctionAttribute {
         name,
         eager_create,
         binds,
@@ -45,9 +45,9 @@ pub(crate) fn generate(
         None => Color::Sync,
     };
 
-    let args = crate::utils::get_args_resolve_expr(&mut item_fn.sig.inputs, color)?;
+    let args = crate::utils::generate_arguments_resolve_methods(&mut item_fn.sig.inputs, color)?;
 
-    let create_provider = crate::utils::get_create_provider(scope, color);
+    let create_provider = crate::utils::generate_create_provider(scope, color);
 
     let (impl_generics, ty_generics, where_clause) = item_fn.sig.generics.split_for_impl();
 

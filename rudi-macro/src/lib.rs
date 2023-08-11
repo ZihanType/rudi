@@ -1,16 +1,17 @@
+mod field_or_argument_attribute;
 mod item_fn_gen;
 mod item_impl_gen;
 mod item_struct_gen;
-mod provider_attribute;
+mod struct_or_function_attribute;
 mod utils;
 
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, spanned::Spanned, Item};
 
-use crate::{provider_attribute::ProviderAttribute, utils::Scope};
+use crate::{struct_or_function_attribute::StructOrFunctionAttribute, utils::Scope};
 
 fn macro_attribute(attr: TokenStream, input: TokenStream, scope: Scope) -> TokenStream {
-    let attribute = parse_macro_input!(attr as ProviderAttribute);
+    let attribute = parse_macro_input!(attr as StructOrFunctionAttribute);
     let item = parse_macro_input!(input as Item);
 
     let result = match item {

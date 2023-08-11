@@ -618,7 +618,7 @@ please use instead:
     /// }
     ///
     /// #[Transient(async_constructor, name = "A")]
-    /// struct A(#[di("a")] i32);
+    /// struct A(#[di(name = "a")] i32);
     ///
     /// #[tokio::main]
     /// async fn main() {
@@ -684,7 +684,7 @@ please use instead:
     /// }
     ///
     /// #[Transient(async_constructor, name = "A")]
-    /// struct A(#[di("a")] i32);
+    /// struct A(#[di(name = "a")] i32);
     ///
     /// #[tokio::main]
     /// async fn main() {

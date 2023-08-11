@@ -1,6 +1,13 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{punctuated::Punctuated, spanned::Spanned, Attribute, Expr, FnArg, PatType, Token};
+use syn::{
+    punctuated::Punctuated, spanned::Spanned, Attribute, FnArg, Meta, MetaList, MetaNameValue,
+    PatType, Path, Token,
+};
+
+use crate::field_or_argument_attribute::{
+    FieldOrArgumentAttribute, SimpleFieldOrArgumentAttribute,
+};
 
 #[derive(Clone, Copy)]
 pub(crate) enum Scope {
@@ -24,7 +31,7 @@ pub(crate) enum Color {
     Sync,
 }
 
-pub(crate) fn get_create_provider(scope: Scope, color: Color) -> TokenStream {
+pub(crate) fn generate_create_provider(scope: Scope, color: Color) -> TokenStream {
     match (scope, color) {
         (Scope::Singleton, Color::Async) => quote! {
             singleton_async
@@ -41,59 +48,109 @@ pub(crate) fn get_create_provider(scope: Scope, color: Color) -> TokenStream {
     }
 }
 
-pub(crate) fn get_one_arg_or_field_resolve_expr(
+pub(crate) fn generate_only_one_field_or_argument_resolve_method(
     attrs: &mut Vec<Attribute>,
     color: Color,
 ) -> syn::Result<TokenStream> {
     let mut attrs = drain_filter(attrs, |attr| attr.path().is_ident("di"));
+
     if attrs.len() > 1 {
         return Err(syn::Error::new(
             attrs[1].span(),
-            "only one `#[di(..)]` macro is allowed",
+            "only one `#[di(..)]` attribute is allowed",
         ));
     }
 
-    let name = match attrs.pop() {
-        Some(attr) => Some(attr.parse_args::<Expr>()?),
-        _ => None,
+    let field_or_argument_attr = match attrs.pop() {
+        Some(attr) => attr.parse_args::<FieldOrArgumentAttribute>()?,
+        None => {
+            return Ok(match color {
+                Color::Async => quote! {
+                    cx.resolve_with_name_async("").await
+                },
+                Color::Sync => quote! {
+                    cx.resolve_with_name("")
+                },
+            })
+        }
     };
 
-    let invoke_resolve = match (name, color) {
-        (None, Color::Async) => quote! {
-            cx.resolve_with_name_async("").await
-        },
-        (None, Color::Sync) => quote! {
-            cx.resolve_with_name("")
-        },
-        (Some(name), Color::Async) => quote! {
+    let SimpleFieldOrArgumentAttribute {
+        name,
+        option,
+        default,
+        vector,
+    } = field_or_argument_attr.simplify();
+
+    if let Some(ty) = option {
+        return Ok(match color {
+            Color::Async => quote! {
+                cx.resolve_option_with_name_async::<#ty>(#name).await
+            },
+            Color::Sync => quote! {
+                cx.resolve_option_with_name::<#ty>(#name)
+            },
+        });
+    }
+
+    if let Some(default) = default {
+        return Ok(match color {
+            Color::Async => quote! {
+                match cx.resolve_option_with_name_async(#name).await {
+                    Some(value) => value,
+                    None => #default,
+                }
+            },
+            Color::Sync => quote! {
+                match cx.resolve_option_with_name(#name) {
+                    Some(value) => value,
+                    None => #default,
+                }
+            },
+        });
+    }
+
+    if let Some(ty) = vector {
+        return Ok(match color {
+            Color::Async => quote! {
+                cx.resolve_by_type_async::<#ty>().await
+            },
+            Color::Sync => quote! {
+                cx.resolve_by_type::<#ty>()
+            },
+        });
+    }
+
+    Ok(match color {
+        Color::Async => quote! {
             cx.resolve_with_name_async(#name).await
         },
-        (Some(name), Color::Sync) => quote! {
+        Color::Sync => quote! {
             cx.resolve_with_name(#name)
         },
-    };
-
-    Ok(invoke_resolve)
+    })
 }
 
-pub(crate) fn get_args_resolve_expr(
-    args: &mut Punctuated<FnArg, Token![,]>,
+pub(crate) fn generate_arguments_resolve_methods(
+    inputs: &mut Punctuated<FnArg, Token![,]>,
     color: Color,
 ) -> syn::Result<Vec<TokenStream>> {
-    let mut ret = Vec::new();
+    let mut args = Vec::new();
 
-    for input in args.iter_mut() {
+    for input in inputs.iter_mut() {
         match input {
             FnArg::Receiver(r) => {
                 return Err(syn::Error::new(r.span(), "not support `self` receiver"))
             }
             FnArg::Typed(PatType { attrs, .. }) => {
-                ret.push(get_one_arg_or_field_resolve_expr(attrs, color)?);
+                args.push(generate_only_one_field_or_argument_resolve_method(
+                    attrs, color,
+                )?);
             }
         }
     }
 
-    Ok(ret)
+    Ok(args)
 }
 
 #[cfg(feature = "auto-register")]
@@ -116,6 +173,33 @@ pub(crate) fn check_auto_register_with_generics(
     }
 
     Ok(())
+}
+
+pub(crate) fn require_path_only(meta: Meta) -> syn::Result<Path> {
+    meta.require_path_only()?;
+
+    match meta {
+        Meta::Path(path) => Ok(path),
+        _ => unreachable!(),
+    }
+}
+
+pub(crate) fn require_list(meta: Meta) -> syn::Result<MetaList> {
+    meta.require_list()?;
+
+    match meta {
+        Meta::List(list) => Ok(list),
+        _ => unreachable!(),
+    }
+}
+
+pub(crate) fn require_name_value(meta: Meta) -> syn::Result<MetaNameValue> {
+    meta.require_name_value()?;
+
+    match meta {
+        Meta::NameValue(name_value) => Ok(name_value),
+        _ => unreachable!(),
+    }
 }
 
 pub(crate) fn drain_filter<T, F>(vec: &mut Vec<T>, mut predicate: F) -> Vec<T>

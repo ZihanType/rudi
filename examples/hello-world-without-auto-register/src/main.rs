@@ -25,7 +25,7 @@ impl Service for ServiceImpl {
 #[derive(Clone)]
 #[Singleton(name = "controller")]
 struct Controller {
-    #[di("hello")]
+    #[di(name = "hello")]
     s: Rc<dyn Service>,
 }
 
@@ -47,7 +47,7 @@ impl Hello {
 }
 
 #[Singleton]
-fn Run(#[di("controller")] controller: Controller, num: i32, success: bool, _: Hello) {
+fn Run(#[di(name = "controller")] controller: Controller, num: i32, success: bool, _: Hello) {
     println!("{}", controller.hello());
 
     println!("num: {}", num);

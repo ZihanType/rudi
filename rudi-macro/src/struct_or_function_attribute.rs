@@ -7,7 +7,9 @@ use syn::{
     Expr, ExprPath, Meta, MetaNameValue, Path, Token,
 };
 
-pub(crate) struct ProviderAttribute {
+use crate::utils::{require_name_value, require_path_only};
+
+pub(crate) struct StructOrFunctionAttribute {
     name: Option<(Path, Expr)>,
     eager_create: Option<Path>,
     binds: Option<(Path, Vec<ExprPath>)>,
@@ -15,7 +17,7 @@ pub(crate) struct ProviderAttribute {
     not_auto_register: Option<Path>,
 }
 
-impl Parse for ProviderAttribute {
+impl Parse for StructOrFunctionAttribute {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut name: Option<(Path, Expr)> = None;
         let mut eager_create: Option<Path> = None;
@@ -108,11 +110,10 @@ impl Parse for ProviderAttribute {
             return Err(syn::Error::new(
                 meta_path_span,
                  "the attribute must be one of: `name`, `eager_create`, `binds`, `async_constructor`, `not_auto_register`",
-
             ));
         }
 
-        Ok(ProviderAttribute {
+        Ok(StructOrFunctionAttribute {
             name,
             eager_create,
             binds,
@@ -122,9 +123,9 @@ impl Parse for ProviderAttribute {
     }
 }
 
-impl ProviderAttribute {
-    pub(crate) fn simplify(&self) -> SimpleAttribute {
-        let ProviderAttribute {
+impl StructOrFunctionAttribute {
+    pub(crate) fn simplify(&self) -> SimpleStructOrFunctionAttribute {
+        let StructOrFunctionAttribute {
             name,
             eager_create,
             binds,
@@ -132,7 +133,7 @@ impl ProviderAttribute {
             not_auto_register,
         } = self;
 
-        SimpleAttribute {
+        SimpleStructOrFunctionAttribute {
             name: match name {
                 Some((_, name)) => quote! {
                     #name
@@ -157,28 +158,10 @@ impl ProviderAttribute {
     }
 }
 
-pub(crate) struct SimpleAttribute {
+pub(crate) struct SimpleStructOrFunctionAttribute {
     pub(crate) name: TokenStream,
     pub(crate) eager_create: bool,
     pub(crate) binds: TokenStream,
     pub(crate) async_constructor: bool,
     pub(crate) not_auto_register: bool,
-}
-
-fn require_path_only(meta: Meta) -> syn::Result<Path> {
-    meta.require_path_only()?;
-
-    match meta {
-        Meta::Path(path) => Ok(path),
-        _ => unreachable!(),
-    }
-}
-
-fn require_name_value(meta: Meta) -> syn::Result<MetaNameValue> {
-    meta.require_name_value()?;
-
-    match meta {
-        Meta::NameValue(name_value) => Ok(name_value),
-        _ => unreachable!(),
-    }
 }

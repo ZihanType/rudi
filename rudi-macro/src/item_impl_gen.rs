@@ -5,7 +5,7 @@ use syn::{
 };
 
 use crate::{
-    provider_attribute::{ProviderAttribute, SimpleAttribute},
+    struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
     utils::{Color, Scope},
 };
 
@@ -21,7 +21,7 @@ use crate::{
 // }
 
 pub(crate) fn generate(
-    attribute: ProviderAttribute,
+    attribute: StructOrFunctionAttribute,
     mut item_impl: ItemImpl,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
@@ -85,10 +85,10 @@ fn generate_default_provider_impl(
     impl_item_fn: &mut ImplItemFn,
     struct_type_with_generics: &Type,
     struct_generics: &Generics,
-    attribute: &SimpleAttribute,
+    attribute: &SimpleStructOrFunctionAttribute,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
-    let SimpleAttribute {
+    let SimpleStructOrFunctionAttribute {
         name,
         eager_create,
         binds,
@@ -145,9 +145,10 @@ fn generate_default_provider_impl(
         None => Color::Sync,
     };
 
-    let args = crate::utils::get_args_resolve_expr(&mut impl_item_fn.sig.inputs, color)?;
+    let args =
+        crate::utils::generate_arguments_resolve_methods(&mut impl_item_fn.sig.inputs, color)?;
 
-    let create_provider = crate::utils::get_create_provider(scope, color);
+    let create_provider = crate::utils::generate_create_provider(scope, color);
 
     let (impl_generics, _, where_clause) = struct_generics.split_for_impl();
 
