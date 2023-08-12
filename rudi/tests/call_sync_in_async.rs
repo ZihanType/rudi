@@ -1,4 +1,4 @@
-use rudi::*;
+use rudi::{components, modules, Context, DynProvider, Module, Singleton, Transient};
 
 #[tokio::test]
 async fn resolve_in_async_context() {

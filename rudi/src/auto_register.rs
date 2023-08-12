@@ -160,7 +160,7 @@ macro_rules! register_provider {
 /// }
 ///
 /// // bin/src/main.rs
-/// use rudi::*;
+/// use rudi::Context;
 ///
 /// fn main() {
 ///     lib2::enable();

@@ -1,7 +1,7 @@
 #[cfg(feature = "auto-register")]
 #[cfg(test)]
 mod tests {
-    use rudi::*;
+    use rudi::{Context, Singleton, Transient};
 
     #[test]
     fn auto_register() {

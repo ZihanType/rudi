@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use rudi::*;
+use rudi::{components, modules, Context, DynProvider, Module, Singleton};
 
 #[test]
 #[should_panic]
