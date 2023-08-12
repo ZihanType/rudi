@@ -3,7 +3,6 @@ use quote::quote;
 use syn::{GenericParam, ItemFn, ReturnType};
 
 use crate::{
-    attr,
     struct_or_function_attributes::{SimpleStructOrFunctionAttributes, StructOrFunctionAttributes},
     utils::{self, Color, Scope},
 };
@@ -18,8 +17,6 @@ pub(crate) fn generate(
     mut item_fn: ItemFn,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
-    let rudi_path = attr::rudi_path(&mut item_fn.attrs)?;
-
     if let Some((async_, _)) = attrs.async_ {
         return Err(syn::Error::new(
             async_,
@@ -33,6 +30,7 @@ pub(crate) fn generate(
         binds,
         async_: _,
         auto_register,
+        rudi_path,
     } = attrs.simplify();
 
     #[cfg(feature = "auto-register")]

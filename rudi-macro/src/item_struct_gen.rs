@@ -3,7 +3,6 @@ use quote::quote;
 use syn::{Field, Fields, FieldsNamed, FieldsUnnamed, Ident, ItemStruct};
 
 use crate::{
-    attr,
     struct_or_function_attributes::{SimpleStructOrFunctionAttributes, StructOrFunctionAttributes},
     utils::{self, Color, Scope},
 };
@@ -13,14 +12,13 @@ pub(crate) fn generate(
     mut item_struct: ItemStruct,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
-    let rudi_path = attr::rudi_path(&mut item_struct.attrs)?;
-
     let SimpleStructOrFunctionAttributes {
         name,
         eager_create,
         binds,
         async_,
         auto_register,
+        rudi_path,
     } = attrs.simplify();
 
     #[cfg(feature = "auto-register")]

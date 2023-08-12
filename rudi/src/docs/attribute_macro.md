@@ -89,6 +89,13 @@ fn main() {
   - default: **true**
   - description: Specifies whether a defined `Provider` should be auto-registered to [`AutoRegisterModule`](crate::AutoRegisterModule). When the `auto-register` feature is enabled (which is enabled by default), this attribute can be used if auto-registration is not desired, or if auto-registration is not possible due to the presence of generics.
 
+- rudi_path
+  - type: path to the `rudi` crate.
+  - example: `#[Singleton(rudi_path = path::to::rudi)]`
+  - optional: true
+  - default: **::rudi**
+  - description: Specifies the path to the `rudi` crate. This attribute is used when the `rudi` crate is not in the root of the crate.
+
 #### An attribute that can only be used on `struct`
 
 - async
@@ -181,6 +188,7 @@ When adding attributes to `field` of struct and `argument` of function, you need
 ```rust
 use std::{borrow::Cow, fmt::Debug, marker::PhantomData, rc::Rc};
 
+use rudi as ru_di;
 use rudi::{components, modules, AutoRegisterModule, Context, Module, Singleton, Transient};
 
 const NAME_A: &str = "a";
@@ -205,7 +213,7 @@ struct NameAndEagerCreate;
 #[Transient(name = name_b(), binds = [transform])]
 struct NameAndBinds;
 
-#[Transient(name = name_c())]
+#[Transient(name = name_c(), rudi_path = crate::ru_di)]
 async fn AsyncDep() -> i32 {
     42
 }

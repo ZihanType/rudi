@@ -1,6 +1,8 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{meta::ParseNestedMeta, spanned::Spanned, Expr, ExprArray, ExprPath, LitBool, Token};
+use syn::{
+    meta::ParseNestedMeta, spanned::Spanned, Expr, ExprArray, ExprPath, LitBool, Path, Token,
+};
 
 #[derive(Default)]
 pub(crate) struct StructOrFunctionAttributes {
@@ -9,6 +11,7 @@ pub(crate) struct StructOrFunctionAttributes {
     binds: Option<(Span, Vec<ExprPath>)>,
     pub(crate) async_: Option<(Span, bool)>,
     auto_register: Option<(Span, bool)>,
+    rudi_path: Option<(Span, Path)>,
 }
 
 impl StructOrFunctionAttributes {
@@ -84,7 +87,13 @@ impl StructOrFunctionAttributes {
             return Ok(());
         }
 
-        Err(meta.error("the attribute must be one of: `name`, `eager_create`, `binds`, `async`, `auto_register`"))
+        if meta_path.is_ident("rudi_path") {
+            check_duplicate!(rudi_path);
+            self.rudi_path = Some((meta_path_span, meta.value()?.call(Path::parse_mod_style)?));
+            return Ok(());
+        }
+
+        Err(meta.error("the attribute must be one of: `name`, `eager_create`, `binds`, `async`, `auto_register`, `rudi_path`"))
     }
 
     pub(crate) fn simplify(&self) -> SimpleStructOrFunctionAttributes {
@@ -94,6 +103,7 @@ impl StructOrFunctionAttributes {
             binds,
             async_,
             auto_register,
+            rudi_path,
         } = self;
 
         SimpleStructOrFunctionAttributes {
@@ -126,6 +136,18 @@ impl StructOrFunctionAttributes {
             auto_register: auto_register
                 .map(|(_, auto_register)| auto_register)
                 .unwrap_or(true),
+            rudi_path: rudi_path
+                .as_ref()
+                .map(|(_, rudi_path)| {
+                    quote! {
+                        #rudi_path
+                    }
+                })
+                .unwrap_or_else(|| {
+                    quote! {
+                        ::rudi
+                    }
+                }),
         }
     }
 }
@@ -136,4 +158,5 @@ pub(crate) struct SimpleStructOrFunctionAttributes {
     pub(crate) binds: TokenStream,
     pub(crate) async_: bool,
     pub(crate) auto_register: bool,
+    pub(crate) rudi_path: TokenStream,
 }

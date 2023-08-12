@@ -1,4 +1,3 @@
-mod attr;
 mod field_or_argument_attributes;
 mod item_fn_gen;
 mod item_impl_gen;

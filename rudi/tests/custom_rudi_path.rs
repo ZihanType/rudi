@@ -6,8 +6,7 @@ mod tests {
 
     #[test]
     fn one() {
-        #[Transient]
-        #[rudi(crate = crate::ru_di)]
+        #[Transient(rudi_path = crate::ru_di)]
         struct A;
 
         struct MyModule;
