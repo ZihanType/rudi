@@ -1,11 +1,9 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{
-    punctuated::Punctuated, spanned::Spanned, Attribute, FnArg, Meta, MetaNameValue, PatType, Token,
-};
+use syn::{punctuated::Punctuated, spanned::Spanned, Attribute, FnArg, PatType, Token};
 
-use crate::field_or_argument_attribute::{
-    FieldOrArgumentAttribute, SimpleFieldOrArgumentAttribute,
+use crate::field_or_argument_attributes::{
+    FieldOrArgumentAttributes, SimpleFieldOrArgumentAttributes,
 };
 
 #[derive(Clone, Copy)]
@@ -51,8 +49,8 @@ pub(crate) fn generate_only_one_field_or_argument_resolve_method(
     attrs: &mut Vec<Attribute>,
     color: Color,
 ) -> syn::Result<TokenStream> {
-    let field_or_argument_attr = match FieldOrArgumentAttribute::from_attrs(attrs)? {
-        Some(attr) => attr,
+    let field_or_argument_attrs = match FieldOrArgumentAttributes::from_attrs(attrs)? {
+        Some(a) => a,
         None => {
             return Ok(match color {
                 Color::Async => quote! {
@@ -65,12 +63,12 @@ pub(crate) fn generate_only_one_field_or_argument_resolve_method(
         }
     };
 
-    let SimpleFieldOrArgumentAttribute {
+    let SimpleFieldOrArgumentAttributes {
         name,
         option,
         default,
         vector,
-    } = field_or_argument_attr.simplify();
+    } = field_or_argument_attrs.simplify();
 
     if let Some(ty) = option {
         return Ok(match color {
@@ -163,13 +161,4 @@ pub(crate) fn check_auto_register_with_generics(
     }
 
     Ok(())
-}
-
-pub(crate) fn require_name_value(meta: Meta) -> syn::Result<MetaNameValue> {
-    meta.require_name_value()?;
-
-    match meta {
-        Meta::NameValue(name_value) => Ok(name_value),
-        _ => unreachable!(),
-    }
 }

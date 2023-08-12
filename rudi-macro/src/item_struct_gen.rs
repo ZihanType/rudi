@@ -4,24 +4,24 @@ use syn::{Field, Fields, FieldsNamed, FieldsUnnamed, Ident, ItemStruct};
 
 use crate::{
     attr,
-    struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
+    struct_or_function_attributes::{SimpleStructOrFunctionAttributes, StructOrFunctionAttributes},
     utils::{self, Color, Scope},
 };
 
 pub(crate) fn generate(
-    attribute: StructOrFunctionAttribute,
+    attrs: StructOrFunctionAttributes,
     mut item_struct: ItemStruct,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
     let rudi_path = attr::rudi_path(&mut item_struct.attrs)?;
 
-    let SimpleStructOrFunctionAttribute {
+    let SimpleStructOrFunctionAttributes {
         name,
         eager_create,
         binds,
         async_constructor,
         auto_register,
-    } = attribute.simplify();
+    } = attrs.simplify();
 
     #[cfg(feature = "auto-register")]
     utils::check_auto_register_with_generics(

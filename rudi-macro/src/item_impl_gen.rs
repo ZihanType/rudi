@@ -6,7 +6,7 @@ use syn::{
 
 use crate::{
     attr,
-    struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
+    struct_or_function_attributes::{SimpleStructOrFunctionAttributes, StructOrFunctionAttributes},
     utils::{self, Color, Scope},
 };
 
@@ -22,13 +22,13 @@ use crate::{
 // }
 
 pub(crate) fn generate(
-    attribute: StructOrFunctionAttribute,
+    attrs: StructOrFunctionAttributes,
     mut item_impl: ItemImpl,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
     let rudi_path = attr::rudi_path(&mut item_impl.attrs)?;
 
-    if let Some((async_constructor, _)) = attribute.async_constructor {
+    if let Some((async_constructor, _)) = attrs.async_constructor {
         return Err(syn::Error::new(
             async_constructor,
             "`async_constructor` only support in struct, please use async fn instead",
@@ -50,7 +50,7 @@ pub(crate) fn generate(
         ));
     }
 
-    let simple = attribute.simplify();
+    let simple = attrs.simplify();
 
     let mut impl_item_fns = items
         .iter_mut()
@@ -90,16 +90,16 @@ fn generate_default_provider_impl(
     impl_item_fn: &mut ImplItemFn,
     struct_type_with_generics: &Type,
     struct_generics: &Generics,
-    attribute: &SimpleStructOrFunctionAttribute,
+    attrs: &SimpleStructOrFunctionAttributes,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
-    let SimpleStructOrFunctionAttribute {
+    let SimpleStructOrFunctionAttributes {
         name,
         eager_create,
         binds,
         async_constructor: _,
         auto_register,
-    } = attribute;
+    } = attrs;
 
     #[cfg(feature = "auto-register")]
     utils::check_auto_register_with_generics(*auto_register, struct_generics, "struct", scope)?;

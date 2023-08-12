@@ -1,24 +1,26 @@
 mod attr;
-mod field_or_argument_attribute;
+mod field_or_argument_attributes;
 mod item_fn_gen;
 mod item_impl_gen;
 mod item_struct_gen;
-mod struct_or_function_attribute;
+mod struct_or_function_attributes;
 mod utils;
 
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, spanned::Spanned, Item};
 
-use crate::{struct_or_function_attribute::StructOrFunctionAttribute, utils::Scope};
+use crate::{struct_or_function_attributes::StructOrFunctionAttributes, utils::Scope};
 
-fn macro_attribute(attr: TokenStream, input: TokenStream, scope: Scope) -> TokenStream {
-    let attribute = parse_macro_input!(attr as StructOrFunctionAttribute);
+fn macro_attribute(args: TokenStream, input: TokenStream, scope: Scope) -> TokenStream {
+    let mut attrs = StructOrFunctionAttributes::default();
+    let parser = syn::meta::parser(|meta| attrs.parse(meta));
+    parse_macro_input!(args with parser);
     let item = parse_macro_input!(input as Item);
 
     let result = match item {
-        Item::Struct(item_struct) => item_struct_gen::generate(attribute, item_struct, scope),
-        Item::Fn(item_fn) => item_fn_gen::generate(attribute, item_fn, scope),
-        Item::Impl(item_impl) => item_impl_gen::generate(attribute, item_impl, scope),
+        Item::Struct(item_struct) => item_struct_gen::generate(attrs, item_struct, scope),
+        Item::Fn(item_fn) => item_fn_gen::generate(attrs, item_fn, scope),
+        Item::Impl(item_impl) => item_impl_gen::generate(attrs, item_impl, scope),
         _ => Err(syn::Error::new(
             item.span(),
             "expected struct or function or impl",
@@ -30,12 +32,12 @@ fn macro_attribute(attr: TokenStream, input: TokenStream, scope: Scope) -> Token
 
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
-pub fn Singleton(attr: TokenStream, input: TokenStream) -> TokenStream {
-    macro_attribute(attr, input, Scope::Singleton)
+pub fn Singleton(args: TokenStream, input: TokenStream) -> TokenStream {
+    macro_attribute(args, input, Scope::Singleton)
 }
 
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
-pub fn Transient(attr: TokenStream, input: TokenStream) -> TokenStream {
-    macro_attribute(attr, input, Scope::Transient)
+pub fn Transient(args: TokenStream, input: TokenStream) -> TokenStream {
+    macro_attribute(args, input, Scope::Transient)
 }

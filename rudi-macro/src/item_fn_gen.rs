@@ -4,7 +4,7 @@ use syn::{GenericParam, ItemFn, ReturnType};
 
 use crate::{
     attr,
-    struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
+    struct_or_function_attributes::{SimpleStructOrFunctionAttributes, StructOrFunctionAttributes},
     utils::{self, Color, Scope},
 };
 
@@ -14,26 +14,26 @@ use crate::{
 // }
 
 pub(crate) fn generate(
-    attribute: StructOrFunctionAttribute,
+    attrs: StructOrFunctionAttributes,
     mut item_fn: ItemFn,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
     let rudi_path = attr::rudi_path(&mut item_fn.attrs)?;
 
-    if let Some((async_constructor, _)) = attribute.async_constructor {
+    if let Some((async_constructor, _)) = attrs.async_constructor {
         return Err(syn::Error::new(
             async_constructor,
             "`async_constructor` only support in struct, please use async fn instead",
         ));
     }
 
-    let SimpleStructOrFunctionAttribute {
+    let SimpleStructOrFunctionAttributes {
         name,
         eager_create,
         binds,
         async_constructor: _,
         auto_register,
-    } = attribute.simplify();
+    } = attrs.simplify();
 
     #[cfg(feature = "auto-register")]
     utils::check_auto_register_with_generics(
