@@ -30,7 +30,7 @@ mod tests {
 
     #[tokio::test]
     async fn auto_register_async() {
-        #[Transient(async_constructor)]
+        #[Transient(async)]
         struct A;
 
         #[Singleton]

@@ -19,7 +19,7 @@ pub(crate) fn generate(
         name,
         eager_create,
         binds,
-        async_constructor,
+        async_,
         auto_register,
     } = attrs.simplify();
 
@@ -31,11 +31,7 @@ pub(crate) fn generate(
         scope,
     )?;
 
-    let color = if async_constructor {
-        Color::Async
-    } else {
-        Color::Sync
-    };
+    let color = if async_ { Color::Async } else { Color::Sync };
 
     let fields_attrs = get_attrs_from_fields(&mut item_struct.fields, color)?;
 

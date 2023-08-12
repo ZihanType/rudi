@@ -95,7 +95,7 @@ use crate::{
 /// }
 ///
 /// #[derive(Debug)]
-/// #[Transient(async_constructor)]
+/// #[Transient(async)]
 /// struct A(i32);
 ///
 /// #[tokio::main]
@@ -589,7 +589,7 @@ please use instead:
     ///     1
     /// }
     ///
-    /// #[Transient(async_constructor)]
+    /// #[Transient(async)]
     /// struct A(i32);
     ///
     /// #[tokio::main]
@@ -620,7 +620,7 @@ please use instead:
     ///     1
     /// }
     ///
-    /// #[Transient(async_constructor, name = "A")]
+    /// #[Transient(async, name = "A")]
     /// struct A(#[di(name = "a")] i32);
     ///
     /// #[tokio::main]
@@ -656,7 +656,7 @@ please use instead:
     ///     1
     /// }
     ///
-    /// #[Transient(async_constructor)]
+    /// #[Transient(async)]
     /// struct A(i32);
     ///
     /// #[tokio::main]
@@ -686,7 +686,7 @@ please use instead:
     ///     1
     /// }
     ///
-    /// #[Transient(async_constructor, name = "A")]
+    /// #[Transient(async, name = "A")]
     /// struct A(#[di(name = "a")] i32);
     ///
     /// #[tokio::main]
@@ -995,7 +995,7 @@ impl Context {
 
 please check all the references to the above type, there are 3 scenarios that will be referenced:
 1. use `Context::resolve_xxx::<Type>(cx)` to get instances of the type, change to `Context::resolve_xxx_async::<Type>(cx).await`.
-2. use `yyy: Type` as a field for a struct, use `#[Singleton(async_constructor)]` or `#[Transient(async_constructor)]` on the struct.
+2. use `yyy: Type` as a field for a struct, use `#[Singleton(async)]` or `#[Transient(async)]` on the struct.
 3. use `zzz: Type` as a parameter to a function, add the `async` keyword to the function.
 ",
                     provider.definition()

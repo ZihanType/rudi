@@ -57,13 +57,13 @@ async fn circular_dependency_async() {
     }
 
     #[derive(Clone)]
-    #[Singleton(binds = [a], async_constructor)]
+    #[Singleton(binds = [a], async)]
     struct AImpl(Rc<dyn B>);
 
     impl A for AImpl {}
 
     #[derive(Clone)]
-    #[Singleton(binds = [b], async_constructor)]
+    #[Singleton(binds = [b], async)]
     struct BImpl(Rc<dyn A>);
 
     impl B for BImpl {}

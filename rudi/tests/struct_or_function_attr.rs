@@ -103,7 +103,7 @@ fn auto_register_set_false() {
 }
 
 #[test]
-fn no_async_constructor() {
+fn no_async() {
     #[Singleton]
     fn One() -> i32 {
         1
@@ -127,14 +127,14 @@ fn no_async_constructor() {
 
 #[test]
 #[should_panic]
-fn panicky_async_constructor() {
+fn panicky_async() {
     #[Singleton]
     async fn One() -> i32 {
         1
     }
 
     #[derive(Clone)]
-    #[Singleton(async_constructor)]
+    #[Singleton(async)]
     struct A(i32);
 
     struct MyModule;
@@ -150,14 +150,14 @@ fn panicky_async_constructor() {
 }
 
 #[tokio::test]
-async fn successful_async_constructor() {
+async fn successful_async() {
     #[Singleton]
     async fn One() -> i32 {
         1
     }
 
     #[derive(Clone)]
-    #[Singleton(async_constructor)]
+    #[Singleton(async)]
     struct A(i32);
 
     struct MyModule;

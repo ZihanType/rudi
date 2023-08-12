@@ -91,9 +91,9 @@ fn main() {
 
 #### An attribute that can only be used on `struct`
 
-- async_constructor
+- async
   - type: bool
-  - example: `#[Singleton(async_constructor)]`
+  - example: `#[Singleton(async)]`
   - optional: true
   - default: **false**
   - description: Specifies whether the constructor method of a defined `Provider` is asynchronous. Only valid when used on `struct`, for `impl struct` and `fn` cases use `async fn`.
@@ -211,7 +211,7 @@ async fn AsyncDep() -> i32 {
 }
 
 #[derive(Debug)]
-#[Transient(async_constructor)]
+#[Transient(async)]
 struct Async(#[di(name = name_c())] i32);
 
 #[Transient(auto_register = false)]

@@ -63,7 +63,7 @@ async fn Number() -> i32 {
 }
 
 #[derive(Debug, Clone)]
-#[Singleton(async_constructor, name = "foo")] // Register async constructor and specify name
+#[Singleton(async, name = "foo")] // Register async constructor and specify name
 struct Foo {
     #[di(name = "number")] // Specify the name of the dependency
     number: i32,

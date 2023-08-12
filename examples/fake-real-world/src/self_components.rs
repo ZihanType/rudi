@@ -7,7 +7,7 @@ use crate::third_components::{DatabaseConnection, RedisClient};
 pub trait Service {}
 
 #[derive(Clone)]
-#[Singleton(binds = [Self::into_svc], async_constructor)]
+#[Singleton(binds = [Self::into_svc], async)]
 pub struct ServiceImpl(RedisClient, DatabaseConnection);
 
 impl Service for ServiceImpl {}
@@ -19,7 +19,7 @@ impl ServiceImpl {
 }
 
 #[derive(Clone)]
-#[Singleton(async_constructor)]
+#[Singleton(async)]
 pub struct Controller(Arc<dyn Service>);
 
 #[derive(Clone)]

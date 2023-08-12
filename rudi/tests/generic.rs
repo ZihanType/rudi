@@ -39,7 +39,7 @@ fn generic_module() {
 #[test]
 fn generic_provider_async() {
     #[derive(Default)]
-    #[Transient(async_constructor, auto_register = false)]
+    #[Transient(async, auto_register = false)]
     struct B<T: Default + 'static>(T);
 
     struct MyModule;
@@ -56,7 +56,7 @@ fn generic_provider_async() {
 #[test]
 fn generic_module_async() {
     #[derive(Default)]
-    #[Transient(async_constructor, auto_register = false)]
+    #[Transient(async, auto_register = false)]
     struct B<T: Default + 'static>(T);
 
     struct MyModule<T>(PhantomData<T>);

@@ -155,7 +155,7 @@ async fn resolve_with_several_modules_async() {
     }
 
     #[derive(Clone)]
-    #[Singleton(async_constructor)]
+    #[Singleton(async)]
     struct Holder(Rc<ComponentA>);
 
     struct MyModule2;

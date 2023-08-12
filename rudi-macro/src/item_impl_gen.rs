@@ -28,10 +28,10 @@ pub(crate) fn generate(
 ) -> syn::Result<TokenStream> {
     let rudi_path = attr::rudi_path(&mut item_impl.attrs)?;
 
-    if let Some((async_constructor, _)) = attrs.async_constructor {
+    if let Some((async_, _)) = attrs.async_ {
         return Err(syn::Error::new(
-            async_constructor,
-            "`async_constructor` only support in struct, please use async fn instead",
+            async_,
+            "`async` only support in struct, please use async fn instead",
         ));
     }
 
@@ -97,7 +97,7 @@ fn generate_default_provider_impl(
         name,
         eager_create,
         binds,
-        async_constructor: _,
+        async_: _,
         auto_register,
     } = attrs;
 

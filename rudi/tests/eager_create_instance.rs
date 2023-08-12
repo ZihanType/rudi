@@ -230,7 +230,7 @@ fn eager_create_two_modules() {
 #[test]
 #[should_panic]
 fn create_eager_instances_async_in_sync_context() {
-    #[Transient(async_constructor)]
+    #[Transient(async)]
     struct A;
 
     struct MyModule;
@@ -304,7 +304,7 @@ fn only_singleton_or_all_scope_eager_create() {
 #[tokio::test]
 async fn eager_create_context_async() {
     #[derive(Clone)]
-    #[Singleton(async_constructor)]
+    #[Singleton(async)]
     struct A;
 
     struct MyModule;

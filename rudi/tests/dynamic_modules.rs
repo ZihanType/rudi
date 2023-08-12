@@ -212,7 +212,7 @@ fn reload_module() {
 #[tokio::test]
 async fn unload_singleton_async() {
     #[derive(Clone)]
-    #[Singleton(async_constructor)]
+    #[Singleton(async)]
     struct A;
 
     struct MyModule;
@@ -267,10 +267,10 @@ async fn unload_singleton_with_bind_async() {
 
 #[tokio::test]
 async fn unload_module_async() {
-    #[Transient(async_constructor)]
+    #[Transient(async)]
     struct A;
 
-    #[Transient(async_constructor)]
+    #[Transient(async)]
     struct B;
 
     struct Module1;
@@ -303,10 +303,10 @@ async fn unload_module_async() {
 
 #[tokio::test]
 async fn unload_module_with_transient_async() {
-    #[Transient(async_constructor)]
+    #[Transient(async)]
     struct A;
 
-    #[Transient(async_constructor)]
+    #[Transient(async)]
     struct B(A);
 
     struct Module1;

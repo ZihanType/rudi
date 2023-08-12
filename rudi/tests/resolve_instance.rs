@@ -163,7 +163,7 @@ fn resolve_default_and_named() {
 #[test]
 #[should_panic]
 fn resolve_async_instance_in_sync_context() {
-    #[Transient(async_constructor)]
+    #[Transient(async)]
     struct A;
 
     struct MyModule;

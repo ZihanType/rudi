@@ -7,7 +7,7 @@ pub(crate) struct StructOrFunctionAttributes {
     name: Option<(Span, Expr)>,
     eager_create: Option<(Span, bool)>,
     binds: Option<(Span, Vec<ExprPath>)>,
-    pub(crate) async_constructor: Option<(Span, bool)>,
+    pub(crate) async_: Option<(Span, bool)>,
     auto_register: Option<(Span, bool)>,
 }
 
@@ -29,10 +29,17 @@ impl StructOrFunctionAttributes {
         }
 
         macro_rules! boolean_attr {
-            ($attribute:tt) => {
+            ($attribute:tt, $variable:tt) => {
                 if meta_path.is_ident(stringify!($attribute)) {
-                    check_duplicate!($attribute);
-                    self.$attribute = Some((
+                    if self.$variable.is_some() {
+                        return Err(meta.error(concat!(
+                            "the `",
+                            stringify!($attribute),
+                            "` attribute can only be set once"
+                        )));
+                    }
+
+                    self.$variable = Some((
                         meta_path_span,
                         if meta.input.is_empty() || meta.input.peek(Token![,]) {
                             true
@@ -51,9 +58,9 @@ impl StructOrFunctionAttributes {
             return Ok(());
         }
 
-        boolean_attr!(eager_create);
-        boolean_attr!(async_constructor);
-        boolean_attr!(auto_register);
+        boolean_attr!(eager_create, eager_create);
+        boolean_attr!(async, async_);
+        boolean_attr!(auto_register, auto_register);
 
         if meta_path.is_ident("binds") {
             check_duplicate!(binds);
@@ -77,7 +84,7 @@ impl StructOrFunctionAttributes {
             return Ok(());
         }
 
-        Err(meta.error("the attribute must be one of: `name`, `eager_create`, `binds`, `async_constructor`, `auto_register`"))
+        Err(meta.error("the attribute must be one of: `name`, `eager_create`, `binds`, `async`, `auto_register`"))
     }
 
     pub(crate) fn simplify(&self) -> SimpleStructOrFunctionAttributes {
@@ -85,7 +92,7 @@ impl StructOrFunctionAttributes {
             name,
             eager_create,
             binds,
-            async_constructor,
+            async_,
             auto_register,
         } = self;
 
@@ -115,9 +122,7 @@ impl StructOrFunctionAttributes {
                     }
                 })
                 .unwrap_or_else(|| quote! {}),
-            async_constructor: async_constructor
-                .map(|(_, async_constructor)| async_constructor)
-                .unwrap_or(false),
+            async_: async_.map(|(_, async_)| async_).unwrap_or(false),
             auto_register: auto_register
                 .map(|(_, auto_register)| auto_register)
                 .unwrap_or(true),
@@ -129,6 +134,6 @@ pub(crate) struct SimpleStructOrFunctionAttributes {
     pub(crate) name: TokenStream,
     pub(crate) eager_create: bool,
     pub(crate) binds: TokenStream,
-    pub(crate) async_constructor: bool,
+    pub(crate) async_: bool,
     pub(crate) auto_register: bool,
 }
