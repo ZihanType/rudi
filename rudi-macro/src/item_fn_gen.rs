@@ -3,12 +3,13 @@ use quote::quote;
 use syn::{spanned::Spanned, GenericParam, ItemFn, ReturnType};
 
 use crate::{
+    attr,
     struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
-    utils::{Color, Scope},
+    utils::{self, Color, Scope},
 };
 
 // #[Singleton]
-// fn One(#[di("hello")] i: i32) -> String {
+// fn One(#[di(name = "hello")] i: i32) -> String {
 //     i.to_string()
 // }
 
@@ -17,6 +18,8 @@ pub(crate) fn generate(
     mut item_fn: ItemFn,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
+    let rudi_path = attr::rudi_path(&mut item_fn.attrs)?;
+
     if let Some(async_constructor) = attribute.async_constructor {
         return Err(syn::Error::new(
             async_constructor.span(),
@@ -33,7 +36,7 @@ pub(crate) fn generate(
     } = attribute.simplify();
 
     #[cfg(feature = "auto-register")]
-    crate::utils::check_auto_register_with_generics(
+    utils::check_auto_register_with_generics(
         not_auto_register,
         &item_fn.sig.generics,
         "function",
@@ -45,9 +48,9 @@ pub(crate) fn generate(
         None => Color::Sync,
     };
 
-    let args = crate::utils::generate_arguments_resolve_methods(&mut item_fn.sig.inputs, color)?;
+    let args = utils::generate_arguments_resolve_methods(&mut item_fn.sig.inputs, color)?;
 
-    let create_provider = crate::utils::generate_create_provider(scope, color);
+    let create_provider = utils::generate_create_provider(scope, color);
 
     let (impl_generics, ty_generics, where_clause) = item_fn.sig.generics.split_for_impl();
 
@@ -119,7 +122,7 @@ pub(crate) fn generate(
     } else {
         #[cfg(feature = "auto-register")]
         quote! {
-            ::rudi::register_provider!(<#ident as ::rudi::DefaultProvider>::provider());
+            #rudi_path::register_provider!(<#ident as #rudi_path::DefaultProvider>::provider());
         }
         #[cfg(not(feature = "auto-register"))]
         quote! {}
@@ -130,15 +133,15 @@ pub(crate) fn generate(
         #[allow(non_camel_case_types)]
         #struct_definition
 
-        impl #impl_generics ::rudi::DefaultProvider for #ident #ty_generics #where_clause {
+        impl #impl_generics #rudi_path::DefaultProvider for #ident #ty_generics #where_clause {
             type Type = #return_type_ident;
 
-            fn provider() -> ::rudi::Provider<Self::Type> {
+            fn provider() -> #rudi_path::Provider<Self::Type> {
                 #[allow(non_snake_case, clippy::too_many_arguments)]
                 #item_fn
 
-                <::rudi::Provider<_> as ::core::convert::From<_>>::from(
-                    ::rudi::#create_provider(#constructor)
+                <#rudi_path::Provider<_> as ::core::convert::From<_>>::from(
+                    #rudi_path::#create_provider(#constructor)
                         .name(#name)
                         .eager_create(#eager_create)
                         #binds

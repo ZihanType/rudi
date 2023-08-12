@@ -5,8 +5,9 @@ use syn::{
 };
 
 use crate::{
+    attr,
     struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
-    utils::{Color, Scope},
+    utils::{self, Color, Scope},
 };
 
 // struct A {
@@ -15,7 +16,7 @@ use crate::{
 
 // #[Singleton]
 // impl A {
-//     fn new(#[di("hello")] a:i32) -> Self {
+//     fn new(#[di(name = "hello")] a:i32) -> Self {
 //         Self { a }
 //     }
 // }
@@ -25,6 +26,8 @@ pub(crate) fn generate(
     mut item_impl: ItemImpl,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
+    let rudi_path = attr::rudi_path(&mut item_impl.attrs)?;
+
     if let Some(async_constructor) = attribute.async_constructor {
         return Err(syn::Error::new(
             async_constructor.span(),
@@ -59,6 +62,7 @@ pub(crate) fn generate(
 
     let default_provider_impl = if impl_item_fns.len() == 1 {
         generate_default_provider_impl(
+            rudi_path,
             impl_item_fns.pop().unwrap(),
             self_ty,
             generics,
@@ -82,6 +86,7 @@ pub(crate) fn generate(
 }
 
 fn generate_default_provider_impl(
+    rudi_path: Path,
     impl_item_fn: &mut ImplItemFn,
     struct_type_with_generics: &Type,
     struct_generics: &Generics,
@@ -97,12 +102,7 @@ fn generate_default_provider_impl(
     } = attribute;
 
     #[cfg(feature = "auto-register")]
-    crate::utils::check_auto_register_with_generics(
-        *not_auto_register,
-        struct_generics,
-        "struct",
-        scope,
-    )?;
+    utils::check_auto_register_with_generics(*not_auto_register, struct_generics, "struct", scope)?;
 
     let (return_type_eq_struct_type, return_type_eq_self_type) = match &impl_item_fn.sig.output {
         ReturnType::Type(_, fn_return_type) => {
@@ -145,10 +145,9 @@ fn generate_default_provider_impl(
         None => Color::Sync,
     };
 
-    let args =
-        crate::utils::generate_arguments_resolve_methods(&mut impl_item_fn.sig.inputs, color)?;
+    let args = utils::generate_arguments_resolve_methods(&mut impl_item_fn.sig.inputs, color)?;
 
-    let create_provider = crate::utils::generate_create_provider(scope, color);
+    let create_provider = utils::generate_create_provider(scope, color);
 
     let (impl_generics, _, where_clause) = struct_generics.split_for_impl();
 
@@ -176,19 +175,19 @@ fn generate_default_provider_impl(
     } else {
         #[cfg(feature = "auto-register")]
         quote! {
-            ::rudi::register_provider!(<#struct_type_with_generics as ::rudi::DefaultProvider>::provider());
+            #rudi_path::register_provider!(<#struct_type_with_generics as #rudi_path::DefaultProvider>::provider());
         }
         #[cfg(not(feature = "auto-register"))]
         quote! {}
     };
 
     let expand = quote! {
-        impl #impl_generics ::rudi::DefaultProvider for #struct_type_with_generics #where_clause {
+        impl #impl_generics #rudi_path::DefaultProvider for #struct_type_with_generics #where_clause {
             type Type = Self;
 
-            fn provider() -> ::rudi::Provider<Self> {
-                <::rudi::Provider<_> as ::core::convert::From<_>>::from(
-                    ::rudi::#create_provider(#constructor)
+            fn provider() -> #rudi_path::Provider<Self> {
+                <#rudi_path::Provider<_> as ::core::convert::From<_>>::from(
+                    #rudi_path::#create_provider(#constructor)
                         .name(#name)
                         .eager_create(#eager_create)
                         #binds

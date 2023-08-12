@@ -7,7 +7,7 @@ use syn::{
     Expr, ExprPath, Meta, MetaNameValue, Path, Token,
 };
 
-use crate::utils::{require_name_value, require_path_only};
+use crate::utils;
 
 pub(crate) struct StructOrFunctionAttribute {
     name: Option<(Path, Expr)>,
@@ -49,7 +49,7 @@ impl Parse for StructOrFunctionAttribute {
             if meta_path.is_ident("name") {
                 check_duplicate!(name);
 
-                let MetaNameValue { path, value, .. } = require_name_value(meta)?;
+                let MetaNameValue { path, value, .. } = utils::require_name_value(meta)?;
 
                 name = Some((path, value));
                 continue;
@@ -58,14 +58,14 @@ impl Parse for StructOrFunctionAttribute {
             if meta_path.is_ident("eager_create") {
                 check_duplicate!(eager_create);
 
-                eager_create = Some(require_path_only(meta)?);
+                eager_create = Some(utils::require_path_only(meta)?);
                 continue;
             }
 
             if meta_path.is_ident("binds") {
                 check_duplicate!(binds);
 
-                let MetaNameValue { path, value, .. } = require_name_value(meta)?;
+                let MetaNameValue { path, value, .. } = utils::require_name_value(meta)?;
 
                 let array = if let Expr::Array(array) = value {
                     array
@@ -96,14 +96,14 @@ impl Parse for StructOrFunctionAttribute {
             if meta_path.is_ident("async_constructor") {
                 check_duplicate!(async_constructor);
 
-                async_constructor = Some(require_path_only(meta)?);
+                async_constructor = Some(utils::require_path_only(meta)?);
                 continue;
             }
 
             if meta_path.is_ident("not_auto_register") {
                 check_duplicate!(not_auto_register);
 
-                not_auto_register = Some(require_path_only(meta)?);
+                not_auto_register = Some(utils::require_path_only(meta)?);
                 continue;
             }
 

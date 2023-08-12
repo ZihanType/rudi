@@ -7,7 +7,7 @@ use syn::{
     Expr, Meta, MetaList, MetaNameValue, Path, Token, Type,
 };
 
-use crate::utils::{require_list, require_name_value};
+use crate::utils;
 
 // #[di(
 //     name = "..",
@@ -54,7 +54,7 @@ impl Parse for FieldOrArgumentAttribute {
             if meta_path.is_ident("name") {
                 check_duplicate!(name);
 
-                let MetaNameValue { path, value, .. } = require_name_value(meta)?;
+                let MetaNameValue { path, value, .. } = utils::require_name_value(meta)?;
 
                 name = Some((path, value));
                 continue;
@@ -63,7 +63,7 @@ impl Parse for FieldOrArgumentAttribute {
             if meta_path.is_ident("option") {
                 check_duplicate!(option);
 
-                let MetaList { path, tokens, .. } = require_list(meta)?;
+                let MetaList { path, tokens, .. } = utils::require_list(meta)?;
 
                 let ty = syn::parse2::<Type>(tokens)?;
                 option = Some((path, ty));
@@ -93,7 +93,7 @@ impl Parse for FieldOrArgumentAttribute {
             if meta_path.is_ident("vector") {
                 check_duplicate!(vector);
 
-                let MetaList { path, tokens, .. } = require_list(meta)?;
+                let MetaList { path, tokens, .. } = utils::require_list(meta)?;
 
                 let ty = syn::parse2::<Type>(tokens)?;
                 vector = Some((path, ty));

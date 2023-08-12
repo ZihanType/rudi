@@ -3,8 +3,9 @@ use quote::quote;
 use syn::{Field, Fields, FieldsNamed, FieldsUnnamed, Ident, ItemStruct};
 
 use crate::{
+    attr,
     struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
-    utils::{Color, Scope},
+    utils::{self, Color, Scope},
 };
 
 pub(crate) fn generate(
@@ -12,6 +13,8 @@ pub(crate) fn generate(
     mut item_struct: ItemStruct,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
+    let rudi_path = attr::rudi_path(&mut item_struct.attrs)?;
+
     let SimpleStructOrFunctionAttribute {
         name,
         eager_create,
@@ -21,7 +24,7 @@ pub(crate) fn generate(
     } = attribute.simplify();
 
     #[cfg(feature = "auto-register")]
-    crate::utils::check_auto_register_with_generics(
+    utils::check_auto_register_with_generics(
         not_auto_register,
         &item_struct.generics,
         "struct",
@@ -36,7 +39,7 @@ pub(crate) fn generate(
 
     let fields_attrs = get_attrs_from_fields(&mut item_struct.fields, color)?;
 
-    let create_provider = crate::utils::generate_create_provider(scope, color);
+    let create_provider = utils::generate_create_provider(scope, color);
 
     let struct_ident = &item_struct.ident;
 
@@ -88,7 +91,7 @@ pub(crate) fn generate(
     } else {
         #[cfg(feature = "auto-register")]
         quote! {
-            ::rudi::register_provider!(<#struct_ident as ::rudi::DefaultProvider>::provider());
+            #rudi_path::register_provider!(<#struct_ident as #rudi_path::DefaultProvider>::provider());
         }
         #[cfg(not(feature = "auto-register"))]
         quote! {}
@@ -97,12 +100,12 @@ pub(crate) fn generate(
     let expand = quote! {
         #item_struct
 
-        impl #impl_generics ::rudi::DefaultProvider for #struct_ident #ty_generics #where_clause {
+        impl #impl_generics #rudi_path::DefaultProvider for #struct_ident #ty_generics #where_clause {
             type Type = Self;
 
-            fn provider() -> ::rudi::Provider<Self> {
-                <::rudi::Provider<_> as ::core::convert::From<_>>::from(
-                    ::rudi::#create_provider(#constructor)
+            fn provider() -> #rudi_path::Provider<Self> {
+                <#rudi_path::Provider<_> as ::core::convert::From<_>>::from(
+                    #rudi_path::#create_provider(#constructor)
                         .name(#name)
                         .eager_create(#eager_create)
                         #binds
@@ -131,9 +134,9 @@ fn get_attrs_from_fields(fields: &mut Fields, color: Color) -> syn::Result<Field
             let mut resolve_methods = Vec::with_capacity(len);
 
             for Field { attrs, ident, .. } in named {
-                resolve_methods.push(
-                    crate::utils::generate_only_one_field_or_argument_resolve_method(attrs, color)?,
-                );
+                resolve_methods.push(utils::generate_only_one_field_or_argument_resolve_method(
+                    attrs, color,
+                )?);
                 idents.push(ident.clone().unwrap());
             }
 
@@ -143,9 +146,9 @@ fn get_attrs_from_fields(fields: &mut Fields, color: Color) -> syn::Result<Field
             let mut resolve_methods = Vec::with_capacity(unnamed.len());
 
             for Field { attrs, .. } in unnamed {
-                resolve_methods.push(
-                    crate::utils::generate_only_one_field_or_argument_resolve_method(attrs, color)?,
-                );
+                resolve_methods.push(utils::generate_only_one_field_or_argument_resolve_method(
+                    attrs, color,
+                )?);
             }
 
             Ok(FieldsAttributes::Unnamed(resolve_methods))
