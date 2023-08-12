@@ -1,123 +1,94 @@
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{
-    parse::{Parse, ParseStream},
-    punctuated::Punctuated,
-    spanned::Spanned,
-    Expr, Meta, MetaList, MetaNameValue, Path, Token, Type,
-};
-
-use crate::utils;
+use syn::{parse_quote, spanned::Spanned, Attribute, Expr, Type};
 
 // #[di(
 //     name = "..",
-//     option(T),
+//     option = T,
 //     default = 42,
-//     vector(T),
+//     vector = T,
 // )]
 
 pub(crate) struct FieldOrArgumentAttribute {
-    name: Option<(Path, Expr)>,
-    option: Option<(Path, Type)>,
-    default: Option<(Path, Expr)>,
-    vector: Option<(Path, Type)>,
+    name: Option<(Span, Expr)>,
+    option: Option<(Span, Type)>,
+    default: Option<(Span, Expr)>,
+    vector: Option<(Span, Type)>,
 }
 
-impl Parse for FieldOrArgumentAttribute {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut name: Option<(Path, Expr)> = None;
-        let mut option: Option<(Path, Type)> = None;
-        let mut default: Option<(Path, Expr)> = None;
-        let mut vector: Option<(Path, Type)> = None;
+impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
+    type Error = syn::Error;
 
-        let attr = Punctuated::<Meta, Token![,]>::parse_terminated(input)?;
+    fn try_from(attr: &Attribute) -> Result<Self, Self::Error> {
+        let mut name: Option<(Span, Expr)> = None;
+        let mut option: Option<(Span, Type)> = None;
+        let mut default: Option<(Span, Expr)> = None;
+        let mut vector: Option<(Span, Type)> = None;
 
-        for meta in attr {
-            let meta_path = meta.path();
-            let meta_path_span = meta_path.span();
-
+        attr.parse_nested_meta(|meta| {
             macro_rules! check_duplicate {
                 ($attribute:tt) => {
                     if $attribute.is_some() {
-                        return Err(syn::Error::new(
-                            meta_path_span,
-                            concat!(
-                                "the `",
-                                stringify!($attribute),
-                                "` attribute can only be set once"
-                            ),
-                        ));
+                        return Err(meta.error(concat!(
+                            "the `",
+                            stringify!($attribute),
+                            "` attribute can only be set once"
+                        )));
                     }
                 };
             }
 
+            let meta_path = &meta.path;
+            let meta_path_span = meta_path.span();
+
             if meta_path.is_ident("name") {
                 check_duplicate!(name);
-
-                let MetaNameValue { path, value, .. } = utils::require_name_value(meta)?;
-
-                name = Some((path, value));
-                continue;
+                name = Some((meta_path_span, meta.value()?.parse::<Expr>()?));
+                return Ok(());
             }
 
             if meta_path.is_ident("option") {
                 check_duplicate!(option);
-
-                let MetaList { path, tokens, .. } = utils::require_list(meta)?;
-
-                let ty = syn::parse2::<Type>(tokens)?;
-                option = Some((path, ty));
-                continue;
+                option = Some((meta_path_span, meta.value()?.parse::<Type>()?));
+                return Ok(());
             }
 
             if meta_path.is_ident("default") {
                 check_duplicate!(default);
 
-                default = match meta {
-                    Meta::Path(path) => Some((
-                        path,
-                        syn::parse2(quote!(::core::default::Default::default()))?,
-                    )),
-                    Meta::NameValue(MetaNameValue { path, value, .. }) => Some((path, value)),
-                    Meta::List(list) => {
-                        let span = list.delimiter.span().open();
-                        return Err(syn::Error::new(
-                            span,
-                            "unexpected token in `default` attribute",
-                        ));
-                    }
-                };
-                continue;
+                default = Some((
+                    meta_path_span,
+                    if meta.input.is_empty() {
+                        parse_quote!(::core::default::Default::default())
+                    } else {
+                        meta.value()?.parse::<Expr>()?
+                    },
+                ));
+
+                return Ok(());
             }
 
             if meta_path.is_ident("vector") {
                 check_duplicate!(vector);
-
-                let MetaList { path, tokens, .. } = utils::require_list(meta)?;
-
-                let ty = syn::parse2::<Type>(tokens)?;
-                vector = Some((path, ty));
-                continue;
+                vector = Some((meta_path_span, meta.value()?.parse::<Type>()?));
+                return Ok(());
             }
 
-            return Err(syn::Error::new(
-                meta_path_span,
-                "the attribute must be one of: `name`, `option`, `default`, `vector`",
-            ));
-        }
+            Err(meta.error("the attribute must be one of: `name`, `option`, `default`, `vector`"))
+        })?;
 
         if let (Some((name, _)), Some((vector, _))) = (&name, &vector) {
             macro_rules! err {
                 ($span:expr) => {
                     syn::Error::new(
-                        $span,
+                        $span.clone(),
                         "the `name` and `vector` attributes cannot be used together",
                     )
                 };
             }
 
-            let mut e = err!(name.span());
-            e.combine(err!(vector.span()));
+            let mut e = err!(name);
+            e.combine(err!(vector));
 
             return Err(e);
         }
@@ -127,15 +98,15 @@ impl Parse for FieldOrArgumentAttribute {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
-                            $span,
+                            $span.clone(),
                             "the `option`, `default`, and `vector` attributes cannot be used together",
                         )
                     };
                 }
 
-                let mut e = err!(option.span());
-                e.combine(err!(default.span()));
-                e.combine(err!(vector.span()));
+                let mut e = err!(option);
+                e.combine(err!(default));
+                e.combine(err!(vector));
 
                 return Err(e);
             }
@@ -143,14 +114,14 @@ impl Parse for FieldOrArgumentAttribute {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
-                            $span,
+                            $span.clone(),
                             "the `option` and `default` attributes cannot be used together",
                         )
                     };
                 }
 
-                let mut e = err!(option.span());
-                e.combine(err!(default.span()));
+                let mut e = err!(option);
+                e.combine(err!(default));
 
                 return Err(e);
             }
@@ -158,14 +129,14 @@ impl Parse for FieldOrArgumentAttribute {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
-                            $span,
+                            $span.clone(),
                             "the `option` and `vector` attributes cannot be used together",
                         )
                     };
                 }
 
-                let mut e = err!(option.span());
-                e.combine(err!(vector.span()));
+                let mut e = err!(option);
+                e.combine(err!(vector));
 
                 return Err(e);
             }
@@ -173,14 +144,14 @@ impl Parse for FieldOrArgumentAttribute {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
-                            $span,
+                            $span.clone(),
                             "the `default` and `vector` attributes cannot be used together",
                         )
                     };
                 }
 
-                let mut e = err!(default.span());
-                e.combine(err!(vector.span()));
+                let mut e = err!(default);
+                e.combine(err!(vector));
 
                 return Err(e);
             }
@@ -197,6 +168,42 @@ impl Parse for FieldOrArgumentAttribute {
 }
 
 impl FieldOrArgumentAttribute {
+    pub(crate) fn from_attrs(
+        attrs: &mut Vec<Attribute>,
+    ) -> syn::Result<Option<FieldOrArgumentAttribute>> {
+        let mut field_or_argument_attr = None;
+        let mut errors = Vec::with_capacity(4);
+        let mut already_appeared_di = false;
+
+        attrs.retain(|attr| {
+            if !attr.path().is_ident("di") {
+                return true;
+            }
+
+            if already_appeared_di {
+                let err = syn::Error::new(attr.span(), "only one `#[di(..)]` attribute is allowed");
+                errors.push(err);
+            } else {
+                match FieldOrArgumentAttribute::try_from(attr) {
+                    Ok(o) => field_or_argument_attr = Some(o),
+                    Err(e) => errors.push(e),
+                }
+            }
+
+            already_appeared_di = true;
+            false
+        });
+
+        if let Some(e) = errors.into_iter().reduce(|mut a, b| {
+            a.combine(b);
+            a
+        }) {
+            return Err(e);
+        }
+
+        Ok(field_or_argument_attr)
+    }
+
     pub(crate) fn simplify(self) -> SimpleFieldOrArgumentAttribute {
         let FieldOrArgumentAttribute {
             name,

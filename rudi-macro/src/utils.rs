@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{
-    punctuated::Punctuated, spanned::Spanned, Attribute, FnArg, Meta, MetaList, MetaNameValue,
-    PatType, Path, Token,
+    punctuated::Punctuated, spanned::Spanned, Attribute, FnArg, Meta, MetaNameValue, PatType, Path,
+    Token,
 };
 
 use crate::field_or_argument_attribute::{
@@ -52,17 +52,8 @@ pub(crate) fn generate_only_one_field_or_argument_resolve_method(
     attrs: &mut Vec<Attribute>,
     color: Color,
 ) -> syn::Result<TokenStream> {
-    let mut attrs = drain_filter(attrs, |attr| attr.path().is_ident("di"));
-
-    if attrs.len() > 1 {
-        return Err(syn::Error::new(
-            attrs[1].span(),
-            "only one `#[di(..)]` attribute is allowed",
-        ));
-    }
-
-    let field_or_argument_attr = match attrs.pop() {
-        Some(attr) => attr.parse_args::<FieldOrArgumentAttribute>()?,
+    let field_or_argument_attr = match FieldOrArgumentAttribute::from_attrs(attrs)? {
+        Some(attr) => attr,
         None => {
             return Ok(match color {
                 Color::Async => quote! {
@@ -184,15 +175,6 @@ pub(crate) fn require_path_only(meta: Meta) -> syn::Result<Path> {
     }
 }
 
-pub(crate) fn require_list(meta: Meta) -> syn::Result<MetaList> {
-    meta.require_list()?;
-
-    match meta {
-        Meta::List(list) => Ok(list),
-        _ => unreachable!(),
-    }
-}
-
 pub(crate) fn require_name_value(meta: Meta) -> syn::Result<MetaNameValue> {
     meta.require_name_value()?;
 
@@ -200,20 +182,4 @@ pub(crate) fn require_name_value(meta: Meta) -> syn::Result<MetaNameValue> {
         Meta::NameValue(name_value) => Ok(name_value),
         _ => unreachable!(),
     }
-}
-
-pub(crate) fn drain_filter<T, F>(vec: &mut Vec<T>, mut predicate: F) -> Vec<T>
-where
-    F: FnMut(&mut T) -> bool,
-{
-    let mut ret = Vec::new();
-    let mut i = 0;
-    while i < vec.len() {
-        if predicate(&mut vec[i]) {
-            ret.push(vec.remove(i));
-        } else {
-            i += 1;
-        }
-    }
-    ret
 }

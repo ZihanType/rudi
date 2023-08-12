@@ -51,7 +51,7 @@ fn option() {
 
     #[derive(Clone)]
     #[Singleton]
-    struct B(#[di(option(i32))] Option<i32>);
+    struct B(#[di(option = i32)] Option<i32>);
 
     struct MyModule;
 
@@ -109,7 +109,7 @@ fn vector() {
 
     #[derive(Clone)]
     #[Singleton]
-    struct B(#[di(vector(i32))] Vec<i32>);
+    struct B(#[di(vector = i32)] Vec<i32>);
 
     struct MyModule;
 

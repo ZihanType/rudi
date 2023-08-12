@@ -117,7 +117,7 @@ When adding attributes to `field` of struct and `argument` of function, you need
   - conflict: `default`, `vector`
   - require: The current `field` or `argument`, which must be of type [`Option<T>`].
   - type: `T`.
-  - example: `#[di(option(i32))]` / `#[di(option(String))]`
+  - example: `#[di(option = i32)]` / `#[di(option = String)]`
   - optional: true
   - default: None
   - description:
@@ -159,7 +159,7 @@ When adding attributes to `field` of struct and `argument` of function, you need
   - conflict: `name`, `option`, `default`
   - require: The current `field` or `argument`, which must be of type [`Vec<T>`].
   - type: `T`.
-  - example: `#[di(vector(i32))]` / `#[di(vector(String))]`
+  - example: `#[di(vector = i32)]` / `#[di(vector = String)]`
   - optional: true
   - default: None
   - description:
@@ -289,7 +289,7 @@ fn Four() -> i16 {
 struct C(Option<i16>);
 
 #[Transient]
-struct D(#[di(option(i16))] Option<i16>);
+struct D(#[di(option = i16)] Option<i16>);
 
 // default
 
@@ -315,7 +315,7 @@ fn Six() -> i64 {
 struct G(Vec<i64>);
 
 #[Transient]
-struct H(#[di(vector(i64))] Vec<i64>);
+struct H(#[di(vector = i64)] Vec<i64>);
 
 #[Singleton]
 fn Run(a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: G) {
