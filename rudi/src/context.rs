@@ -141,8 +141,9 @@ impl Context {
     /// # Panics
     ///
     /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
-    /// - Panics if the constructor is async.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider whose constructor is async and the context's `eager_create`
+    /// or the module's `eager_create` or the provider's `eager_create` is set to true.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
     ///
@@ -179,8 +180,9 @@ impl Context {
     /// # Panics
     ///
     /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
-    /// - Panics if the constructor is async.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider whose constructor is async and the context's `eager_create`
+    /// or the module's `eager_create` or the provider's `eager_create` is set to true.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// [`AutoRegisterModule`]: crate::AutoRegisterModule
     #[cfg_attr(docsrs, doc(cfg(feature = "auto-register")))]
@@ -200,7 +202,7 @@ impl Context {
     /// # Panics
     ///
     /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider that panics on construction.
     pub async fn create_async(modules: Vec<ResolveModule>) -> Context {
         ContextOptions::default().create_async(modules).await
     }
@@ -215,7 +217,7 @@ impl Context {
     /// # Panics
     ///
     /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider that panics on construction.
     #[cfg_attr(docsrs, doc(cfg(feature = "auto-register")))]
     #[cfg(feature = "auto-register")]
     pub async fn auto_register_async() -> Context {
@@ -263,7 +265,7 @@ impl Context {
     ///
     /// # Panics
     ///
-    /// Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
+    /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
     ///
     /// # Example
     ///
@@ -339,8 +341,9 @@ impl Context {
     ///
     /// # Panics
     ///
-    /// - Panics if the constructor is async.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider whose constructor is async and the context's `eager_create`
+    /// or the module's `eager_create` or the provider's `eager_create` is set to true.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
     ///
@@ -400,7 +403,7 @@ please use instead:
     ///
     /// # Panics
     ///
-    /// Panics if the constructor panics.
+    /// - Panics if there is a provider that panics on construction.
     pub async fn create_eager_instances_async(&mut self) {
         if self.eager_create_functions.is_empty() {
             return;
@@ -425,8 +428,8 @@ please use instead:
     /// # Panics
     ///
     /// - Panics if no provider is registered for the given type and default name `""`.
-    /// - Panics if the constructor is async.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider whose constructor is async.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
     ///
@@ -453,8 +456,8 @@ please use instead:
     /// # Panics
     ///
     /// - Panics if no provider is registered for the given type and name.
-    /// - Panics if the constructor is async.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider whose constructor is async.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
     ///
@@ -482,8 +485,8 @@ please use instead:
     ///
     /// # Panics
     ///
-    /// - Panics if the constructor is async.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider whose constructor is async.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
     ///
@@ -508,8 +511,8 @@ please use instead:
     ///
     /// # Panics
     ///
-    /// - Panics if the constructor is async.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider whose constructor is async.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
     ///
@@ -538,8 +541,8 @@ please use instead:
     ///
     /// # Panics
     ///
-    /// - Panics if the constructor is async.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider whose constructor is async.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
     ///
@@ -574,7 +577,7 @@ please use instead:
     /// # Panics
     ///
     /// - Panics if no provider is registered for the given type and default name `""`.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
     ///
@@ -605,7 +608,7 @@ please use instead:
     /// # Panics
     ///
     /// - Panics if no provider is registered for the given type and name.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
     ///
@@ -641,7 +644,7 @@ please use instead:
     ///
     /// # Panics
     ///
-    /// Panics if the constructor panics.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
     ///
@@ -671,7 +674,7 @@ please use instead:
     ///
     /// # Panics
     ///
-    /// Panics if the constructor panics.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
     ///
@@ -705,7 +708,7 @@ please use instead:
     ///
     /// # Panics
     ///
-    /// Panics if the constructor panics.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
     ///
@@ -1246,7 +1249,7 @@ impl ContextOptions {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity exceeds `isize::MAX` bytes.
+    /// - Panics if the new capacity exceeds `isize::MAX` bytes.
     ///
     /// # Example
     ///
@@ -1271,7 +1274,7 @@ impl ContextOptions {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity exceeds `isize::MAX` bytes.
+    /// - Panics if the new capacity exceeds `isize::MAX` bytes.
     ///
     /// # Example
     ///
@@ -1328,8 +1331,9 @@ impl ContextOptions {
     /// # Panics
     ///
     /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
-    /// - Panics if the constructor is async.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider whose constructor is async and the context's `eager_create`
+    /// or the module's `eager_create` or the provider's `eager_create` is set to true.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
     ///
@@ -1368,8 +1372,9 @@ impl ContextOptions {
     /// # Panics
     ///
     /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
-    /// - Panics if the constructor is async.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider whose constructor is async and the context's `eager_create`
+    /// or the module's `eager_create` or the provider's `eager_create` is set to true.
+    /// - Panics if there is a provider that panics on construction.
     ///
     /// [`AutoRegisterModule`]: crate::AutoRegisterModule
     #[cfg_attr(docsrs, doc(cfg(feature = "auto-register")))]
@@ -1397,7 +1402,7 @@ impl ContextOptions {
     /// # Panics
     ///
     /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider that panics on construction.
     pub async fn create_async(self, modules: Vec<ResolveModule>) -> Context {
         let mut cx = self.inner_create(|cx| cx.load_modules(modules));
         cx.create_eager_instances_async().await;
@@ -1414,7 +1419,7 @@ impl ContextOptions {
     /// # Panics
     ///
     /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
-    /// - Panics if the constructor panics.
+    /// - Panics if there is a provider that panics on construction.
     #[cfg_attr(docsrs, doc(cfg(feature = "auto-register")))]
     #[cfg(feature = "auto-register")]
     pub async fn auto_register_async(self) -> Context {
