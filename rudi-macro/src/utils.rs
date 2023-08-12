@@ -1,8 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{
-    punctuated::Punctuated, spanned::Spanned, Attribute, FnArg, Meta, MetaNameValue, PatType, Path,
-    Token,
+    punctuated::Punctuated, spanned::Spanned, Attribute, FnArg, Meta, MetaNameValue, PatType, Token,
 };
 
 use crate::field_or_argument_attribute::{
@@ -146,17 +145,17 @@ pub(crate) fn generate_arguments_resolve_methods(
 
 #[cfg(feature = "auto-register")]
 pub(crate) fn check_auto_register_with_generics(
-    not_auto_register: bool,
+    auto_register: bool,
     generics: &syn::Generics,
     item_type: &'static str,
     scope: Scope,
 ) -> syn::Result<()> {
-    if !not_auto_register && !generics.params.is_empty() {
+    if auto_register && !generics.params.is_empty() {
         return Err(syn::Error::new(
             generics.span(),
             format!(
                 "not support auto register generic {} into `AutoRegisterModule`, \
-                please remove generics, or use `#[{}(not_auto_register)]` to disable auto register",
+                please remove generics, or use `#[{}(auto_register = false)]` to disable auto register",
                 item_type,
                 scope.as_str()
             ),
@@ -164,15 +163,6 @@ pub(crate) fn check_auto_register_with_generics(
     }
 
     Ok(())
-}
-
-pub(crate) fn require_path_only(meta: Meta) -> syn::Result<Path> {
-    meta.require_path_only()?;
-
-    match meta {
-        Meta::Path(path) => Ok(path),
-        _ => unreachable!(),
-    }
 }
 
 pub(crate) fn require_name_value(meta: Meta) -> syn::Result<MetaNameValue> {

@@ -5,7 +5,7 @@ use rudi::{components, modules, Context, Module, Transient};
 #[test]
 fn generic_provider() {
     #[derive(Default)]
-    #[Transient(not_auto_register)]
+    #[Transient(auto_register = false)]
     struct A<T: Default + 'static>(T);
 
     struct MyModule;
@@ -22,7 +22,7 @@ fn generic_provider() {
 #[test]
 fn generic_module() {
     #[derive(Default)]
-    #[Transient(not_auto_register)]
+    #[Transient(auto_register = false)]
     struct A<T: Default + 'static>(T);
 
     struct MyModule<T>(PhantomData<T>);
@@ -39,7 +39,7 @@ fn generic_module() {
 #[test]
 fn generic_provider_async() {
     #[derive(Default)]
-    #[Transient(async_constructor, not_auto_register)]
+    #[Transient(async_constructor, auto_register = false)]
     struct B<T: Default + 'static>(T);
 
     struct MyModule;
@@ -56,7 +56,7 @@ fn generic_provider_async() {
 #[test]
 fn generic_module_async() {
     #[derive(Default)]
-    #[Transient(async_constructor, not_auto_register)]
+    #[Transient(async_constructor, auto_register = false)]
     struct B<T: Default + 'static>(T);
 
     struct MyModule<T>(PhantomData<T>);

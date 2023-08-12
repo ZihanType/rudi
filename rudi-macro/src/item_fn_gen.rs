@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{spanned::Spanned, GenericParam, ItemFn, ReturnType};
+use syn::{GenericParam, ItemFn, ReturnType};
 
 use crate::{
     attr,
@@ -20,9 +20,9 @@ pub(crate) fn generate(
 ) -> syn::Result<TokenStream> {
     let rudi_path = attr::rudi_path(&mut item_fn.attrs)?;
 
-    if let Some(async_constructor) = attribute.async_constructor {
+    if let Some((async_constructor, _)) = attribute.async_constructor {
         return Err(syn::Error::new(
-            async_constructor.span(),
+            async_constructor,
             "`async_constructor` only support in struct, please use async fn instead",
         ));
     }
@@ -32,12 +32,12 @@ pub(crate) fn generate(
         eager_create,
         binds,
         async_constructor: _,
-        not_auto_register,
+        auto_register,
     } = attribute.simplify();
 
     #[cfg(feature = "auto-register")]
     utils::check_auto_register_with_generics(
-        not_auto_register,
+        auto_register,
         &item_fn.sig.generics,
         "function",
         scope,
@@ -117,14 +117,14 @@ pub(crate) fn generate(
         }
     };
 
-    let auto_register = if not_auto_register {
-        quote! {}
-    } else {
+    let auto_register = if auto_register {
         #[cfg(feature = "auto-register")]
         quote! {
             #rudi_path::register_provider!(<#ident as #rudi_path::DefaultProvider>::provider());
         }
         #[cfg(not(feature = "auto-register"))]
+        quote! {}
+    } else {
         quote! {}
     };
 

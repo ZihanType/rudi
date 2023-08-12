@@ -50,7 +50,7 @@ fn main() {
   - type: any expression that implements `Into<Cow<'static, str>>`.
   - example: `#[Singleton(name = "abc")]` / `#[Transient(name = a::b::NAME)]` / `#[Transient(name = nth(42))]`
   - optional: true
-  - default: ""
+  - default: **""**
   - description: Specifies the name of the defined `Provider`.
   - refer:
     - [`SingletonProvider::name`]
@@ -60,9 +60,9 @@ fn main() {
 
 - eager_create
   - type: bool
-  - example: `#[Singleton(eager_create)]`
+  - example: `#[Singleton(eager_create)]` / `#[Singleton(eager_create = true)]` / `#[Singleton(eager_create = false)]`
   - optional: true
-  - default: false
+  - default: **false**
   - description: Specifies whether the defined `Provider` is eager created.
   - refer:
     - [`SingletonProvider::eager_create`]
@@ -74,7 +74,7 @@ fn main() {
   - type: Array of paths to functions of type `fn(T) -> R`, where `T` is current struct type or current function return type and `R` can be any type.
   - example: `#[Singleton(binds = [Rc::new, Box::new])]`
   - optional: true
-  - default: None
+  - default: **None**
   - description: Specifies the field `binding_providers` and `binding_definitions` of the defined `Provider`.
   - refer:
     - [`SingletonProvider::bind`]
@@ -82,11 +82,11 @@ fn main() {
     - [`SingletonAsyncProvider::bind`]
     - [`TransientAsyncProvider::bind`]
 
-- not_auto_register
+- auto_register
   - type: bool
-  - example: `#[Singleton(not_auto_register)]`
+  - example: `#[Singleton(auto_register)]` / `#[Singleton(auto_register = true)]` / `#[Singleton(auto_register = false)]`
   - optional: true
-  - default: false
+  - default: **true**
   - description: Specifies whether a defined `Provider` should be auto-registered to [`AutoRegisterModule`](crate::AutoRegisterModule). When the `auto-register` feature is enabled (which is enabled by default), this attribute can be used if auto-registration is not desired, or if auto-registration is not possible due to the presence of generics.
 
 #### An attribute that can only be used on `struct`
@@ -95,7 +95,7 @@ fn main() {
   - type: bool
   - example: `#[Singleton(async_constructor)]`
   - optional: true
-  - default: false
+  - default: **false**
   - description: Specifies whether the constructor method of a defined `Provider` is asynchronous. Only valid when used on `struct`, for `impl struct` and `fn` cases use `async fn`.
 
 ### On `field` of struct and `argument` of function
@@ -107,7 +107,7 @@ When adding attributes to `field` of struct and `argument` of function, you need
   - type: any expression that implements `Into<Cow<'static, str>>`.
   - example: `#[di(name = "abc")]` / `#[di(name = a::b::NAME)]` / `#[di(name = nth(42))]`
   - optional: true
-  - default: ""
+  - default: **""**
   - description: Specifies the name of the dependency to be taken out of `Context`.
   - refer:
     - [`Context::resolve_with_name`]
@@ -119,7 +119,7 @@ When adding attributes to `field` of struct and `argument` of function, you need
   - type: `T`.
   - example: `#[di(option = i32)]` / `#[di(option = String)]`
   - optional: true
-  - default: None
+  - default: **None**
   - description:
 
     From the call to the following method
@@ -140,7 +140,7 @@ When adding attributes to `field` of struct and `argument` of function, you need
   - type: empty, or an arbitrary expression type.
   - example: `#[di(default)]` / `#[di(default = 42)]` / `#[di(default = a::b::func())]`
   - optional: true
-  - default: None
+  - default: **None**
   - description:
 
     From the call to the following method
@@ -161,7 +161,7 @@ When adding attributes to `field` of struct and `argument` of function, you need
   - type: `T`.
   - example: `#[di(vector = i32)]` / `#[di(vector = String)]`
   - optional: true
-  - default: None
+  - default: **None**
   - description:
 
     From the call to the following method
@@ -214,29 +214,29 @@ async fn AsyncDep() -> i32 {
 #[Transient(async_constructor)]
 struct Async(#[di(name = name_c())] i32);
 
-#[Transient(not_auto_register)]
-async fn NotAutoRegister<T: Debug + 'static>(#[di(name = name_c())] t: T) -> T {
+#[Transient(auto_register = false)]
+async fn Generics<T: Debug + 'static>(#[di(name = name_c())] t: T) -> T {
     t
 }
 
-#[Singleton(not_auto_register)]
+#[Singleton(auto_register = false)]
 async fn Run<T: Debug + 'static>(
     #[di(name = NAME_A)] _name_and_eager_create: NameAndEagerCreate,
     #[di(name = name_b())] name_and_binds: NameAndBinds,
     #[di(name = name_b())] dyn_debug: Rc<dyn Debug>,
     async_: Async,
-    not_auto_register: T,
+    generics: T,
 ) {
     assert_eq!(format!("{:?}", name_and_binds), format!("{:?}", dyn_debug));
     assert_eq!(async_.0, 42);
-    println!("not_auto_register: {:?}", not_auto_register);
+    println!("generics: {:?}", generics);
 }
 
 struct MyModule<T>(PhantomData<T>);
 
 impl<T: Debug + 'static> Module for MyModule<T> {
     fn providers() -> Vec<rudi::DynProvider> {
-        components![NotAutoRegister<T>, Run<T>]
+        components![Generics<T>, Run<T>]
     }
 }
 

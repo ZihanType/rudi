@@ -1,29 +1,29 @@
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     spanned::Spanned,
-    Expr, ExprPath, Meta, MetaNameValue, Path, Token,
+    Expr, ExprLit, ExprPath, Lit, LitBool, Meta, MetaNameValue, Token,
 };
 
 use crate::utils;
 
 pub(crate) struct StructOrFunctionAttribute {
-    name: Option<(Path, Expr)>,
-    eager_create: Option<Path>,
-    binds: Option<(Path, Vec<ExprPath>)>,
-    pub(crate) async_constructor: Option<Path>,
-    not_auto_register: Option<Path>,
+    name: Option<(Span, Expr)>,
+    eager_create: Option<(Span, bool)>,
+    binds: Option<(Span, Vec<ExprPath>)>,
+    pub(crate) async_constructor: Option<(Span, bool)>,
+    auto_register: Option<(Span, bool)>,
 }
 
 impl Parse for StructOrFunctionAttribute {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut name: Option<(Path, Expr)> = None;
-        let mut eager_create: Option<Path> = None;
-        let mut binds: Option<(Path, Vec<ExprPath>)> = None;
-        let mut async_constructor: Option<Path> = None;
-        let mut not_auto_register: Option<Path> = None;
+        let mut name: Option<(Span, Expr)> = None;
+        let mut eager_create: Option<(Span, bool)> = None;
+        let mut binds: Option<(Span, Vec<ExprPath>)> = None;
+        let mut async_constructor: Option<(Span, bool)> = None;
+        let mut auto_register: Option<(Span, bool)> = None;
 
         let attr = Punctuated::<Meta, Token![,]>::parse_terminated(input)?;
 
@@ -46,26 +46,63 @@ impl Parse for StructOrFunctionAttribute {
                 };
             }
 
+            macro_rules! boolean_attr {
+                ($attribute:tt) => {
+                    if meta_path.is_ident(stringify!($attribute)) {
+                        check_duplicate!($attribute);
+
+                        $attribute = match meta {
+                            Meta::Path(_) => Some((meta_path_span, true)),
+                            Meta::NameValue(MetaNameValue { value, .. }) => match value {
+                                Expr::Lit(ExprLit {
+                                    lit: Lit::Bool(LitBool { value, .. }),
+                                    ..
+                                }) => Some((meta_path_span, value)),
+                                _ => {
+                                    return Err(syn::Error::new(
+                                        value.span(),
+                                        concat!(
+                                            "the value of `",
+                                            stringify!($attribute),
+                                            "` must be a boolean literal"
+                                        ),
+                                    ))
+                                }
+                            },
+                            Meta::List(list) => {
+                                return Err(syn::Error::new(
+                                    list.delimiter.span().open(),
+                                    concat!(
+                                        "unexpected token in the `",
+                                        stringify!($attribute),
+                                        "` attribute"
+                                    ),
+                                ))
+                            }
+                        };
+
+                        continue;
+                    }
+                };
+            }
+
             if meta_path.is_ident("name") {
                 check_duplicate!(name);
 
-                let MetaNameValue { path, value, .. } = utils::require_name_value(meta)?;
+                let MetaNameValue { value, .. } = utils::require_name_value(meta)?;
 
-                name = Some((path, value));
+                name = Some((meta_path_span, value));
                 continue;
             }
 
-            if meta_path.is_ident("eager_create") {
-                check_duplicate!(eager_create);
-
-                eager_create = Some(utils::require_path_only(meta)?);
-                continue;
-            }
+            boolean_attr!(eager_create);
+            boolean_attr!(async_constructor);
+            boolean_attr!(auto_register);
 
             if meta_path.is_ident("binds") {
                 check_duplicate!(binds);
 
-                let MetaNameValue { path, value, .. } = utils::require_name_value(meta)?;
+                let MetaNameValue { value, .. } = utils::require_name_value(meta)?;
 
                 let array = if let Expr::Array(array) = value {
                     array
@@ -89,27 +126,13 @@ impl Parse for StructOrFunctionAttribute {
                     }
                 }
 
-                binds = Some((path, paths));
-                continue;
-            }
-
-            if meta_path.is_ident("async_constructor") {
-                check_duplicate!(async_constructor);
-
-                async_constructor = Some(utils::require_path_only(meta)?);
-                continue;
-            }
-
-            if meta_path.is_ident("not_auto_register") {
-                check_duplicate!(not_auto_register);
-
-                not_auto_register = Some(utils::require_path_only(meta)?);
+                binds = Some((meta_path_span, paths));
                 continue;
             }
 
             return Err(syn::Error::new(
                 meta_path_span,
-                 "the attribute must be one of: `name`, `eager_create`, `binds`, `async_constructor`, `not_auto_register`",
+                 "the attribute must be one of: `name`, `eager_create`, `binds`, `async_constructor`, `auto_register`",
             ));
         }
 
@@ -118,7 +141,7 @@ impl Parse for StructOrFunctionAttribute {
             eager_create,
             binds,
             async_constructor,
-            not_auto_register,
+            auto_register,
         })
     }
 }
@@ -130,30 +153,39 @@ impl StructOrFunctionAttribute {
             eager_create,
             binds,
             async_constructor,
-            not_auto_register,
+            auto_register,
         } = self;
 
         SimpleStructOrFunctionAttribute {
-            name: match name {
-                Some((_, name)) => quote! {
-                    #name
-                },
-                None => quote! {
+            name: name
+                .as_ref()
+                .map(|(_, name)| {
+                    quote! {
+                        #name
+                    }
+                })
+                .unwrap_or(quote! {
                     ""
-                },
-            },
-            eager_create: eager_create.is_some(),
-            binds: if let Some((_, binds)) = binds {
-                quote! {
-                    #(
-                        .bind(#binds)
-                    )*
-                }
-            } else {
-                quote! {}
-            },
-            async_constructor: async_constructor.is_some(),
-            not_auto_register: not_auto_register.is_some(),
+                }),
+            eager_create: eager_create
+                .map(|(_, eager_create)| eager_create)
+                .unwrap_or(false),
+            binds: binds
+                .as_ref()
+                .map(|(_, binds)| {
+                    quote! {
+                        #(
+                            .bind(#binds)
+                        )*
+                    }
+                })
+                .unwrap_or(quote! {}),
+            async_constructor: async_constructor
+                .map(|(_, async_constructor)| async_constructor)
+                .unwrap_or(false),
+            auto_register: auto_register
+                .map(|(_, auto_register)| auto_register)
+                .unwrap_or(true),
         }
     }
 }
@@ -163,5 +195,5 @@ pub(crate) struct SimpleStructOrFunctionAttribute {
     pub(crate) eager_create: bool,
     pub(crate) binds: TokenStream,
     pub(crate) async_constructor: bool,
-    pub(crate) not_auto_register: bool,
+    pub(crate) auto_register: bool,
 }

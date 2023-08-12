@@ -87,13 +87,13 @@ fn binds() {
 
 #[cfg(feature = "auto-register")]
 #[test]
-fn not_auto_register() {
+fn auto_register_set_false() {
     #[derive(Clone)]
     #[Singleton]
     struct A;
 
     #[derive(Clone)]
-    #[Singleton(not_auto_register)]
+    #[Singleton(auto_register = false)]
     struct B;
 
     let cx = Context::auto_register();

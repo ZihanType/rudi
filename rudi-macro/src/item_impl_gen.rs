@@ -28,9 +28,9 @@ pub(crate) fn generate(
 ) -> syn::Result<TokenStream> {
     let rudi_path = attr::rudi_path(&mut item_impl.attrs)?;
 
-    if let Some(async_constructor) = attribute.async_constructor {
+    if let Some((async_constructor, _)) = attribute.async_constructor {
         return Err(syn::Error::new(
-            async_constructor.span(),
+            async_constructor,
             "`async_constructor` only support in struct, please use async fn instead",
         ));
     }
@@ -98,11 +98,11 @@ fn generate_default_provider_impl(
         eager_create,
         binds,
         async_constructor: _,
-        not_auto_register,
+        auto_register,
     } = attribute;
 
     #[cfg(feature = "auto-register")]
-    utils::check_auto_register_with_generics(*not_auto_register, struct_generics, "struct", scope)?;
+    utils::check_auto_register_with_generics(*auto_register, struct_generics, "struct", scope)?;
 
     let (return_type_eq_struct_type, return_type_eq_self_type) = match &impl_item_fn.sig.output {
         ReturnType::Type(_, fn_return_type) => {
@@ -170,14 +170,14 @@ fn generate_default_provider_impl(
         }
     };
 
-    let auto_register = if *not_auto_register {
-        quote! {}
-    } else {
+    let auto_register = if *auto_register {
         #[cfg(feature = "auto-register")]
         quote! {
             #rudi_path::register_provider!(<#struct_type_with_generics as #rudi_path::DefaultProvider>::provider());
         }
         #[cfg(not(feature = "auto-register"))]
+        quote! {}
+    } else {
         quote! {}
     };
 

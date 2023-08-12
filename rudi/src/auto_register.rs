@@ -74,7 +74,7 @@ impl Module for AutoRegisterModule {
 /// If you have:
 ///   - Enabled the `auto-register` feature (which is enabled by default).
 ///   - Define `Provider` using the `#[Singleton]` or `#[Transient]` macro.
-///   - `#[Singleton]` or `#[Transient]` does not use the `not_auto_register` attribute.
+///   - `#[Singleton]` or `#[Transient]` does not use the `auto_register = false` attribute.
 ///
 /// Then you don't need to use this macro to register `Provider`.
 ///

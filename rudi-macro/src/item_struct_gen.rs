@@ -20,12 +20,12 @@ pub(crate) fn generate(
         eager_create,
         binds,
         async_constructor,
-        not_auto_register,
+        auto_register,
     } = attribute.simplify();
 
     #[cfg(feature = "auto-register")]
     utils::check_auto_register_with_generics(
-        not_auto_register,
+        auto_register,
         &item_struct.generics,
         "struct",
         scope,
@@ -86,14 +86,14 @@ pub(crate) fn generate(
         }
     };
 
-    let auto_register = if not_auto_register {
-        quote! {}
-    } else {
+    let auto_register = if auto_register {
         #[cfg(feature = "auto-register")]
         quote! {
             #rudi_path::register_provider!(<#struct_ident as #rudi_path::DefaultProvider>::provider());
         }
         #[cfg(not(feature = "auto-register"))]
+        quote! {}
+    } else {
         quote! {}
     };
 
