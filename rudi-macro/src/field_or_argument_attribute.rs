@@ -106,37 +106,83 @@ impl Parse for FieldOrArgumentAttribute {
             ));
         }
 
-        if let (Some(_), Some((vector, _))) = (&name, &vector) {
-            return Err(syn::Error::new(
-                vector.span(),
-                "the `name` and `vector` attributes cannot be used together",
-            ));
+        if let (Some((name, _)), Some((vector, _))) = (&name, &vector) {
+            macro_rules! err {
+                ($span:expr) => {
+                    syn::Error::new(
+                        $span,
+                        "the `name` and `vector` attributes cannot be used together",
+                    )
+                };
+            }
+
+            let mut e = err!(name.span());
+            e.combine(err!(vector.span()));
+
+            return Err(e);
         }
 
         match (&option, &default, &vector) {
-            (Some(_), Some(_), Some((vector, _))) => {
-                return Err(syn::Error::new(
-                    vector.span(),
-                    "the `option`, `default`, and `vector` attributes cannot be used together",
-                ));
+            (Some((option, _)), Some((default, _)), Some((vector, _))) => {
+                macro_rules! err {
+                    ($span:expr) => {
+                        syn::Error::new(
+                            $span,
+                            "the `option`, `default`, and `vector` attributes cannot be used together",
+                        )
+                    };
+                }
+
+                let mut e = err!(option.span());
+                e.combine(err!(default.span()));
+                e.combine(err!(vector.span()));
+
+                return Err(e);
             }
-            (Some(_), Some((default, _)), None) => {
-                return Err(syn::Error::new(
-                    default.span(),
-                    "the `option` and `default` attributes cannot be used together",
-                ));
+            (Some((option, _)), Some((default, _)), None) => {
+                macro_rules! err {
+                    ($span:expr) => {
+                        syn::Error::new(
+                            $span,
+                            "the `option` and `default` attributes cannot be used together",
+                        )
+                    };
+                }
+
+                let mut e = err!(option.span());
+                e.combine(err!(default.span()));
+
+                return Err(e);
             }
-            (Some(_), None, Some((vector, _))) => {
-                return Err(syn::Error::new(
-                    vector.span(),
-                    "the `option` and `vector` attributes cannot be used together",
-                ));
+            (Some((option, _)), None, Some((vector, _))) => {
+                macro_rules! err {
+                    ($span:expr) => {
+                        syn::Error::new(
+                            $span,
+                            "the `option` and `vector` attributes cannot be used together",
+                        )
+                    };
+                }
+
+                let mut e = err!(option.span());
+                e.combine(err!(vector.span()));
+
+                return Err(e);
             }
-            (None, Some(_), Some((vector, _))) => {
-                return Err(syn::Error::new(
-                    vector.span(),
-                    "the `default` and `vector` attributes cannot be used together",
-                ));
+            (None, Some((default, _)), Some((vector, _))) => {
+                macro_rules! err {
+                    ($span:expr) => {
+                        syn::Error::new(
+                            $span,
+                            "the `default` and `vector` attributes cannot be used together",
+                        )
+                    };
+                }
+
+                let mut e = err!(default.span());
+                e.combine(err!(vector.span()));
+
+                return Err(e);
             }
             _ => {}
         }
