@@ -174,7 +174,7 @@ impl FieldOrArgumentAttributes {
     pub(crate) fn from_attrs(
         attrs: &mut Vec<Attribute>,
     ) -> syn::Result<Option<FieldOrArgumentAttributes>> {
-        let mut field_or_argument_attr = None;
+        let mut field_or_argument_attrs = None;
         let mut errors = Vec::with_capacity(4);
         let mut already_appeared_di = false;
 
@@ -188,7 +188,7 @@ impl FieldOrArgumentAttributes {
                 errors.push(err);
             } else {
                 match FieldOrArgumentAttributes::try_from(attr) {
-                    Ok(o) => field_or_argument_attr = Some(o),
+                    Ok(o) => field_or_argument_attrs = Some(o),
                     Err(e) => errors.push(e),
                 }
             }
@@ -204,7 +204,7 @@ impl FieldOrArgumentAttributes {
             return Err(e);
         }
 
-        Ok(field_or_argument_attr)
+        Ok(field_or_argument_attrs)
     }
 
     pub(crate) fn simplify(self) -> SimpleFieldOrArgumentAttributes {
@@ -216,7 +216,9 @@ impl FieldOrArgumentAttributes {
         } = self;
 
         SimpleFieldOrArgumentAttributes {
-            name: name.map(|(_, expr)| quote!(#expr)).unwrap_or(quote!("")),
+            name: name
+                .map(|(_, expr)| quote!(#expr))
+                .unwrap_or_else(|| quote!("")),
             option: option.map(|(_, ty)| ty),
             default: default.map(|(_, expr)| expr),
             vector: vector.map(|(_, ty)| ty),
