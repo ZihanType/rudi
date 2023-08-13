@@ -16,7 +16,7 @@ struct A;
 #[derive(Debug)]
 struct B(A);
 
-// Register `fn(cx) -> B { B(cx.resolve::<A>()) }` as the constructor for `B`
+// Register `fn(cx) -> B { B::new(cx.resolve::<A>()) }` as the constructor for `B`
 #[Transient]
 impl B {
     fn new(a: A) -> B {
@@ -56,16 +56,19 @@ use std::{fmt::Debug, rc::Rc};
 
 use rudi::{Context, Singleton, Transient};
 
-// Register async function and specify name
+// Register `async fn(cx) -> i32 { 42 }` as the constructor for `i32`,
+// and specify the name of the instance of this `i32` type as `"number"`.
 #[Singleton(name = "number")]
 async fn Number() -> i32 {
     42
 }
 
+// Register `async fn(cx) -> Foo { Foo { number: cx.resolve_with_name_async("number").await } }`
+// as the constructor for `Foo`, and specify the name of the instance of this `Foo` type as `"foo"`.
 #[derive(Debug, Clone)]
-#[Singleton(async, name = "foo")] // Register async constructor and specify name
+#[Singleton(async, name = "foo")]
 struct Foo {
-    #[di(name = "number")] // Specify the name of the dependency
+    #[di(name = "number")]
     number: i32,
 }
 
@@ -78,9 +81,15 @@ impl Bar {
     }
 }
 
-#[Transient(binds = [Self::into_debug])] // Bind the implementation of the `Debug` trait and the trait object of the `Debug` trait
+// Register `async fn(cx) -> Bar { Bar::new(cx.resolve_with_name_async("foo").await).await }`
+// as the constructor for `Bar`.
+//
+// Bind the implementation of the `Debug` trait and the trait object of the `Debug` trait,
+// it will register `asycn fn(cx) -> Rc<dyn Debug> { Bar::into_debug(cx.resolve_async().await) }`
+// as the constructor for `Rc<dyn Debug>`.
+#[Transient(binds = [Self::into_debug])]
 impl Bar {
-    async fn new(#[di(name = "foo")] f: Foo) -> Bar { // Register async constructor
+    async fn new(#[di(name = "foo")] f: Foo) -> Bar {
         Bar(f)
     }
 }
