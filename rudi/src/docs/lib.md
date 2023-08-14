@@ -27,7 +27,7 @@ struct A;
 #[derive(Debug)]
 struct B(A);
 
-// Register `fn(cx) -> B { B(cx.resolve::<A>()) }` as the constructor for `B`
+// Register `fn(cx) -> B { B::new(cx.resolve::<A>()) }` as the constructor for `B`
 #[Transient]
 impl B {
     fn new(a: A) -> B {
