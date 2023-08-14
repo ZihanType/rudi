@@ -3,8 +3,8 @@ use quote::quote;
 use syn::{GenericParam, ItemFn, ReturnType};
 
 use crate::{
+    commons::{self, Color, Scope},
     struct_or_function_attributes::{SimpleStructOrFunctionAttributes, StructOrFunctionAttributes},
-    utils::{self, Color, Scope},
 };
 
 // #[Singleton]
@@ -34,7 +34,7 @@ pub(crate) fn generate(
     } = attrs.simplify();
 
     #[cfg(feature = "auto-register")]
-    utils::check_auto_register_with_generics(
+    commons::check_auto_register_with_generics(
         auto_register,
         &item_fn.sig.generics,
         "function",
@@ -46,9 +46,9 @@ pub(crate) fn generate(
         None => Color::Sync,
     };
 
-    let args = utils::generate_arguments_resolve_methods(&mut item_fn.sig.inputs, color)?;
+    let args = commons::generate_arguments_resolve_methods(&mut item_fn.sig.inputs, color)?;
 
-    let create_provider = utils::generate_create_provider(scope, color);
+    let create_provider = commons::generate_create_provider(scope, color);
 
     let (impl_generics, ty_generics, where_clause) = item_fn.sig.generics.split_for_impl();
 

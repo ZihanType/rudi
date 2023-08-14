@@ -3,8 +3,8 @@ use quote::quote;
 use syn::{Field, Fields, FieldsNamed, FieldsUnnamed, Ident, ItemStruct};
 
 use crate::{
+    commons::{self, Color, Scope},
     struct_or_function_attributes::{SimpleStructOrFunctionAttributes, StructOrFunctionAttributes},
-    utils::{self, Color, Scope},
 };
 
 pub(crate) fn generate(
@@ -22,7 +22,7 @@ pub(crate) fn generate(
     } = attrs.simplify();
 
     #[cfg(feature = "auto-register")]
-    utils::check_auto_register_with_generics(
+    commons::check_auto_register_with_generics(
         auto_register,
         &item_struct.generics,
         "struct",
@@ -33,7 +33,7 @@ pub(crate) fn generate(
 
     let fields_attrs = get_attrs_from_fields(&mut item_struct.fields, color)?;
 
-    let create_provider = utils::generate_create_provider(scope, color);
+    let create_provider = commons::generate_create_provider(scope, color);
 
     let struct_ident = &item_struct.ident;
 
@@ -128,7 +128,7 @@ fn get_attrs_from_fields(fields: &mut Fields, color: Color) -> syn::Result<Field
             let mut resolve_methods = Vec::with_capacity(len);
 
             for Field { attrs, ident, .. } in named {
-                resolve_methods.push(utils::generate_only_one_field_or_argument_resolve_method(
+                resolve_methods.push(commons::generate_only_one_field_or_argument_resolve_method(
                     attrs, color,
                 )?);
                 idents.push(ident.clone().unwrap());
@@ -140,7 +140,7 @@ fn get_attrs_from_fields(fields: &mut Fields, color: Color) -> syn::Result<Field
             let mut resolve_methods = Vec::with_capacity(unnamed.len());
 
             for Field { attrs, .. } in unnamed {
-                resolve_methods.push(utils::generate_only_one_field_or_argument_resolve_method(
+                resolve_methods.push(commons::generate_only_one_field_or_argument_resolve_method(
                     attrs, color,
                 )?);
             }

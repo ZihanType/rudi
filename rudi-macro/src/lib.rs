@@ -1,14 +1,14 @@
+mod commons;
 mod field_or_argument_attributes;
 mod item_fn_gen;
 mod item_impl_gen;
 mod item_struct_gen;
 mod struct_or_function_attributes;
-mod utils;
 
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, spanned::Spanned, Item};
 
-use crate::{struct_or_function_attributes::StructOrFunctionAttributes, utils::Scope};
+use crate::{commons::Scope, struct_or_function_attributes::StructOrFunctionAttributes};
 
 fn macro_attribute(args: TokenStream, input: TokenStream, scope: Scope) -> TokenStream {
     let mut attrs = StructOrFunctionAttributes::default();

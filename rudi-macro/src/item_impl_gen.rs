@@ -5,8 +5,8 @@ use syn::{
 };
 
 use crate::{
+    commons::{self, Color, Scope},
     struct_or_function_attributes::{SimpleStructOrFunctionAttributes, StructOrFunctionAttributes},
-    utils::{self, Color, Scope},
 };
 
 // struct A {
@@ -98,7 +98,7 @@ fn generate_default_provider_impl(
     } = attrs;
 
     #[cfg(feature = "auto-register")]
-    utils::check_auto_register_with_generics(*auto_register, struct_generics, "struct", scope)?;
+    commons::check_auto_register_with_generics(*auto_register, struct_generics, "struct", scope)?;
 
     let (return_type_eq_struct_type, return_type_eq_self_type) = match &impl_item_fn.sig.output {
         ReturnType::Type(_, fn_return_type) => {
@@ -141,9 +141,9 @@ fn generate_default_provider_impl(
         None => Color::Sync,
     };
 
-    let args = utils::generate_arguments_resolve_methods(&mut impl_item_fn.sig.inputs, color)?;
+    let args = commons::generate_arguments_resolve_methods(&mut impl_item_fn.sig.inputs, color)?;
 
-    let create_provider = utils::generate_create_provider(scope, color);
+    let create_provider = commons::generate_create_provider(scope, color);
 
     let (impl_generics, _, where_clause) = struct_generics.split_for_impl();
 
