@@ -35,10 +35,21 @@ impl B {
     }
 }
 
+// Register `fn(cx) -> C { C::B(cx.resolve::<B>()) }` as the constructor for `C`
+#[allow(dead_code)]
+#[Transient]
+enum C {
+    A(A),
+
+    #[di]
+    B(B),
+}
+
 // Register `fn(cx) -> () { Run(cx.resolve::<B>()) }` as the constructor for `()`
 #[Singleton]
-fn Run(b: B) {
+fn Run(b: B, c: C) {
     println!("{:?}", b);
+    assert!(matches!(c, C::B(_)));
 }
 
 fn main() {

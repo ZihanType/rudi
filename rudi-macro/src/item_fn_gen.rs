@@ -46,7 +46,7 @@ pub(crate) fn generate(
         None => Color::Sync,
     };
 
-    let args = commons::generate_arguments_resolve_methods(&mut item_fn.sig.inputs, color)?;
+    let args = commons::generate_argument_resolve_methods(&mut item_fn.sig.inputs, color)?;
 
     let create_provider = commons::generate_create_provider(scope, color);
 

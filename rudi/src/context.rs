@@ -995,8 +995,8 @@ impl Context {
 
 please check all the references to the above type, there are 3 scenarios that will be referenced:
 1. use `Context::resolve_xxx::<Type>(cx)` to get instances of the type, change to `Context::resolve_xxx_async::<Type>(cx).await`.
-2. use `yyy: Type` as a field for a struct, use `#[Singleton(async)]` or `#[Transient(async)]` on the struct.
-3. use `zzz: Type` as a parameter to a function, add the `async` keyword to the function.
+2. use `yyy: Type` as a field of a struct, or a field of a variant of a enum, use `#[Singleton(async)]` or `#[Transient(async)]` on the struct or enum.
+3. use `zzz: Type` as a argument of a function, add the `async` keyword to the function.
 ",
                     provider.definition()
                 )

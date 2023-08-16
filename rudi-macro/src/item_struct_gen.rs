@@ -1,9 +1,9 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Field, Fields, FieldsNamed, FieldsUnnamed, Ident, ItemStruct};
+use syn::ItemStruct;
 
 use crate::{
-    commons::{self, Color, Scope},
+    commons::{self, Color, FieldResolveMethods, Scope},
     struct_or_function_attributes::{SimpleStructOrFunctionAttributes, StructOrFunctionAttributes},
 };
 
@@ -31,7 +31,7 @@ pub(crate) fn generate(
 
     let color = if async_ { Color::Async } else { Color::Sync };
 
-    let fields_attrs = get_attrs_from_fields(&mut item_struct.fields, color)?;
+    let fields = commons::generate_field_resolve_methods(&mut item_struct.fields, color)?;
 
     let create_provider = commons::generate_create_provider(scope, color);
 
@@ -39,11 +39,11 @@ pub(crate) fn generate(
 
     let (impl_generics, ty_generics, where_clause) = item_struct.generics.split_for_impl();
 
-    let instance = match fields_attrs {
-        FieldsAttributes::Unit => quote! {
+    let instance = match fields {
+        FieldResolveMethods::Unit => quote! {
             #struct_ident
         },
-        FieldsAttributes::Named(idents, resolve_methods) => {
+        FieldResolveMethods::Named(idents, resolve_methods) => {
             quote! {
                 #struct_ident {
                     #(
@@ -52,7 +52,7 @@ pub(crate) fn generate(
                 }
             }
         }
-        FieldsAttributes::Unnamed(resolve_methods) => {
+        FieldResolveMethods::Unnamed(resolve_methods) => {
             quote! {
                 #struct_ident(
                     #(
@@ -111,41 +111,4 @@ pub(crate) fn generate(
     };
 
     Ok(expand)
-}
-
-enum FieldsAttributes {
-    Unit,
-    Named(Vec<Ident>, Vec<TokenStream>),
-    Unnamed(Vec<TokenStream>),
-}
-
-fn get_attrs_from_fields(fields: &mut Fields, color: Color) -> syn::Result<FieldsAttributes> {
-    match fields {
-        Fields::Unit => Ok(FieldsAttributes::Unit),
-        Fields::Named(FieldsNamed { named, .. }) => {
-            let len = named.len();
-            let mut idents = Vec::with_capacity(len);
-            let mut resolve_methods = Vec::with_capacity(len);
-
-            for Field { attrs, ident, .. } in named {
-                resolve_methods.push(commons::generate_only_one_field_or_argument_resolve_method(
-                    attrs, color,
-                )?);
-                idents.push(ident.clone().unwrap());
-            }
-
-            Ok(FieldsAttributes::Named(idents, resolve_methods))
-        }
-        Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
-            let mut resolve_methods = Vec::with_capacity(unnamed.len());
-
-            for Field { attrs, .. } in unnamed {
-                resolve_methods.push(commons::generate_only_one_field_or_argument_resolve_method(
-                    attrs, color,
-                )?);
-            }
-
-            Ok(FieldsAttributes::Unnamed(resolve_methods))
-        }
-    }
 }

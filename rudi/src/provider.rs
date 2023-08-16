@@ -30,10 +30,10 @@ use crate::{
 /// }
 /// ```
 pub trait DefaultProvider {
-    /// The generic parameter of the provider.
+    /// The generic of the [`Provider`].
     type Type;
 
-    /// Returns a default [`Provider`] for the type.
+    /// Returns a default [`Provider`] for the implementation.
     fn provider() -> Provider<Self::Type>;
 }
 

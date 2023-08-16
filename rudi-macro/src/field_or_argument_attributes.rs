@@ -175,15 +175,15 @@ impl FieldOrArgumentAttributes {
         attrs: &mut Vec<Attribute>,
     ) -> syn::Result<Option<FieldOrArgumentAttributes>> {
         let mut field_or_argument_attrs = None;
-        let mut errors = Vec::with_capacity(4);
-        let mut already_appeared_di = false;
+        let mut errors = Vec::new();
+        let mut di_already_appeared = false;
 
         attrs.retain(|attr| {
             if !attr.path().is_ident("di") {
                 return true;
             }
 
-            if already_appeared_di {
+            if di_already_appeared {
                 let err = syn::Error::new(attr.span(), "only one `#[di(..)]` attribute is allowed");
                 errors.push(err);
             } else {
@@ -193,7 +193,7 @@ impl FieldOrArgumentAttributes {
                 }
             }
 
-            already_appeared_di = true;
+            di_already_appeared = true;
             false
         });
 

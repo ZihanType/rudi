@@ -2,9 +2,9 @@
 
 Both [`Singleton`] and [`Transient`] are attribute macros used to define a [`Provider`], the difference between them is that a `Provider` defined by `#[Singleton]` has a constructor method that is executed only once, while a `Provider` defined by `#[Transient]` has its constructor method can be executed multiple times.
 
-These two macros can be used on `struct`, `impl struct`, and `fn`.
+These two macros can be used on `struct`, `enum`, `impl block`, and `fn`.
 
-- When used on `struct` and `impl struct`, a [`DefaultProvider`] implementation is generated for the struct, and the associated type [`DefaultProvider::Type`] is the struct itself.
+- When used on `struct`, `enum` and `impl block`, a [`DefaultProvider`] implementation is generated for the struct, and the associated type [`DefaultProvider::Type`] is the struct itself.
 
 - When used on `fn`, a struct with the same name as the function is created, and then a [`DefaultProvider`] implementation is generated for the struct, with the associated type [`DefaultProvider::Type`] being the return type of the function. As mentioned above, it is recommended to use `CamelCase` when defining functions. Of course, you can still use `snake_case`.
 
@@ -12,6 +12,8 @@ These two macros can be used on `struct`, `impl struct`, and `fn`.
 
 ```rust
 use rudi::{Context, Singleton, Transient};
+
+// impl block
 
 #[derive(Clone)]
 struct A;
@@ -23,9 +25,13 @@ impl A {
     }
 }
 
+// struct
+
 #[Singleton(name = "b")]
 #[derive(Clone)]
 struct B(#[di(name = "a")] A);
+
+// fn
 
 #[Transient]
 fn C(#[di(name = "b")] b: B) -> i32 {
@@ -33,18 +39,36 @@ fn C(#[di(name = "b")] b: B) -> i32 {
     42
 }
 
+// enum
+
+#[allow(dead_code)]
+#[Transient]
+enum D {
+    One,
+
+    Two(i32),
+
+    #[di]
+    Three {
+        #[di(name = "b")]
+        b: B,
+    },
+}
+
 fn main() {
     let mut cx = Context::auto_register();
     let number = cx.resolve::<i32>();
     println!("number = {}", number);
+    let d = cx.resolve::<D>();
+    assert!(matches!(d, D::Three { .. }));
 }
 ```
 
 ## Customization with attributes
 
-### On `struct` and `function`
+### On `struct`, `enum`, `impl block` and `fn`
 
-#### Generic attributes that can be used on `struct`, `impl struct`, and `fn`
+#### Generic attributes that can be used on `struct`, `enum`, `impl block`, and `fn`
 
 - name
   - type: any expression that implements `Into<Cow<'static, str>>`.
@@ -96,18 +120,22 @@ fn main() {
   - default: **::rudi**
   - description: Specifies the path to the `rudi` crate. This attribute is used when the `rudi` crate is not in the root of the crate.
 
-#### An attribute that can only be used on `struct`
+#### An attribute that can only be used on `struct` and `enum`
 
 - async
   - type: bool
   - example: `#[Singleton(async)]`
   - optional: true
   - default: **false**
-  - description: Specifies whether the constructor method of a defined `Provider` is asynchronous. Only valid when used on `struct`, for `impl struct` and `fn` cases use `async fn`.
+  - description: Specifies whether the constructor method of a defined `Provider` is asynchronous. Only valid when used on `struct` and `enum`, for `impl block` and `fn` cases use `async fn`.
 
-### On `field` of struct and `argument` of function
+### On `variant` of enum
 
-When adding attributes to `field` of struct and `argument` of function, you need to use `#[di(...)] `.
+Use `#[di]` to specify which variant of the enum will be constructed.
+
+### On `field` of struct, `field` of variant of enum and `argument` of function
+
+When adding attributes to `field` of struct, `field` of variant of enum and `argument` of function, you need to use `#[di(...)] `.
 
 - name
   - conflict: `vector`
@@ -183,7 +211,7 @@ When adding attributes to `field` of struct and `argument` of function, you need
     - [`Context::resolve_by_type`]
     - [`Context::resolve_by_type_async`]
 
-## Struct or function attributes examples
+## Struct, enum and function attributes example
 
 ```rust
 use std::{borrow::Cow, fmt::Debug, marker::PhantomData, rc::Rc};
@@ -227,6 +255,16 @@ async fn Generics<T: Debug + 'static>(#[di(name = name_c())] t: T) -> T {
     t
 }
 
+#[allow(dead_code)]
+#[derive(Clone)]
+#[Singleton(async)]
+enum Enum {
+    #[di]
+    A(#[di(name = name_c())] i32),
+
+    B,
+}
+
 #[Singleton(auto_register = false)]
 async fn Run<T: Debug + 'static>(
     #[di(name = NAME_A)] _name_and_eager_create: NameAndEagerCreate,
@@ -234,10 +272,12 @@ async fn Run<T: Debug + 'static>(
     #[di(name = name_b())] dyn_debug: Rc<dyn Debug>,
     async_: Async,
     generics: T,
+    enum_: Enum,
 ) {
     assert_eq!(format!("{:?}", name_and_binds), format!("{:?}", dyn_debug));
     assert_eq!(async_.0, 42);
     println!("generics: {:?}", generics);
+    assert!(matches!(enum_, Enum::A(42)));
 }
 
 struct MyModule<T>(PhantomData<T>);
@@ -256,7 +296,7 @@ async fn main() {
 }
 ```
 
-## Field or argument attributes examples
+## Field and argument attributes example
 
 Although the following example only shows how to use attributes on `field`, it is the same as using them on `argument`.
 

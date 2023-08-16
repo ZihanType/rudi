@@ -1,6 +1,9 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{punctuated::Punctuated, spanned::Spanned, Attribute, FnArg, PatType, Token};
+use syn::{
+    punctuated::Punctuated, spanned::Spanned, Attribute, Field, Fields, FieldsNamed, FieldsUnnamed,
+    FnArg, Ident, PatType, Token,
+};
 
 use crate::field_or_argument_attributes::{
     FieldOrArgumentAttributes, SimpleFieldOrArgumentAttributes,
@@ -119,7 +122,7 @@ pub(crate) fn generate_only_one_field_or_argument_resolve_method(
     })
 }
 
-pub(crate) fn generate_arguments_resolve_methods(
+pub(crate) fn generate_argument_resolve_methods(
     inputs: &mut Punctuated<FnArg, Token![,]>,
     color: Color,
 ) -> syn::Result<Vec<TokenStream>> {
@@ -161,4 +164,44 @@ pub(crate) fn check_auto_register_with_generics(
     }
 
     Ok(())
+}
+
+pub(crate) enum FieldResolveMethods {
+    Unit,
+    Named(Vec<Ident>, Vec<TokenStream>),
+    Unnamed(Vec<TokenStream>),
+}
+
+pub(crate) fn generate_field_resolve_methods(
+    fields: &mut Fields,
+    color: Color,
+) -> syn::Result<FieldResolveMethods> {
+    match fields {
+        Fields::Unit => Ok(FieldResolveMethods::Unit),
+        Fields::Named(FieldsNamed { named, .. }) => {
+            let len = named.len();
+            let mut idents = Vec::with_capacity(len);
+            let mut resolve_methods = Vec::with_capacity(len);
+
+            for Field { attrs, ident, .. } in named {
+                resolve_methods.push(generate_only_one_field_or_argument_resolve_method(
+                    attrs, color,
+                )?);
+                idents.push(ident.clone().unwrap());
+            }
+
+            Ok(FieldResolveMethods::Named(idents, resolve_methods))
+        }
+        Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
+            let mut resolve_methods = Vec::with_capacity(unnamed.len());
+
+            for Field { attrs, .. } in unnamed {
+                resolve_methods.push(generate_only_one_field_or_argument_resolve_method(
+                    attrs, color,
+                )?);
+            }
+
+            Ok(FieldResolveMethods::Unnamed(resolve_methods))
+        }
+    }
 }

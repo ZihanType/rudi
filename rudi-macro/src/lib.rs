@@ -1,5 +1,6 @@
 mod commons;
 mod field_or_argument_attributes;
+mod item_enum_gen;
 mod item_fn_gen;
 mod item_impl_gen;
 mod item_struct_gen;
@@ -18,11 +19,12 @@ fn macro_attribute(args: TokenStream, input: TokenStream, scope: Scope) -> Token
 
     let result = match item {
         Item::Struct(item_struct) => item_struct_gen::generate(attrs, item_struct, scope),
+        Item::Enum(item_enum) => item_enum_gen::generate(attrs, item_enum, scope),
         Item::Fn(item_fn) => item_fn_gen::generate(attrs, item_fn, scope),
         Item::Impl(item_impl) => item_impl_gen::generate(attrs, item_impl, scope),
         _ => Err(syn::Error::new(
             item.span(),
-            "expected struct or function or impl",
+            "expected `struct` or `enum` or `function` or `impl block`",
         )),
     };
 

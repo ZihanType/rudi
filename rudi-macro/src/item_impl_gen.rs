@@ -141,7 +141,7 @@ fn generate_default_provider_impl(
         None => Color::Sync,
     };
 
-    let args = commons::generate_arguments_resolve_methods(&mut impl_item_fn.sig.inputs, color)?;
+    let args = commons::generate_argument_resolve_methods(&mut impl_item_fn.sig.inputs, color)?;
 
     let create_provider = commons::generate_create_provider(scope, color);
 

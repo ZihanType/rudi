@@ -24,10 +24,21 @@ impl B {
     }
 }
 
+// Register `fn(cx) -> C { C::B(cx.resolve::<B>()) }` as the constructor for `C`
+#[allow(dead_code)]
+#[Transient]
+enum C {
+    A(A),
+
+    #[di]
+    B(B),
+}
+
 // Register `fn(cx) -> () { Run(cx.resolve::<B>()) }` as the constructor for `()`
 #[Singleton]
-fn Run(b: B) {
+fn Run(b: B, c: C) {
     println!("{:?}", b);
+    assert!(matches!(c, C::B(_)));
 }
 
 fn main() {
@@ -44,6 +55,7 @@ fn main() {
 
 - Two lifetimes: `singleton` and `transient`.
 - Async functions and async constructors.
+- Attribute macros can be used on `struct`, `enum`, `impl block` and `function`.
 - Manual and automatic registration (thanks to [inventory](https://github.com/dtolnay/inventory)).
 - Easy binding of trait implementations and trait objects.
 - Distinguishing different instances with types and names.
