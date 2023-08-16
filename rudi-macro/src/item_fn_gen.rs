@@ -4,7 +4,7 @@ use syn::{GenericParam, ItemFn, ReturnType};
 
 use crate::{
     commons::{self, Color, Scope},
-    struct_or_function_attributes::{SimpleStructOrFunctionAttributes, StructOrFunctionAttributes},
+    struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };
 
 // #[Singleton]
@@ -13,31 +13,31 @@ use crate::{
 // }
 
 pub(crate) fn generate(
-    attrs: StructOrFunctionAttributes,
+    attr: StructOrFunctionAttribute,
     mut item_fn: ItemFn,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
-    if let Some((async_, _)) = attrs.async_ {
+    if let Some((async_, _)) = attr.async_ {
         return Err(syn::Error::new(
             async_,
-            "`async` only support in struct, please use async fn instead",
+            "`async` only support in struct and enum, please use async fn instead",
         ));
     }
 
-    let SimpleStructOrFunctionAttributes {
+    let SimpleStructOrFunctionAttribute {
         name,
         eager_create,
         binds,
         async_: _,
         auto_register,
         rudi_path,
-    } = attrs.simplify();
+    } = attr.simplify();
 
     #[cfg(feature = "auto-register")]
     commons::check_auto_register_with_generics(
         auto_register,
         &item_fn.sig.generics,
-        "function",
+        commons::ItemKind::Function,
         scope,
     )?;
 

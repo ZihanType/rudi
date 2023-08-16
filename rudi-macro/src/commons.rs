@@ -5,8 +5,8 @@ use syn::{
     FnArg, Ident, PatType, Token,
 };
 
-use crate::field_or_argument_attributes::{
-    FieldOrArgumentAttributes, SimpleFieldOrArgumentAttributes,
+use crate::field_or_argument_attribute::{
+    FieldOrArgumentAttribute, SimpleFieldOrArgumentAttribute,
 };
 
 #[derive(Clone, Copy)]
@@ -52,8 +52,8 @@ pub(crate) fn generate_only_one_field_or_argument_resolve_method(
     attrs: &mut Vec<Attribute>,
     color: Color,
 ) -> syn::Result<TokenStream> {
-    let field_or_argument_attrs = match FieldOrArgumentAttributes::from_attrs(attrs)? {
-        Some(a) => a,
+    let attr = match FieldOrArgumentAttribute::from_attrs(attrs)? {
+        Some(attr) => attr,
         None => {
             return Ok(match color {
                 Color::Async => quote! {
@@ -66,12 +66,12 @@ pub(crate) fn generate_only_one_field_or_argument_resolve_method(
         }
     };
 
-    let SimpleFieldOrArgumentAttributes {
+    let SimpleFieldOrArgumentAttribute {
         name,
         option,
         default,
         vector,
-    } = field_or_argument_attrs.simplify();
+    } = attr.simplify();
 
     if let Some(ty) = option {
         return Ok(match color {
@@ -145,19 +145,41 @@ pub(crate) fn generate_argument_resolve_methods(
 }
 
 #[cfg(feature = "auto-register")]
+pub(crate) enum ItemKind {
+    Struct,
+    Enum,
+    Function,
+
+    // impl block
+    StructOrEnum,
+}
+
+#[cfg(feature = "auto-register")]
+impl ItemKind {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            ItemKind::Struct => "struct",
+            ItemKind::Enum => "enum",
+            ItemKind::Function => "function",
+            ItemKind::StructOrEnum => "struct or enum",
+        }
+    }
+}
+
+#[cfg(feature = "auto-register")]
 pub(crate) fn check_auto_register_with_generics(
     auto_register: bool,
     generics: &syn::Generics,
-    item_type: &'static str,
+    item_kind: ItemKind,
     scope: Scope,
 ) -> syn::Result<()> {
     if auto_register && !generics.params.is_empty() {
         return Err(syn::Error::new(
             generics.span(),
             format!(
-                "not support auto register generic {} into `AutoRegisterModule`, \
+                "not support auto register generics {}, \
                 please remove generics, or use `#[{}(auto_register = false)]` to disable auto register",
-                item_type,
+                item_kind.as_str(),
                 scope.as_str()
             ),
         ));

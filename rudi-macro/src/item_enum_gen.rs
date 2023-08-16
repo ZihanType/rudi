@@ -4,11 +4,11 @@ use syn::{spanned::Spanned, ItemEnum};
 
 use crate::{
     commons::{self, Color, FieldResolveMethods, Scope},
-    struct_or_function_attributes::{SimpleStructOrFunctionAttributes, StructOrFunctionAttributes},
+    struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };
 
 pub(crate) fn generate(
-    attrs: StructOrFunctionAttributes,
+    attr: StructOrFunctionAttribute,
     mut item_enum: ItemEnum,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
@@ -16,20 +16,20 @@ pub(crate) fn generate(
         return Err(syn::Error::new(item_enum.span(), "not support empty enum"));
     }
 
-    let SimpleStructOrFunctionAttributes {
+    let SimpleStructOrFunctionAttribute {
         name,
         eager_create,
         binds,
         async_,
         auto_register,
         rudi_path,
-    } = attrs.simplify();
+    } = attr.simplify();
 
     #[cfg(feature = "auto-register")]
     commons::check_auto_register_with_generics(
         auto_register,
         &item_enum.generics,
-        "struct",
+        commons::ItemKind::Enum,
         scope,
     )?;
 
@@ -43,37 +43,24 @@ pub(crate) fn generate(
     item_enum.variants.iter_mut().for_each(|variant| {
         variant_spans.push(variant.span());
 
-        let mut di_appears_after_the_variant_is_found = false;
-
         variant.attrs.retain(|attr| {
             if !attr.path().is_ident("di") {
                 return true;
             }
 
-            if annotated_di_variant.is_some() {
-                di_appears_after_the_variant_is_found = true;
-                return false;
-            }
-
             if di_already_appeared {
-                let err = syn::Error::new(attr.span(), "only one `#[di]` attribute is allowed");
+                let err = syn::Error::new(attr.span(), "duplicate `#[di]` attribute");
                 errors.push(err);
-            } else if let Err(e) = attr.meta.require_path_only() {
-                errors.push(e);
+            } else {
+                di_already_appeared = true;
+
+                if let Err(e) = attr.meta.require_path_only() {
+                    errors.push(e);
+                }
             }
 
-            di_already_appeared = true;
             false
         });
-
-        if di_appears_after_the_variant_is_found {
-            let err = syn::Error::new(
-                variant.span(),
-                "only one variant can be annotated by `#[di]`",
-            );
-
-            errors.push(err);
-        }
 
         if annotated_di_variant.is_none() && di_already_appeared {
             annotated_di_variant = Some(variant);

@@ -4,28 +4,28 @@ use syn::ItemStruct;
 
 use crate::{
     commons::{self, Color, FieldResolveMethods, Scope},
-    struct_or_function_attributes::{SimpleStructOrFunctionAttributes, StructOrFunctionAttributes},
+    struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };
 
 pub(crate) fn generate(
-    attrs: StructOrFunctionAttributes,
+    attr: StructOrFunctionAttribute,
     mut item_struct: ItemStruct,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
-    let SimpleStructOrFunctionAttributes {
+    let SimpleStructOrFunctionAttribute {
         name,
         eager_create,
         binds,
         async_,
         auto_register,
         rudi_path,
-    } = attrs.simplify();
+    } = attr.simplify();
 
     #[cfg(feature = "auto-register")]
     commons::check_auto_register_with_generics(
         auto_register,
         &item_struct.generics,
-        "struct",
+        commons::ItemKind::Struct,
         scope,
     )?;
 

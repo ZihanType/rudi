@@ -5,7 +5,7 @@ use syn::{
 };
 
 #[derive(Default)]
-pub(crate) struct StructOrFunctionAttributes {
+pub(crate) struct StructOrFunctionAttribute {
     name: Option<(Span, Expr)>,
     eager_create: Option<(Span, bool)>,
     binds: Option<(Span, Vec<ExprPath>)>,
@@ -14,31 +14,31 @@ pub(crate) struct StructOrFunctionAttributes {
     rudi_path: Option<(Span, Path)>,
 }
 
-impl StructOrFunctionAttributes {
+impl StructOrFunctionAttribute {
     pub(crate) fn parse(&mut self, meta: ParseNestedMeta) -> syn::Result<()> {
         let meta_path = &meta.path;
         let meta_path_span = meta_path.span();
 
         macro_rules! check_duplicate {
-            ($attribute:tt) => {
-                if self.$attribute.is_some() {
+            ($argument:tt) => {
+                if self.$argument.is_some() {
                     return Err(meta.error(concat!(
-                        "the `",
-                        stringify!($attribute),
-                        "` attribute can only be set once"
+                        "duplicate `",
+                        stringify!($argument),
+                        "` argument"
                     )));
                 }
             };
         }
 
-        macro_rules! boolean_attr {
-            ($attribute:tt, $variable:tt) => {
-                if meta_path.is_ident(stringify!($attribute)) {
+        macro_rules! boolean_arg {
+            ($argument:tt, $variable:tt) => {
+                if meta_path.is_ident(stringify!($argument)) {
                     if self.$variable.is_some() {
                         return Err(meta.error(concat!(
-                            "the `",
-                            stringify!($attribute),
-                            "` attribute can only be set once"
+                            "duplicate `",
+                            stringify!($argument),
+                            "` argument"
                         )));
                     }
 
@@ -61,9 +61,9 @@ impl StructOrFunctionAttributes {
             return Ok(());
         }
 
-        boolean_attr!(eager_create, eager_create);
-        boolean_attr!(async, async_);
-        boolean_attr!(auto_register, auto_register);
+        boolean_arg!(eager_create, eager_create);
+        boolean_arg!(async, async_);
+        boolean_arg!(auto_register, auto_register);
 
         if meta_path.is_ident("binds") {
             check_duplicate!(binds);
@@ -93,11 +93,11 @@ impl StructOrFunctionAttributes {
             return Ok(());
         }
 
-        Err(meta.error("the attribute must be one of: `name`, `eager_create`, `binds`, `async`, `auto_register`, `rudi_path`"))
+        Err(meta.error("the argument must be one of: `name`, `eager_create`, `binds`, `async`, `auto_register`, `rudi_path`"))
     }
 
-    pub(crate) fn simplify(&self) -> SimpleStructOrFunctionAttributes {
-        let StructOrFunctionAttributes {
+    pub(crate) fn simplify(&self) -> SimpleStructOrFunctionAttribute {
+        let StructOrFunctionAttribute {
             name,
             eager_create,
             binds,
@@ -106,7 +106,7 @@ impl StructOrFunctionAttributes {
             rudi_path,
         } = self;
 
-        SimpleStructOrFunctionAttributes {
+        SimpleStructOrFunctionAttribute {
             name: name
                 .as_ref()
                 .map(|(_, name)| {
@@ -152,7 +152,7 @@ impl StructOrFunctionAttributes {
     }
 }
 
-pub(crate) struct SimpleStructOrFunctionAttributes {
+pub(crate) struct SimpleStructOrFunctionAttribute {
     pub(crate) name: TokenStream,
     pub(crate) eager_create: bool,
     pub(crate) binds: TokenStream,

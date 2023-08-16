@@ -6,7 +6,7 @@ use syn::{
 
 use crate::{
     commons::{self, Color, Scope},
-    struct_or_function_attributes::{SimpleStructOrFunctionAttributes, StructOrFunctionAttributes},
+    struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };
 
 // struct A {
@@ -21,16 +21,18 @@ use crate::{
 // }
 
 pub(crate) fn generate(
-    attrs: StructOrFunctionAttributes,
+    attr: StructOrFunctionAttribute,
     mut item_impl: ItemImpl,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
-    if let Some((async_, _)) = attrs.async_ {
+    if let Some((async_, _)) = attr.async_ {
         return Err(syn::Error::new(
             async_,
-            "`async` only support in struct, please use async fn instead",
+            "`async` only support in struct and enum, please use async fn instead",
         ));
     }
+
+    let impl_span = item_impl.span();
 
     let ItemImpl {
         generics,
@@ -43,11 +45,11 @@ pub(crate) fn generate(
     if let Some((_, path, _)) = trait_ {
         return Err(syn::Error::new(
             path.span(),
-            "not support impl trait for struct",
+            "not support impl trait for struct or enum",
         ));
     }
 
-    let simple = attrs.simplify();
+    let simple = attr.simplify();
 
     let mut errors = Vec::new();
     let mut impl_item_fn = None;
@@ -58,10 +60,7 @@ pub(crate) fn generate(
         };
 
         if impl_item_fn.is_some() {
-            let err = syn::Error::new(
-                f.span(),
-                "there can be only one associated function in the impl block",
-            );
+            let err = syn::Error::new(f.span(), "duplicate associated function");
             errors.push(err);
         } else {
             impl_item_fn = Some(f);
@@ -69,6 +68,12 @@ pub(crate) fn generate(
     });
 
     let default_provider_impl = match impl_item_fn {
+        None => {
+            return Err(syn::Error::new(
+                impl_span.span(),
+                "there must be an associated function",
+            ))
+        }
         Some(f) => {
             if let Some(e) = errors.into_iter().reduce(|mut a, b| {
                 a.combine(b);
@@ -78,12 +83,6 @@ pub(crate) fn generate(
             }
 
             generate_default_provider_impl(f, self_ty, generics, &simple, scope)?
-        }
-        None => {
-            return Err(syn::Error::new(
-                self_ty.span(),
-                "there must be an associated function in the impl block",
-            ))
         }
     };
 
@@ -100,20 +99,25 @@ fn generate_default_provider_impl(
     impl_item_fn: &mut ImplItemFn,
     struct_type_with_generics: &Type,
     struct_generics: &Generics,
-    attrs: &SimpleStructOrFunctionAttributes,
+    attr: &SimpleStructOrFunctionAttribute,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
-    let SimpleStructOrFunctionAttributes {
+    let SimpleStructOrFunctionAttribute {
         name,
         eager_create,
         binds,
         async_: _,
         auto_register,
         rudi_path,
-    } = attrs;
+    } = attr;
 
     #[cfg(feature = "auto-register")]
-    commons::check_auto_register_with_generics(*auto_register, struct_generics, "struct", scope)?;
+    commons::check_auto_register_with_generics(
+        *auto_register,
+        struct_generics,
+        commons::ItemKind::StructOrEnum,
+        scope,
+    )?;
 
     let (return_type_eq_struct_type, return_type_eq_self_type) = match &impl_item_fn.sig.output {
         ReturnType::Type(_, fn_return_type) => {
