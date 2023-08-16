@@ -49,27 +49,42 @@ pub(crate) fn generate(
 
     let simple = attrs.simplify();
 
-    let mut impl_item_fns = items
-        .iter_mut()
-        .filter_map(|impl_item| match impl_item {
-            ImplItem::Fn(impl_item_fn) => Some(impl_item_fn),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
+    let mut errors = Vec::new();
+    let mut impl_item_fn = None;
 
-    let default_provider_impl = if impl_item_fns.len() == 1 {
-        generate_default_provider_impl(
-            impl_item_fns.pop().unwrap(),
-            self_ty,
-            generics,
-            &simple,
-            scope,
-        )?
-    } else {
-        return Err(syn::Error::new(
-            self_ty.span(),
-            "must have only one associated function",
-        ));
+    items.iter_mut().for_each(|impl_item| {
+        let ImplItem::Fn(f) = impl_item else {
+            return;
+        };
+
+        if impl_item_fn.is_some() {
+            let err = syn::Error::new(
+                f.span(),
+                "there can be only one associated function in the impl block",
+            );
+            errors.push(err);
+        } else {
+            impl_item_fn = Some(f);
+        }
+    });
+
+    let default_provider_impl = match impl_item_fn {
+        Some(f) => {
+            if let Some(e) = errors.into_iter().reduce(|mut a, b| {
+                a.combine(b);
+                a
+            }) {
+                return Err(e);
+            }
+
+            generate_default_provider_impl(f, self_ty, generics, &simple, scope)?
+        }
+        None => {
+            return Err(syn::Error::new(
+                self_ty.span(),
+                "there must be an associated function in the impl block",
+            ))
+        }
     };
 
     let expand = quote! {

@@ -64,11 +64,11 @@ fn main() {
 }
 ```
 
-## Customization with attributes
+## Attribute arguments
 
-### On `struct`, `enum`, `impl block` and `fn`
+### #[Singleton] / #[Transient]: used on `struct`, `enum`, `impl block` and `fn`
 
-#### Generic attributes that can be used on `struct`, `enum`, `impl block`, and `fn`
+#### Common arguments that can be used on `struct`, `enum`, `impl block`, and `fn`
 
 - name
   - type: any expression that implements `Into<Cow<'static, str>>`.
@@ -111,16 +111,16 @@ fn main() {
   - example: `#[Singleton(auto_register)]` / `#[Singleton(auto_register = true)]` / `#[Singleton(auto_register = false)]`
   - optional: true
   - default: **true**
-  - description: Specifies whether a defined `Provider` should be auto-registered to [`AutoRegisterModule`](crate::AutoRegisterModule). When the `auto-register` feature is enabled (which is enabled by default), this attribute can be used if auto-registration is not desired, or if auto-registration is not possible due to the presence of generics.
+  - description: Specifies whether a defined `Provider` should be auto-registered to [`AutoRegisterModule`](crate::AutoRegisterModule). When the `auto-register` feature is enabled (which is enabled by default), this argument can be used if auto-registration is not desired, or if auto-registration is not possible due to the presence of generics.
 
 - rudi_path
   - type: path to the `rudi` crate.
   - example: `#[Singleton(rudi_path = path::to::rudi)]`
   - optional: true
   - default: **::rudi**
-  - description: Specifies the path to the `rudi` crate. This attribute is used when the `rudi` crate is not in the root of the crate.
+  - description: Specifies the path to the `rudi` crate. This argument is used when the `rudi` crate is not in the root of the crate.
 
-#### An attribute that can only be used on `struct` and `enum`
+#### An argument that can only be used on `struct` and `enum`
 
 - async
   - type: bool
@@ -129,13 +129,11 @@ fn main() {
   - default: **false**
   - description: Specifies whether the constructor method of a defined `Provider` is asynchronous. Only valid when used on `struct` and `enum`, for `impl block` and `fn` cases use `async fn`.
 
-### On `variant` of enum
+### #[di]: used on `variant` of enum
 
 Use `#[di]` to specify which variant of the enum will be constructed.
 
-### On `field` of struct, `field` of variant of enum and `argument` of function
-
-When adding attributes to `field` of struct, `field` of variant of enum and `argument` of function, you need to use `#[di(...)] `.
+### #[di]: used on `field` of struct, `field` of variant of enum and `argument` of function
 
 - name
   - conflict: `vector`

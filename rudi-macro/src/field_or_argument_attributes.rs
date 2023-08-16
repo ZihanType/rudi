@@ -184,7 +184,8 @@ impl FieldOrArgumentAttributes {
             }
 
             if di_already_appeared {
-                let err = syn::Error::new(attr.span(), "only one `#[di(..)]` attribute is allowed");
+                let err =
+                    syn::Error::new(attr.span(), "only one `#[di(...)]` attribute is allowed");
                 errors.push(err);
             } else {
                 match FieldOrArgumentAttributes::try_from(attr) {
