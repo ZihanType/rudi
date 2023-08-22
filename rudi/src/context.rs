@@ -1027,8 +1027,6 @@ impl Context {
 
     #[track_caller]
     fn resolve_keyed<T: 'static>(&mut self, key: Key) -> Option<T> {
-        debug_assert!(key.ty.id == TypeId::of::<T>());
-
         let singleton = self.singleton_registry.get::<T>(&key);
         if singleton.is_some() {
             return singleton;
@@ -1063,8 +1061,6 @@ please check all the references to the above type, there are 3 scenarios that wi
     }
 
     async fn resolve_keyed_async<T: 'static>(&mut self, key: Key) -> Option<T> {
-        debug_assert!(key.ty.id == TypeId::of::<T>());
-
         let singleton = self.singleton_registry.get::<T>(&key);
         if singleton.is_some() {
             return singleton;
