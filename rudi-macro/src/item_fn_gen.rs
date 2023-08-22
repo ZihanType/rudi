@@ -27,6 +27,7 @@ pub(crate) fn generate(
     let SimpleStructOrFunctionAttribute {
         name,
         eager_create,
+        condition,
         binds,
         async_: _,
         auto_register,
@@ -142,6 +143,7 @@ pub(crate) fn generate(
                     #rudi_path::#create_provider(#constructor)
                         .name(#name)
                         .eager_create(#eager_create)
+                        .condition(#condition)
                         #binds
                 )
             }

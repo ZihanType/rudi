@@ -1,5 +1,6 @@
 use std::{any::TypeId, fmt::Debug, rc::Rc};
 
+use rudi as ru_di;
 use rudi::{components, modules, Context, DynProvider, Module, Singleton};
 
 #[test]
@@ -51,6 +52,31 @@ fn eager_create() {
     assert_eq!(cx.singletons_len(), 1);
     assert!(!cx.contains_singleton::<A>());
     assert!(cx.contains_singleton::<B>());
+}
+
+#[test]
+fn condition() {
+    #[derive(Clone)]
+    #[Singleton]
+    struct A;
+
+    #[derive(Clone)]
+    #[Singleton(condition = |_| false)]
+    struct B;
+
+    struct MyModule;
+
+    impl Module for MyModule {
+        fn providers() -> Vec<DynProvider> {
+            components![A, B]
+        }
+    }
+
+    let mut cx = Context::create(modules![MyModule]);
+
+    assert_eq!(cx.providers_len(), 1);
+    assert!(cx.resolve_option::<A>().is_some());
+    assert!(cx.resolve_option::<B>().is_none());
 }
 
 #[test]
@@ -170,4 +196,26 @@ async fn successful_async() {
 
     let mut cx = Context::create(modules![MyModule]);
     assert_eq!(cx.resolve_async::<A>().await.0, 1);
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ru_di::{components, modules, Context, DynProvider, Module, Transient};
+
+    #[test]
+    fn rudi_path() {
+        #[Transient(rudi_path = crate::ru_di)]
+        struct A;
+
+        struct MyModule;
+
+        impl Module for MyModule {
+            fn providers() -> Vec<DynProvider> {
+                components![A]
+            }
+        }
+
+        let mut cx = Context::create(modules![MyModule]);
+        assert!(cx.resolve_option::<A>().is_some());
+    }
 }

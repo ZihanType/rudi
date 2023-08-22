@@ -66,7 +66,7 @@ fn main() {
 
 ## Attribute arguments
 
-### #[Singleton] / #[Transient]: used on `struct`, `enum`, `impl block` and `fn`
+### `#[Singleton]` / `#[Transient]`: used on `struct`, `enum`, `impl block` and `fn`
 
 #### Common arguments that can be used on `struct`, `enum`, `impl block`, and `fn`
 
@@ -87,12 +87,24 @@ fn main() {
   - example: `#[Singleton(eager_create)]` / `#[Singleton(eager_create = true)]` / `#[Singleton(eager_create = false)]`
   - optional: true
   - default: **false**
-  - description: Specifies whether the defined `Provider` is eager created.
+  - description: Specifies whether the defined `Provider` is eager to create.
   - refer:
     - [`SingletonProvider::eager_create`]
     - [`TransientProvider::eager_create`]
     - [`SingletonAsyncProvider::eager_create`]
     - [`TransientAsyncProvider::eager_create`]
+
+- condition
+  - type: a closure or an expression path of type `fn(&Context) -> bool`.
+  - example: `#[Singleton(condition = |_cx| true)]` / `#[Singleton(condition = path::to::expr)]`
+  - optional: true
+  - default: **|_| true**
+  - description: Specifies whether or not to insert the defined `Provider` into the `Context` based on the condition.
+  - refer:
+    - [`SingletonProvider::condition`]
+    - [`TransientProvider::condition`]
+    - [`SingletonAsyncProvider::condition`]
+    - [`TransientAsyncProvider::condition`]
 
 - binds
   - type: Array of paths to functions of type `fn(T) -> R`, where `T` is current struct type or current function return type and `R` can be any type.
@@ -129,11 +141,11 @@ fn main() {
   - default: **false**
   - description: Specifies whether the constructor method of a defined `Provider` is asynchronous. Only valid when used on `struct` and `enum`, for `impl block` and `fn` cases use `async fn`.
 
-### #[di]: used on `variant` of enum
+### `#[di]`: used on `variant` of enum
 
 Use `#[di]` to specify which variant of the enum will be constructed.
 
-### #[di]: used on `field` of struct, `field` of variant of enum and `argument` of function
+### `#[di]`: used on `field` of struct, `field` of variant of enum and `argument` of function
 
 - name
   - conflict: `vector`

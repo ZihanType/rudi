@@ -944,6 +944,12 @@ impl Context {
         };
 
         providers.into_iter().for_each(|provider| {
+            if !(provider.condition())(self) {
+                #[cfg(feature = "debug-print")]
+                tracing::debug!("(×) condition not met: {:?}", provider.definition());
+                return;
+            }
+
             let need_eager_create = self.eager_create || eager_create || provider.eager_create();
 
             let allow_all_scope = !self.allow_only_singleton_eager_create;

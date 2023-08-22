@@ -8,6 +8,7 @@ use syn::{
 pub(crate) struct StructOrFunctionAttribute {
     name: Option<(Span, Expr)>,
     eager_create: Option<(Span, bool)>,
+    condition: Option<(Span, Expr)>,
     binds: Option<(Span, Vec<ExprPath>)>,
     pub(crate) async_: Option<(Span, bool)>,
     auto_register: Option<(Span, bool)>,
@@ -65,6 +66,25 @@ impl StructOrFunctionAttribute {
         boolean_arg!(async, async_);
         boolean_arg!(auto_register, auto_register);
 
+        if meta_path.is_ident("condition") {
+            check_duplicate!(condition);
+
+            let expr = meta.value()?.parse::<Expr>()?;
+
+            match &expr {
+                Expr::Closure(_) | Expr::Path(_) => {}
+                _ => {
+                    return Err(syn::Error::new(
+                        expr.span(),
+                        "the argument of `condition` must be a closure or an expression path",
+                    ));
+                }
+            }
+
+            self.condition = Some((meta_path_span, expr));
+            return Ok(());
+        }
+
         if meta_path.is_ident("binds") {
             check_duplicate!(binds);
 
@@ -93,13 +113,14 @@ impl StructOrFunctionAttribute {
             return Ok(());
         }
 
-        Err(meta.error("the argument must be one of: `name`, `eager_create`, `binds`, `async`, `auto_register`, `rudi_path`"))
+        Err(meta.error("the argument must be one of: `name`, `eager_create`, `condition`, `binds`, `async`, `auto_register`, `rudi_path`"))
     }
 
     pub(crate) fn simplify(&self) -> SimpleStructOrFunctionAttribute {
         let StructOrFunctionAttribute {
             name,
             eager_create,
+            condition,
             binds,
             async_,
             auto_register,
@@ -122,6 +143,18 @@ impl StructOrFunctionAttribute {
             eager_create: eager_create
                 .map(|(_, eager_create)| eager_create)
                 .unwrap_or(false),
+            condition: condition
+                .as_ref()
+                .map(|(_, condition)| {
+                    quote! {
+                        #condition
+                    }
+                })
+                .unwrap_or_else(|| {
+                    quote! {
+                        |_| true
+                    }
+                }),
             binds: binds
                 .as_ref()
                 .map(|(_, binds)| {
@@ -155,6 +188,7 @@ impl StructOrFunctionAttribute {
 pub(crate) struct SimpleStructOrFunctionAttribute {
     pub(crate) name: TokenStream,
     pub(crate) eager_create: bool,
+    pub(crate) condition: TokenStream,
     pub(crate) binds: TokenStream,
     pub(crate) async_: bool,
     pub(crate) auto_register: bool,

@@ -74,6 +74,7 @@ pub(crate) enum EagerCreateFunction {
 pub struct Provider<T> {
     definition: Definition,
     eager_create: bool,
+    condition: fn(&Context) -> bool,
     constructor: Constructor<T>,
     clone_instance: Option<fn(&T) -> T>,
     eager_create_function: EagerCreateFunction,
@@ -110,6 +111,7 @@ impl<T: 'static> Provider<T> {
     pub(crate) fn with_name(
         name: Cow<'static, str>,
         eager_create: bool,
+        condition: fn(&Context) -> bool,
         constructor: Constructor<T>,
         clone_instance: Option<fn(&T) -> T>,
         eager_create_function: EagerCreateFunction,
@@ -129,6 +131,7 @@ impl<T: 'static> Provider<T> {
         Provider {
             definition,
             eager_create,
+            condition,
             constructor,
             clone_instance,
             eager_create_function,
@@ -140,6 +143,7 @@ impl<T: 'static> Provider<T> {
     pub(crate) fn with_definition(
         definition: Definition,
         eager_create: bool,
+        condition: fn(&Context) -> bool,
         constructor: Constructor<T>,
         clone_instance: Option<fn(&T) -> T>,
         eager_create_function: EagerCreateFunction,
@@ -147,6 +151,7 @@ impl<T: 'static> Provider<T> {
         Provider {
             definition,
             eager_create,
+            condition,
             constructor,
             clone_instance,
             eager_create_function,
@@ -161,6 +166,7 @@ impl<T: 'static + Clone> Provider<T> {
         Provider {
             definition: Definition::new::<T>(name, Scope::Singleton, Color::Sync),
             eager_create: false,
+            condition: |_| true,
             constructor: Constructor::Sync(Rc::new(move |_| instance.clone())),
             clone_instance: Some(Clone::clone),
             eager_create_function: EagerCreateFunction::Sync(sync_eager_create_function::<T>()),
@@ -174,6 +180,7 @@ impl<T: 'static + Clone> Provider<T> {
 pub struct DynProvider {
     definition: Definition,
     eager_create: bool,
+    condition: fn(&Context) -> bool,
     eager_create_function: EagerCreateFunction,
     binding_providers: Option<Vec<DynProvider>>,
     binding_definitions: Option<Vec<Definition>>,
@@ -201,6 +208,10 @@ impl DynProvider {
         self.origin.downcast_ref::<Provider<T>>()
     }
 
+    pub(crate) fn condition(&self) -> fn(&Context) -> bool {
+        self.condition
+    }
+
     pub(crate) fn key(&self) -> &Key {
         &self.definition.key
     }
@@ -219,6 +230,7 @@ impl<T: 'static> From<Provider<T>> for DynProvider {
         Self {
             definition: value.definition.clone(),
             eager_create: value.eager_create,
+            condition: value.condition,
             eager_create_function: value.eager_create_function.clone(),
             binding_providers: value.binding_providers.take(),
             binding_definitions: value.binding_definitions.clone(),
@@ -299,7 +311,8 @@ macro_rules! define_provider_common {
             constructor: Constructor<T>,
             name: Cow<'static, str>,
             eager_create: bool,
-            bind_closures: Vec<Box<dyn FnOnce(Definition, bool) -> DynProvider>>,
+            condition: fn(&Context) -> bool,
+            bind_closures: Vec<Box<dyn FnOnce(Definition, bool, fn(&Context) -> bool) -> DynProvider>>,
         }
 
         impl<T> $provider<T> {
@@ -312,9 +325,15 @@ macro_rules! define_provider_common {
                 self
             }
 
-            /// Sets whether the provider is eager create.
+            /// Sets whether the provider is eager to create.
             pub fn eager_create(mut self, eager_create: bool) -> Self {
                 self.eager_create = eager_create;
+                self
+            }
+
+            /// Sets whether or not to insert the provider into the [`Context`] based on the condition.
+            pub fn condition(mut self, condition: fn(&Context) -> bool) -> Self {
+                self.condition = condition;
                 self
             }
         }
@@ -356,6 +375,7 @@ macro_rules! define_provider_sync {
                 constructor: Constructor::Sync(Rc::new(constructor)),
                 name: Cow::Borrowed(""),
                 eager_create: false,
+                condition: |_| true,
                 bind_closures: Vec::new(),
             }
         }
@@ -402,12 +422,13 @@ macro_rules! define_provider_sync {
                 U: 'static $(+ $bound)*,
                 F: Fn(T) -> U + 'static,
             {
-                let bind_closure = |definition: Definition, eager_create: bool| {
+                let bind_closure = |definition: Definition, eager_create: bool, condition: fn(&Context) -> bool| {
                     let name = definition.key.name.clone();
 
                     Provider::with_definition(
                         definition.bind::<U>(),
                         eager_create,
+                        condition,
                         Constructor::Sync(sync_constructor(name, transform)),
                         $clone_instance,
                         EagerCreateFunction::Sync(
@@ -430,12 +451,14 @@ macro_rules! define_provider_sync {
                     constructor,
                     name,
                     eager_create,
+                    condition,
                     bind_closures,
                 } = value;
 
                 let mut provider = Provider::with_name(
                     name,
                     eager_create,
+                    condition,
                     constructor,
                     $clone_instance,
                     EagerCreateFunction::Sync(
@@ -451,7 +474,7 @@ macro_rules! define_provider_sync {
 
                 let (definitions, providers) = bind_closures.into_iter()
                     .map(|bind_closure| {
-                        let provider = bind_closure(definition.clone(), eager_create);
+                        let provider = bind_closure(definition.clone(), eager_create, condition);
                         (provider.definition.clone(), provider)
                     })
                     .unzip();
@@ -495,6 +518,7 @@ macro_rules! define_provider_async {
                 constructor: Constructor::Async(Rc::new(constructor)),
                 name: Cow::Borrowed(""),
                 eager_create: false,
+                condition: |_| true,
                 bind_closures: Vec::new(),
             }
         }
@@ -542,12 +566,13 @@ macro_rules! define_provider_async {
                 U: 'static $(+ $bound)*,
                 F: Fn(T) -> U + 'static + Clone,
             {
-                let bind_closure = |definition: Definition, eager_create: bool| {
+                let bind_closure = |definition: Definition, eager_create: bool, condition: fn(&Context) -> bool| {
                     let name = definition.key.name.clone();
 
                     Provider::with_definition(
                         definition.bind::<U>(),
                         eager_create,
+                        condition,
                         Constructor::Async(async_constructor(name, transform)),
                         $clone_instance,
                         EagerCreateFunction::Async(
@@ -570,12 +595,14 @@ macro_rules! define_provider_async {
                     constructor,
                     name,
                     eager_create,
+                    condition,
                     bind_closures,
                 } = value;
 
                 let mut provider = Provider::with_name(
                     name,
                     eager_create,
+                    condition,
                     constructor,
                     $clone_instance,
                     EagerCreateFunction::Async(
@@ -591,7 +618,7 @@ macro_rules! define_provider_async {
 
                 let (definitions, providers) = bind_closures.into_iter()
                     .map(|bind_closure| {
-                        let provider = bind_closure(definition.clone(), eager_create);
+                        let provider = bind_closure(definition.clone(), eager_create, condition);
                         (provider.definition.clone(), provider)
                     })
                     .unzip();
