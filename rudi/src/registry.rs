@@ -77,16 +77,13 @@ impl ProviderRegistry {
 
         if !self.registry.contains_key(&key) {
             #[cfg(feature = "debug-print")]
-            tracing::debug!("(+) {:?}", definition);
+            tracing::debug!("(+) insert new: {:?}", definition);
         } else if allow_override {
             #[cfg(feature = "debug-print")]
-            tracing::warn!(
-                "(+) overrides a provider with the same `key` as {:?}",
-                definition
-            );
+            tracing::warn!("(!) override by `key`: {:?}", definition);
         } else {
             panic!(
-                "already existing a provider with the same `key` as {:?}",
+                "already existing a provider with the same `key`: {:?}",
                 definition
             );
         }

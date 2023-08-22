@@ -946,7 +946,7 @@ impl Context {
         providers.into_iter().for_each(|provider| {
             if !(provider.condition())(self) {
                 #[cfg(feature = "debug-print")]
-                tracing::debug!("(×) condition not met: {:?}", provider.definition());
+                tracing::warn!("(×) condition not met: {:?}", provider.definition());
                 return;
             }
 
