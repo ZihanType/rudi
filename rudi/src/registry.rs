@@ -95,6 +95,10 @@ impl ProviderRegistry {
         self.registry.get(key)?.as_provider()
     }
 
+    pub(crate) fn contains(&self, key: &Key) -> bool {
+        self.registry.contains_key(key)
+    }
+
     pub(crate) fn remove(&mut self, key: &Key) -> Option<DynProvider> {
         self.registry.remove(key)
     }

@@ -751,6 +751,50 @@ please use instead:
         instances
     }
 
+    /// Returns true if the context contains a provider for the specified type and default name `""`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton};
+    ///
+    /// #[derive(Clone)]
+    /// #[Singleton]
+    /// struct A;
+    ///
+    /// # fn main() {
+    /// let cx = Context::auto_register();
+    /// assert!(cx.contains_provider::<A>());
+    /// # }
+    /// ```
+    pub fn contains_provider<T: 'static>(&self) -> bool {
+        self.contains_provider_with_name::<T>("")
+    }
+
+    /// Returns true if the context contains a provider for the specified type and name.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton};
+    ///
+    /// #[derive(Clone)]
+    /// #[Singleton(name = "a")]
+    /// struct A;
+    ///
+    /// # fn main() {
+    /// let cx = Context::auto_register();
+    /// assert!(cx.contains_provider_with_name::<A>("a"));
+    /// # }
+    /// ```
+    pub fn contains_provider_with_name<T: 'static>(
+        &self,
+        name: impl Into<Cow<'static, str>>,
+    ) -> bool {
+        let key = Key::new::<T>(name.into());
+        self.provider_registry.contains(&key)
+    }
+
     /// Returns a reference to an provider based on the given type and default name `""`.
     ///
     /// # Example
