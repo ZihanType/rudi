@@ -275,6 +275,20 @@ enum Enum {
     B,
 }
 
+fn u32_condition(cx: &Context) -> bool {
+    !cx.contains_provider::<u32>()
+}
+
+#[Singleton(condition = u32_condition)]
+fn OneU32() -> u32 {
+    1
+}
+
+#[Singleton(condition = u32_condition)]
+fn TwoU32() -> u32 {
+    2
+}
+
 #[Singleton(auto_register = false)]
 async fn Run<T: Debug + 'static>(
     #[di(name = NAME_A)] _name_and_eager_create: NameAndEagerCreate,
@@ -283,11 +297,13 @@ async fn Run<T: Debug + 'static>(
     async_: Async,
     generics: T,
     enum_: Enum,
+    #[di(vector = u32)] only_one_u32: Vec<u32>,
 ) {
     assert_eq!(format!("{:?}", name_and_binds), format!("{:?}", dyn_debug));
     assert_eq!(async_.0, 42);
     println!("generics: {:?}", generics);
     assert!(matches!(enum_, Enum::A(42)));
+    assert_eq!(only_one_u32.len(), 1);
 }
 
 struct MyModule<T>(PhantomData<T>);
