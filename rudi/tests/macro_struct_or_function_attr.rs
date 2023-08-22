@@ -113,7 +113,7 @@ fn binds() {
 
 #[cfg(feature = "auto-register")]
 #[test]
-fn auto_register_set_false() {
+fn auto_register() {
     #[derive(Clone)]
     #[Singleton]
     struct A;
