@@ -13,6 +13,6 @@ impl Module for MyModule {
 #[test]
 fn resolve_module() {
     let m = ResolveModule::new::<MyModule>();
-    assert!(m.id() == TypeId::of::<MyModule>());
-    assert!(m.name() == any::type_name::<MyModule>());
+    assert!(m.ty().id == TypeId::of::<MyModule>());
+    assert!(m.ty().name == any::type_name::<MyModule>());
 }
