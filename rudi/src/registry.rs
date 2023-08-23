@@ -1,61 +1,37 @@
-use std::{
-    any::Any,
-    collections::{
-        hash_map::{Iter, Keys},
-        HashMap,
-    },
+use std::collections::{
+    hash_map::{Iter, Keys},
+    HashMap,
 };
 
-use crate::{DynProvider, Key, Provider};
-
-pub(crate) struct SingletonInstance<T> {
-    instance: T,
-    clone: fn(&T) -> T,
-}
-
-impl<T> SingletonInstance<T> {
-    pub(crate) fn new(instance: &T, clone: fn(&T) -> T) -> Self {
-        Self {
-            instance: clone(instance),
-            clone,
-        }
-    }
-
-    fn clone_instance(&self) -> T {
-        (self.clone)(&self.instance)
-    }
-}
+use crate::{DynProvider, DynSingletonInstance, Key, Provider, SingletonInstance};
 
 #[derive(Default)]
 pub(crate) struct SingletonRegistry {
-    registry: HashMap<Key, Box<dyn Any>>,
+    registry: HashMap<Key, DynSingletonInstance>,
 }
 
 impl SingletonRegistry {
-    #[track_caller]
+    pub(crate) fn inner(&self) -> &HashMap<Key, DynSingletonInstance> {
+        &self.registry
+    }
+
     pub(crate) fn insert<T: 'static>(&mut self, key: Key, instance: SingletonInstance<T>) {
         // There is no need to check the value of `allow_override` here,
         // because when inserting a provider and a singleton with the same key into the context,
         // the provider must be inserted first, followed by the singleton,
         // and the checking of `allow_override` has already been done when the provider is inserted.
-
-        self.registry.insert(key, Box::new(instance));
+        self.registry.insert(key, instance.into());
     }
 
     pub(crate) fn get<T: 'static>(&self, key: &Key) -> Option<T> {
-        Some(
-            self.registry
-                .get(key)?
-                .downcast_ref::<SingletonInstance<T>>()?
-                .clone_instance(),
-        )
+        Some(self.registry.get(key)?.as_singleton::<T>()?.get_owned())
     }
 
     pub(crate) fn contains(&self, key: &Key) -> bool {
         self.registry.contains_key(key)
     }
 
-    pub(crate) fn remove(&mut self, key: &Key) -> Option<Box<dyn Any>> {
+    pub(crate) fn remove(&mut self, key: &Key) -> Option<DynSingletonInstance> {
         self.registry.remove(key)
     }
 
@@ -70,6 +46,10 @@ pub(crate) struct ProviderRegistry {
 }
 
 impl ProviderRegistry {
+    pub(crate) fn inner(&self) -> &HashMap<Key, DynProvider> {
+        &self.registry
+    }
+
     #[track_caller]
     pub(crate) fn insert(&mut self, provider: DynProvider, allow_override: bool) {
         let definition = provider.definition();

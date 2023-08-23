@@ -176,7 +176,7 @@ impl<T: 'static + Clone> Provider<T> {
     }
 }
 
-/// Represents a [`Provider`] that erases a generic type.
+/// Represents a [`Provider`] that erased its type.
 pub struct DynProvider {
     definition: Definition,
     eager_create: bool,
