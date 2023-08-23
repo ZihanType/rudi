@@ -52,9 +52,12 @@ impl<T> Clone for Constructor<T> {
     }
 }
 
+/// Represents the eager create function.
 #[derive(Clone)]
-pub(crate) enum EagerCreateFunction {
+pub enum EagerCreateFunction {
+    /// async eager create function.
     Async(for<'a> fn(&'a mut Context, Cow<'static, str>) -> BoxFuture<'a, ()>),
+    /// sync eager create function.
     Sync(fn(&mut Context, Cow<'static, str>)),
 }
 

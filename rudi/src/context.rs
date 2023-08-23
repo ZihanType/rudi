@@ -4,7 +4,7 @@ use crate::{
     module::ResolveModule,
     provider::{DynProvider, Provider},
     BoxFuture, Constructor, Definition, DynSingletonInstance, EagerCreateFunction, Key,
-    ProviderRegistry, Scope, SingletonInstance, SingletonRegistry,
+    ProviderRegistry, Scope, SingletonInstance, SingletonRegistry, Type,
 };
 
 /// A context is a container for all the providers and singletons.
@@ -117,6 +117,7 @@ pub struct Context {
     singleton_registry: SingletonRegistry,
     provider_registry: ProviderRegistry,
 
+    loaded_modules: Vec<Type>,
     conditional_providers: Vec<(bool, DynProvider)>,
     eager_create_functions: Vec<(Definition, EagerCreateFunction)>,
 
@@ -131,6 +132,7 @@ impl Default for Context {
             eager_create: Default::default(),
             singleton_registry: Default::default(),
             provider_registry: Default::default(),
+            loaded_modules: Default::default(),
             conditional_providers: Default::default(),
             eager_create_functions: Default::default(),
             dependency_chain: Default::default(),
@@ -281,6 +283,26 @@ impl Context {
         self.provider_registry.inner()
     }
 
+    /// Returns a reference to the loaded modules.
+    pub fn loaded_modules(&self) -> &Vec<Type> {
+        &self.loaded_modules
+    }
+
+    /// Returns a reference to the conditional providers.
+    pub fn conditional_providers(&self) -> &Vec<(bool, DynProvider)> {
+        &self.conditional_providers
+    }
+
+    /// Returns a reference to the eager create functions.
+    pub fn eager_create_functions(&self) -> &Vec<(Definition, EagerCreateFunction)> {
+        &self.eager_create_functions
+    }
+
+    /// Returns a reference to the dependency chain.
+    pub fn dependency_chain(&self) -> &Vec<Key> {
+        &self.dependency_chain.stack
+    }
+
     /// Load the given modules.
     ///
     /// This method first flattens all the given modules together with their submodules
@@ -317,6 +339,7 @@ impl Context {
         };
 
         modules.into_iter().for_each(|module| {
+            self.loaded_modules.push(module.ty());
             self.load_providers(module.eager_create(), module.providers());
         });
     }
@@ -353,6 +376,7 @@ impl Context {
         };
 
         modules.into_iter().for_each(|module| {
+            self.loaded_modules.retain(|ty| ty != &module.ty());
             self.unload_providers(module.providers());
         });
     }
