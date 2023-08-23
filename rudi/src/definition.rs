@@ -1,59 +1,17 @@
 use std::{
-    any::{self, TypeId},
     borrow::Cow,
     hash::{Hash, Hasher},
 };
 
-/// Represents a type.
-#[derive(Clone, Debug, Eq)]
-pub struct Type {
-    /// The name of the type.
-    pub name: &'static str,
-    /// The unique identifier of the type.
-    pub id: TypeId,
-}
-
-impl PartialEq for Type {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-    }
-}
-
-impl Hash for Type {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-    }
-}
-
-impl Type {
-    pub(crate) fn new<T: 'static>() -> Type {
-        Type {
-            name: any::type_name::<T>(),
-            id: TypeId::of::<T>(),
-        }
-    }
-}
+use crate::Type;
 
 /// Represents a unique key for a provider.
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct Key {
     /// The name of the provider.
     pub name: Cow<'static, str>,
     /// The type of the provider generic.
     pub ty: Type,
-}
-
-impl PartialEq for Key {
-    fn eq(&self, other: &Self) -> bool {
-        self.ty == other.ty && self.name == other.name
-    }
-}
-
-impl Hash for Key {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.ty.hash(state);
-        self.name.hash(state);
-    }
 }
 
 impl Key {
@@ -65,8 +23,39 @@ impl Key {
     }
 }
 
+impl PartialEq for Key {
+    fn eq(&self, other: &Self) -> bool {
+        self.ty == other.ty && self.name == other.name
+    }
+}
+
+impl Eq for Key {}
+
+impl PartialOrd for Key {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Key {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.ty.cmp(&other.ty) {
+            std::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+        self.name.cmp(&other.name)
+    }
+}
+
+impl Hash for Key {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.ty.hash(state);
+        self.name.hash(state);
+    }
+}
+
 /// Represents how the constructor is run
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Scope {
     /// singleton, constructor will be run only once.
     Singleton,
@@ -75,7 +64,7 @@ pub enum Scope {
 }
 
 /// Represents the color of the constructor, i.e., async or sync.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Color {
     /// async, constructor must run in an async context
     Async,
@@ -84,7 +73,7 @@ pub enum Color {
 }
 
 /// Represents a definition of a provider.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Definition {
     /// The unique key of the provider.
     pub key: Key,

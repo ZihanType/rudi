@@ -15,6 +15,7 @@ mod macros;
 mod module;
 mod provider;
 mod registry;
+mod ty;
 
 #[cfg_attr(docsrs, doc(cfg(feature = "auto-register")))]
 #[cfg(feature = "auto-register")]
@@ -31,3 +32,4 @@ pub use rudi_macro::Singleton;
 /// Define a transient provider.
 #[doc = include_str!("docs/attribute_macro.md")]
 pub use rudi_macro::Transient;
+pub use ty::*;
