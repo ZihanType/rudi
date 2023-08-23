@@ -47,7 +47,7 @@ fn single_module() {
     }
 
     let cx = Context::create(modules![MyModule]);
-    assert_eq!(cx.providers_len(), 1);
+    assert_eq!(cx.provider_registry().len(), 1);
 }
 
 #[test]
@@ -69,7 +69,7 @@ fn multiple_module() {
     }
 
     let cx = Context::create(modules![MyModule1, MyModule2]);
-    assert_eq!(cx.providers_len(), 2);
+    assert_eq!(cx.provider_registry().len(), 2);
 }
 
 #[test]
@@ -95,7 +95,7 @@ fn nested_module() {
     }
 
     let cx = Context::create(modules![MyModule2]);
-    assert_eq!(cx.providers_len(), 2);
+    assert_eq!(cx.provider_registry().len(), 2);
 }
 
 #[test]
@@ -141,7 +141,7 @@ fn duplicate_nested_module() {
     }
 
     let cx = Context::create(modules![FeatureModule1, FeatureModule2]);
-    assert_eq!(cx.providers_len(), 2);
+    assert_eq!(cx.provider_registry().len(), 2);
 }
 
 #[tokio::test]
@@ -182,7 +182,7 @@ async fn single_module_async() {
     }
 
     let cx = Context::create(modules![MyModule]);
-    assert_eq!(cx.providers_len(), 1);
+    assert_eq!(cx.provider_registry().len(), 1);
 }
 
 #[tokio::test]
@@ -209,7 +209,7 @@ async fn multiple_module_async() {
     }
 
     let cx = Context::create(modules![MyModule1, MyModule2]);
-    assert_eq!(cx.providers_len(), 2);
+    assert_eq!(cx.provider_registry().len(), 2);
 }
 
 #[tokio::test]
@@ -240,7 +240,7 @@ async fn nested_module_async() {
     }
 
     let cx = Context::create(modules![MyModule2]);
-    assert_eq!(cx.providers_len(), 2);
+    assert_eq!(cx.provider_registry().len(), 2);
 }
 
 #[tokio::test]
@@ -291,5 +291,5 @@ async fn duplicate_nested_module_async() {
     }
 
     let cx = Context::create(modules![FeatureModule1, FeatureModule2]);
-    assert_eq!(cx.providers_len(), 2);
+    assert_eq!(cx.provider_registry().len(), 2);
 }

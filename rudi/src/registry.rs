@@ -34,10 +34,6 @@ impl SingletonRegistry {
     pub(crate) fn remove(&mut self, key: &Key) -> Option<DynSingletonInstance> {
         self.registry.remove(key)
     }
-
-    pub(crate) fn len(&self) -> usize {
-        self.registry.len()
-    }
 }
 
 #[derive(Default)]
@@ -81,10 +77,6 @@ impl ProviderRegistry {
 
     pub(crate) fn remove(&mut self, key: &Key) -> Option<DynProvider> {
         self.registry.remove(key)
-    }
-
-    pub(crate) fn len(&self) -> usize {
-        self.registry.len()
     }
 
     pub(crate) fn keys(&self) -> Keys<'_, Key, DynProvider> {

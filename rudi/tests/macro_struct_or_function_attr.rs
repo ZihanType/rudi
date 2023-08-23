@@ -49,7 +49,7 @@ fn eager_create() {
 
     let cx = Context::create(modules![MyModule]);
 
-    assert_eq!(cx.singletons_len(), 1);
+    assert_eq!(cx.singleton_registry().len(), 1);
     assert!(!cx.contains_singleton::<A>());
     assert!(cx.contains_singleton::<B>());
 }
@@ -74,7 +74,7 @@ fn condition() {
 
     let mut cx = Context::create(modules![MyModule]);
 
-    assert_eq!(cx.providers_len(), 1);
+    assert_eq!(cx.provider_registry().len(), 1);
     assert!(cx.resolve_option::<A>().is_some());
     assert!(cx.resolve_option::<B>().is_none());
 }

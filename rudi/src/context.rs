@@ -1,10 +1,10 @@
-use std::{any::TypeId, borrow::Cow, collections::hash_map::Iter, rc::Rc};
+use std::{any::TypeId, borrow::Cow, collections::HashMap, rc::Rc};
 
 use crate::{
     module::ResolveModule,
     provider::{DynProvider, Provider},
-    BoxFuture, Constructor, Definition, EagerCreateFunction, Key, ProviderRegistry, Scope,
-    SingletonInstance, SingletonRegistry,
+    BoxFuture, Constructor, Definition, DynSingletonInstance, EagerCreateFunction, Key,
+    ProviderRegistry, Scope, SingletonInstance, SingletonRegistry,
 };
 
 /// A context is a container for all the providers and singletons.
@@ -254,6 +254,31 @@ impl Context {
     /// ```
     pub fn options() -> ContextOptions {
         ContextOptions::default()
+    }
+
+    /// Returns whether the context should allow overriding existing providers.
+    pub fn allow_override(&self) -> bool {
+        self.allow_override
+    }
+
+    /// Returns whether the context should only eagerly create singleton instances.
+    pub fn allow_only_singleton_eager_create(&self) -> bool {
+        self.allow_only_singleton_eager_create
+    }
+
+    /// Returns whether the context should eagerly create instances.
+    pub fn eager_create(&self) -> bool {
+        self.eager_create
+    }
+
+    /// Returns a reference to the singleton registry.
+    pub fn singleton_registry(&self) -> &HashMap<Key, DynSingletonInstance> {
+        self.singleton_registry.inner()
+    }
+
+    /// Returns a reference to the provider registry.
+    pub fn provider_registry(&self) -> &HashMap<Key, DynProvider> {
+        self.provider_registry.inner()
     }
 
     /// Load the given modules.
@@ -911,57 +936,11 @@ impl Context {
     pub fn get_providers_by_type<T: 'static>(&self) -> Vec<&Provider<T>> {
         let type_id = TypeId::of::<T>();
 
-        self.iter()
+        self.provider_registry
+            .iter()
             .filter(|(key, _)| key.ty.id == type_id)
             .filter_map(|(_, provider)| provider.as_provider())
             .collect()
-    }
-
-    /// An iterator visiting all Key-DynProvider pairs in arbitrary order. The iterator element type is (&'a Key, &'a DynProvider).
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use rudi::{Context, Transient};
-    ///
-    /// #[Transient]
-    /// struct A;
-    ///
-    /// #[Transient]
-    /// struct B;
-    ///
-    /// # fn main() {
-    /// let cx = Context::auto_register();
-    ///
-    /// for (key, _provider) in cx.iter() {
-    ///     println!("{:?}", key);
-    /// }
-    /// # }
-    /// ```
-    pub fn iter(&self) -> Iter<'_, Key, DynProvider> {
-        self.provider_registry.iter()
-    }
-
-    /// Returns the number of providers in the context.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use rudi::{Context, Transient};
-    ///
-    /// #[Transient]
-    /// struct A;
-    ///
-    /// #[Transient]
-    /// struct B;
-    ///
-    /// # fn main() {
-    /// let cx = Context::auto_register();
-    /// assert_eq!(cx.providers_len(), 2);
-    /// # }
-    /// ```
-    pub fn providers_len(&self) -> usize {
-        self.provider_registry.len()
     }
 
     /// Returns true if the context contains a singleton for the specified type and default name `""`.
@@ -1006,26 +985,6 @@ impl Context {
     ) -> bool {
         let key = Key::new::<T>(name.into());
         self.singleton_registry.contains(&key)
-    }
-
-    /// Returns the number of singletons in the context.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use rudi::{Context, Singleton};
-    ///
-    /// #[derive(Clone)]
-    /// #[Singleton(eager_create, name = "a")]
-    /// struct A;
-    ///
-    /// # fn main() {
-    /// let cx = Context::auto_register();
-    /// assert_eq!(cx.singletons_len(), 1);
-    /// # }
-    /// ```
-    pub fn singletons_len(&self) -> usize {
-        self.singleton_registry.len()
     }
 }
 

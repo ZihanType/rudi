@@ -19,20 +19,20 @@ fn empty_module() {
     }
 
     let mut cx = Context::create(modules![]);
-    assert!(cx.providers_len() == 0);
-    assert!(cx.singletons_len() == 0);
+    assert!(cx.provider_registry().is_empty());
+    assert!(cx.singleton_registry().is_empty());
 
     cx.unload_modules(modules![]);
-    assert!(cx.providers_len() == 0);
-    assert!(cx.singletons_len() == 0);
+    assert!(cx.provider_registry().is_empty());
+    assert!(cx.singleton_registry().is_empty());
 
     cx.load_modules(modules![MyModule]);
-    assert!(cx.providers_len() == 0);
-    assert!(cx.singletons_len() == 0);
+    assert!(cx.provider_registry().is_empty());
+    assert!(cx.singleton_registry().is_empty());
 
     cx.unload_modules(modules![MyModule]);
-    assert!(cx.providers_len() == 0);
-    assert!(cx.singletons_len() == 0);
+    assert!(cx.provider_registry().is_empty());
+    assert!(cx.singleton_registry().is_empty());
 }
 
 #[test]

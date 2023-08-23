@@ -22,7 +22,7 @@ fn eager_create_context() {
         .eager_create(true)
         .create(modules![MyModule]);
 
-    assert!(cx.singletons_len() == 1);
+    assert!(cx.singleton_registry().len() == 1);
 
     let provider = cx.get_provider::<A>();
     assert!(provider.is_some());
@@ -60,7 +60,7 @@ fn eager_create_provider() {
 
     let cx = Context::create(modules![MyModule]);
 
-    assert!(cx.singletons_len() == 1);
+    assert!(cx.singleton_registry().len() == 1);
     assert!(CREATED.with(|created| *created.borrow()));
 }
 
@@ -101,12 +101,12 @@ fn eager_create_module() {
 
     let mut cx = Context::create(modules![MyModule]);
 
-    assert!(cx.singletons_len() == 1);
+    assert!(cx.singleton_registry().len() == 1);
     assert!(COUNT.with(|created| *created.borrow() == 1));
 
     cx.resolve::<A>();
 
-    assert!(cx.singletons_len() == 1);
+    assert!(cx.singleton_registry().len() == 1);
     assert!(COUNT.with(|created| *created.borrow() == 1));
 }
 
@@ -144,12 +144,12 @@ fn eager_create_module_twice() {
     let mut cx = Context::create(modules![MyModule]);
 
     assert!(COUNT.with(|created| *created.borrow() == 1));
-    assert!(cx.singletons_len() == 1);
+    assert!(cx.singleton_registry().len() == 1);
 
     cx.refresh();
 
     assert!(COUNT.with(|created| *created.borrow() == 1));
-    assert!(cx.singletons_len() == 1);
+    assert!(cx.singleton_registry().len() == 1);
 }
 
 #[test]
@@ -218,13 +218,13 @@ fn eager_create_two_modules() {
     let mut cx = Context::create(modules![MyModule1, MyModule2]);
 
     assert!(COUNT.with(|created| *created.borrow() == 2));
-    assert!(cx.singletons_len() == 2);
+    assert!(cx.singleton_registry().len() == 2);
 
     cx.resolve::<A>();
     cx.resolve::<B>();
 
     assert!(COUNT.with(|created| *created.borrow() == 2));
-    assert!(cx.singletons_len() == 2);
+    assert!(cx.singleton_registry().len() == 2);
 }
 
 #[test]
@@ -319,7 +319,7 @@ async fn eager_create_context_async() {
         .create_async(modules![MyModule])
         .await;
 
-    assert!(cx.singletons_len() == 1);
+    assert!(cx.singleton_registry().len() == 1);
 
     let provider = cx.get_provider::<A>();
     assert!(provider.is_some());
@@ -357,7 +357,7 @@ async fn eager_create_provider_async() {
 
     let cx = Context::create_async(modules![MyModule]).await;
 
-    assert!(cx.singletons_len() == 1);
+    assert!(cx.singleton_registry().len() == 1);
     assert!(CREATED.with(|created| *created.borrow()));
 }
 
@@ -398,12 +398,12 @@ async fn eager_create_module_async() {
 
     let mut cx = Context::create_async(modules![MyModule]).await;
 
-    assert!(cx.singletons_len() == 1);
+    assert!(cx.singleton_registry().len() == 1);
     assert!(COUNT.with(|created| *created.borrow() == 1));
 
     cx.resolve_async::<A>().await;
 
-    assert!(cx.singletons_len() == 1);
+    assert!(cx.singleton_registry().len() == 1);
     assert!(COUNT.with(|created| *created.borrow() == 1));
 }
 
@@ -441,12 +441,12 @@ async fn eager_create_module_twice_async() {
     let mut cx = Context::create_async(modules![MyModule]).await;
 
     assert!(COUNT.with(|created| *created.borrow() == 1));
-    assert!(cx.singletons_len() == 1);
+    assert!(cx.singleton_registry().len() == 1);
 
     cx.refresh_async().await;
 
     assert!(COUNT.with(|created| *created.borrow() == 1));
-    assert!(cx.singletons_len() == 1);
+    assert!(cx.singleton_registry().len() == 1);
 }
 
 #[tokio::test]
@@ -515,13 +515,13 @@ async fn eager_create_two_modules_async() {
     let mut cx = Context::create_async(modules![MyModule1, MyModule2]).await;
 
     assert!(COUNT.with(|created| *created.borrow() == 2));
-    assert!(cx.singletons_len() == 2);
+    assert!(cx.singleton_registry().len() == 2);
 
     cx.resolve_async::<A>().await;
     cx.resolve_async::<B>().await;
 
     assert!(COUNT.with(|created| *created.borrow() == 2));
-    assert!(cx.singletons_len() == 2);
+    assert!(cx.singleton_registry().len() == 2);
 }
 
 #[tokio::test]

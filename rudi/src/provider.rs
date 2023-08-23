@@ -203,7 +203,7 @@ impl DynProvider {
         self.binding_definitions.as_ref()
     }
 
-    /// Returns the reference of the origin [`Provider`].
+    /// Returns a reference of the origin [`Provider`].
     pub fn as_provider<T: 'static>(&self) -> Option<&Provider<T>> {
         self.origin.downcast_ref::<Provider<T>>()
     }

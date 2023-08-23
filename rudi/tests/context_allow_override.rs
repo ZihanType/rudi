@@ -13,7 +13,7 @@ fn allow_override_in_same_module() {
     }
 
     let cx = Context::create(modules![MyModule]);
-    assert_eq!(cx.providers_len(), 1);
+    assert_eq!(cx.provider_registry().len(), 1);
 }
 
 #[test]
@@ -36,7 +36,7 @@ fn allow_override_in_defferent_module() {
     }
 
     let cx = Context::create(modules![MyModule1, MyModule2]);
-    assert_eq!(cx.providers_len(), 1);
+    assert_eq!(cx.provider_registry().len(), 1);
 }
 
 #[test]
@@ -55,7 +55,7 @@ fn disallow_override_in_same_module() {
     let cx = Context::options()
         .allow_override(false)
         .create(modules![MyModule]);
-    assert_eq!(cx.providers_len(), 1);
+    assert_eq!(cx.provider_registry().len(), 1);
 }
 
 #[test]
@@ -81,5 +81,5 @@ fn disallow_override_in_defferent_module() {
     let cx = Context::options()
         .allow_override(false)
         .create(modules![MyModule1, MyModule2]);
-    assert_eq!(cx.providers_len(), 1);
+    assert_eq!(cx.provider_registry().len(), 1);
 }

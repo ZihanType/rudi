@@ -68,6 +68,6 @@ async fn create_eager_instance_in_async_context() {
         .create_async(modules![MyModule])
         .await;
 
-    assert_eq!(cx.providers_len(), 3);
-    assert_eq!(cx.singletons_len(), 2);
+    assert_eq!(cx.provider_registry().len(), 3);
+    assert_eq!(cx.singleton_registry().len(), 2);
 }

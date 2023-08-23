@@ -31,7 +31,7 @@ pub struct DynSingletonInstance {
 }
 
 impl DynSingletonInstance {
-    /// Returns the reference of the origin [`SingletonInstance`].
+    /// Returns a reference of the origin [`SingletonInstance`].
     pub fn as_singleton<T: 'static>(&self) -> Option<&SingletonInstance<T>> {
         self.origin.downcast_ref::<SingletonInstance<T>>()
     }
