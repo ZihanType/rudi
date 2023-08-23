@@ -7,7 +7,7 @@ Rudi - an out-of-the-box dependency injection framework for Rust.
 Here are links to the most important sections of the docs:
 
 - [`Context`](crate::Context): The core of the entire dependency injection framework, responsible for managing all providers.
-- [`Singleton`](crate::Singleton) / [`Transient`](crate::Transient): Two attribute macros used to generate the implementation of [`DefaultProvider`](crate::DefaultProvider), thus registering providers.
+- [`#[Singleton]`](crate::Singleton) / [`#[Transient]`](crate::Transient): Two attribute macros used to generate the implementation of [`DefaultProvider`](crate::DefaultProvider), thus registering providers.
 
 ## Feature Flags
 

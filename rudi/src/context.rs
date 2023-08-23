@@ -143,7 +143,7 @@ impl Context {
     ///
     /// # Panics
     ///
-    /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
+    /// - Panics if there are multiple providers with the same key and the context's [`allow_override`](Context::allow_override) is false.
     /// - Panics if there is a provider whose constructor is async and the provider will be eagerly created.
     /// - Panics if there is a provider that panics on construction.
     ///
@@ -181,7 +181,7 @@ impl Context {
     ///
     /// # Panics
     ///
-    /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
+    /// - Panics if there are multiple providers with the same key and the context's [`allow_override`](Context::allow_override) is false.
     /// - Panics if there is a provider whose constructor is async and the provider will be eagerly created.
     /// - Panics if there is a provider that panics on construction.
     ///
@@ -202,7 +202,7 @@ impl Context {
     ///
     /// # Panics
     ///
-    /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
+    /// - Panics if there are multiple providers with the same key and the context's [`allow_override`](Context::allow_override) is false.
     /// - Panics if there is a provider that panics on construction.
     pub async fn create_async(modules: Vec<ResolveModule>) -> Context {
         ContextOptions::default().create_async(modules).await
@@ -217,7 +217,7 @@ impl Context {
     ///
     /// # Panics
     ///
-    /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
+    /// - Panics if there are multiple providers with the same key and the context's [`allow_override`](Context::allow_override) is false.
     /// - Panics if there is a provider that panics on construction.
     #[cfg_attr(docsrs, doc(cfg(feature = "auto-register")))]
     #[cfg(feature = "auto-register")]
@@ -291,7 +291,7 @@ impl Context {
     ///
     /// # Panics
     ///
-    /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
+    /// - Panics if there are multiple providers with the same key and the context's [`allow_override`](Context::allow_override) is false.
     ///
     /// # Example
     ///
@@ -361,19 +361,19 @@ impl Context {
     ///
     /// This method has two purposes:
     ///
-    /// 1. Evaluate the conditions of providers whose `condition` is `Some`.
+    /// 1. Evaluate the conditions of providers whose [`condition`](crate::Provider::condition) is `Some`.
     /// If the evaluation result is `true`, the provider will be loaded into the context,
     /// otherwise it will be removed from the context.
     ///
     /// 2. Construct instances that will be eagerly created.
     /// When a provider is loaded into the context,
     /// the `need_eager_create` is obtained by performing a logical OR operation on
-    /// the `eager_create` value of the provider,
-    /// the `eager_create` value of the module to which the provider belongs,
-    /// and the `eager_create` value of the `Context`.
+    /// the [`eager_create`](crate::Provider::eager_create) value of the provider,
+    /// the [`eager_create`](crate::ResolveModule::eager_create) value of the module to which the provider belongs,
+    /// and the [`eager_create`](crate::Context::eager_create) value of the `Context`.
     /// Then, the `allow_eager_create` is obtained by evaluating
-    /// the `Context`'s `allow_only_singleton_eager_create`
-    /// and the provider's `scope`.
+    /// the `Context`'s [`allow_only_singleton_eager_create`](crate::Context::allow_only_singleton_eager_create)
+    /// and the provider's [`scope`](crate::definition::Scope).
     /// If the result of the logical AND operation of `need_eager_create` and `allow_eager_create` is `true`,
     /// the provider's constructor will be pushed into a queue. When this method is called,
     /// the queue will be traversed and each constructor in the queue will be called to construct
@@ -381,7 +381,7 @@ impl Context {
     ///
     /// # Panics
     ///
-    /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
+    /// - Panics if there are multiple providers with the same key and the context's [`allow_override`](Context::allow_override) is false.
     /// - Panics if there is a provider whose constructor is async and the provider will be eagerly created.
     /// - Panics if there is a provider that panics on construction.
     ///
@@ -488,7 +488,7 @@ impl Context {
     ///
     /// # Panics
     ///
-    /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
+    /// - Panics if there are multiple providers with the same key and the context's [`allow_override`](Context::allow_override) is false.
     /// - Panics if there is a provider that panics on construction.
     pub async fn refresh_async(&mut self) {
         self.create_eager_instances_async().await;
@@ -1456,7 +1456,7 @@ impl ContextOptions {
     ///
     /// # Panics
     ///
-    /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
+    /// - Panics if there are multiple providers with the same key and the context's [`allow_override`](Context::allow_override) is false.
     /// - Panics if there is a provider whose constructor is async and the provider will be eagerly created.
     /// - Panics if there is a provider that panics on construction.
     ///
@@ -1496,7 +1496,7 @@ impl ContextOptions {
     ///
     /// # Panics
     ///
-    /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
+    /// - Panics if there are multiple providers with the same key and the context's [`allow_override`](Context::allow_override) is false.
     /// - Panics if there is a provider whose constructor is async and the provider will be eagerly created.
     /// - Panics if there is a provider that panics on construction.
     ///
@@ -1525,7 +1525,7 @@ impl ContextOptions {
     ///
     /// # Panics
     ///
-    /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
+    /// - Panics if there are multiple providers with the same key and the context's [`allow_override`](Context::allow_override) is false.
     /// - Panics if there is a provider that panics on construction.
     pub async fn create_async(self, modules: Vec<ResolveModule>) -> Context {
         let mut cx = self.inner_create(|cx| cx.load_modules(modules));
@@ -1542,7 +1542,7 @@ impl ContextOptions {
     ///
     /// # Panics
     ///
-    /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
+    /// - Panics if there are multiple providers with the same key and the context's [`allow_override`](Context::allow_override) is false.
     /// - Panics if there is a provider that panics on construction.
     #[cfg_attr(docsrs, doc(cfg(feature = "auto-register")))]
     #[cfg(feature = "auto-register")]

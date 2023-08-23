@@ -1,6 +1,6 @@
 
 
-Both [`Singleton`] and [`Transient`] are attribute macros used to define a [`Provider`], the difference between them is that a `Provider` defined by `#[Singleton]` has a constructor method that is executed only once, while a `Provider` defined by `#[Transient]` has its constructor method can be executed multiple times.
+Both [`#[Singleton]`](crate::Singleton) and [`#[Transient]`](crate::Transient) are attribute macros used to define a [`Provider`], the difference between them is that a `Provider` defined by `#[Singleton]` has a constructor method that is executed only once, while a `Provider` defined by `#[Transient]` has its constructor method can be executed multiple times.
 
 These two macros can be used on `struct`, `enum`, `impl block`, and `fn`.
 

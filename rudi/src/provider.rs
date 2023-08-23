@@ -9,7 +9,7 @@ use crate::{
 /// A trait for giving a type a default [`Provider`].
 ///
 /// Define this trait so that the purpose is not to be implemented manually,
-/// but to use the `#[Singleton]` or `#[Transient]` attribute macros to generate the implementation.
+/// but to use the [`#[Singleton]`](crate::Singleton) or [`#[Transient]`](crate::Transient) attribute macros to generate the implementation.
 ///
 /// # Example
 ///
@@ -64,7 +64,7 @@ pub(crate) enum EagerCreateFunction {
 /// there is no pub method to direct create this struct,
 /// Please use the following functions or attribute macros to create the various `Provider` types that implement `Into<Provider>`:
 /// - functions
-///   - [`singleton`](crate::singleton)
+///   - [`singleton`](crate::singleton())
 ///   - [`transient`](crate::transient)
 ///   - [`singleton_async`](crate::singleton_async)
 ///   - [`transient_async`](crate::transient_async)
@@ -96,6 +96,11 @@ impl<T> Provider<T> {
     /// Returns definitions of the binding providers.
     pub fn binding_definitions(&self) -> Option<&Vec<Definition>> {
         self.binding_definitions.as_ref()
+    }
+
+    /// Returns an option of the condition function.
+    pub fn condition(&self) -> Option<fn(&Context) -> bool> {
+        self.condition
     }
 
     pub(crate) fn constructor(&self) -> Constructor<T> {
@@ -208,7 +213,8 @@ impl DynProvider {
         self.origin.downcast_ref::<Provider<T>>()
     }
 
-    pub(crate) fn condition(&self) -> Option<fn(&Context) -> bool> {
+    /// Returns an option of the condition function.
+    pub fn condition(&self) -> Option<fn(&Context) -> bool> {
         self.condition
     }
 
