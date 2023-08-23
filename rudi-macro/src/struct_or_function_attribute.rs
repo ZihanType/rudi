@@ -147,12 +147,12 @@ impl StructOrFunctionAttribute {
                 .as_ref()
                 .map(|(_, condition)| {
                     quote! {
-                        #condition
+                        Some(#condition)
                     }
                 })
                 .unwrap_or_else(|| {
                     quote! {
-                        |_| true
+                        None
                     }
                 }),
             binds: binds

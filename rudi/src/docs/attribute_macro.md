@@ -98,7 +98,7 @@ fn main() {
   - type: a closure or an expression path of type `fn(&Context) -> bool`.
   - example: `#[Singleton(condition = |_cx| true)]` / `#[Singleton(condition = path::to::expr)]`
   - optional: true
-  - default: **|_| true**
+  - default: **None**
   - description: Specifies whether or not to insert the defined `Provider` into the `Context` based on the condition.
   - refer:
     - [`SingletonProvider::condition`]

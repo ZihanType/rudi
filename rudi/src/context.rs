@@ -117,7 +117,9 @@ pub struct Context {
     singleton_registry: SingletonRegistry,
     provider_registry: ProviderRegistry,
 
+    conditional_providers: Vec<(bool, DynProvider)>,
     eager_create_functions: Vec<(Definition, EagerCreateFunction)>,
+
     dependency_chain: DependencyChain,
 }
 
@@ -129,6 +131,7 @@ impl Default for Context {
             eager_create: Default::default(),
             singleton_registry: Default::default(),
             provider_registry: Default::default(),
+            conditional_providers: Default::default(),
             eager_create_functions: Default::default(),
             dependency_chain: Default::default(),
         }
@@ -141,8 +144,7 @@ impl Context {
     /// # Panics
     ///
     /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
-    /// - Panics if there is a provider whose constructor is async and the context's `eager_create`
-    /// or the module's `eager_create` or the provider's `eager_create` is set to true.
+    /// - Panics if there is a provider whose constructor is async and the provider will be eagerly created.
     /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
@@ -180,8 +182,7 @@ impl Context {
     /// # Panics
     ///
     /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
-    /// - Panics if there is a provider whose constructor is async and the context's `eager_create`
-    /// or the module's `eager_create` or the provider's `eager_create` is set to true.
+    /// - Panics if there is a provider whose constructor is async and the provider will be eagerly created.
     /// - Panics if there is a provider that panics on construction.
     ///
     /// [`AutoRegisterModule`]: crate::AutoRegisterModule
@@ -331,96 +332,144 @@ impl Context {
         });
     }
 
-    /// Create instances where `eager_create` is true.
+    /// Refresh the context.
     ///
-    /// When the provider is loaded into the context, an or operation will be performed
-    /// on the `eager_create` value of the provider, the module to which the provider belongs,
-    /// and the context to arrive at the final `eager_create` value, and if it is true,
-    /// then the constructor of the provider will be pushed to a queue. When this method is called,
-    /// the constructor is taken from this queue and executed.
+    /// This method has two purposes:
+    ///
+    /// 1. Evaluate the conditions of providers whose `condition` is `Some`.
+    /// If the evaluation result is `true`, the provider will be loaded into the context,
+    /// otherwise it will be removed from the context.
+    ///
+    /// 2. Construct instances that will be eagerly created.
+    /// When a provider is loaded into the context,
+    /// the `need_eager_create` is obtained by performing a logical OR operation on
+    /// the `eager_create` value of the provider,
+    /// the `eager_create` value of the module to which the provider belongs,
+    /// and the `eager_create` value of the `Context`.
+    /// Then, the `allow_eager_create` is obtained by evaluating
+    /// the `Context`'s `allow_only_singleton_eager_create`
+    /// and the provider's `scope`.
+    /// If the result of the logical AND operation of `need_eager_create` and `allow_eager_create` is `true`,
+    /// the provider's constructor will be pushed into a queue. When this method is called,
+    /// the queue will be traversed and each constructor in the queue will be called to construct
+    /// the instance of the provider.
     ///
     /// # Panics
     ///
-    /// - Panics if there is a provider whose constructor is async and the context's `eager_create`
-    /// or the module's `eager_create` or the provider's `eager_create` is set to true.
+    /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
+    /// - Panics if there is a provider whose constructor is async and the provider will be eagerly created.
     /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use rudi::{modules, AutoRegisterModule, Context, Singleton};
+    /// use rudi::{modules, AutoRegisterModule, Context, Singleton, Transient};
+    ///
+    /// #[Transient(condition = |_| true)]
+    /// struct A;
     ///
     /// #[derive(Clone)]
     /// #[Singleton(eager_create)]
-    /// struct A;
+    /// struct B;
     ///
     /// # fn main() {
     /// let mut cx = Context::default();
     ///
     /// cx.load_modules(modules![AutoRegisterModule]);
-    /// assert!(!cx.contains_singleton::<A>());
     ///
-    /// cx.create_eager_instances();
-    /// assert!(cx.contains_singleton::<A>());
+    /// assert!(!cx.contains_provider::<A>());
+    /// assert!(!cx.contains_singleton::<B>());
+    ///
+    /// cx.refresh();
+    ///
+    /// // evaluate condition
+    /// assert!(cx.contains_provider::<A>());
+    /// // construct instance
+    /// assert!(cx.contains_singleton::<B>());
     /// # }
     /// ```
+    ///
+    /// # Note
+    ///
+    /// This method needs to be called after the [`Context::load_modules`] method,
+    /// but why not put the logic of this method in the `load_modules` method? Please see the example below:
+    ///
+    /// ```rust
+    /// use rudi::{components, modules, Context, DynProvider, Module, Transient};
+    ///
+    /// fn a_condition(cx: &Context) -> bool {
+    ///     cx.contains_provider::<B>()
+    /// }
+    ///
+    /// #[Transient(condition = a_condition)]
+    /// struct A;
+    ///
+    /// #[Transient]
+    /// struct B;
+    ///
+    /// struct AModule;
+    ///
+    /// impl Module for AModule {
+    ///     fn providers() -> Vec<DynProvider> {
+    ///         components![A]
+    ///     }
+    /// }
+    ///
+    /// struct BModule;
+    ///
+    /// impl Module for BModule {
+    ///     fn providers() -> Vec<DynProvider> {
+    ///         components![B]
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let mut cx = Context::default();
+    ///
+    ///     // Method 1, call `load_modules` and then call `refresh` immediately
+    ///     cx.load_modules(modules![AModule]);
+    ///     cx.refresh();
+    ///     cx.load_modules(modules![BModule]);
+    ///     cx.refresh();
+    ///
+    ///     // The evaluation result of `A`'s `condition` is `false`, so `A` will not be created
+    ///     assert!(!cx.contains_provider::<A>());
+    ///
+    ///     let mut cx = Context::default();
+    ///
+    ///     // Method 2, call all `load_modules` first, then call `refresh`
+    ///     cx.load_modules(modules![AModule]);
+    ///     cx.load_modules(modules![BModule]);
+    ///     cx.refresh();
+    ///
+    ///     // The evaluation result of `A`'s `condition` is `true`, so `A` will be created
+    ///     assert!(cx.contains_provider::<A>());
+    /// }
+    /// ```
     #[track_caller]
-    pub fn create_eager_instances(&mut self) {
-        if self.eager_create_functions.is_empty() {
-            return;
-        }
+    pub fn refresh(&mut self) {
+        self.create_eager_instances();
 
-        self.eager_create_functions.reverse();
-
-        while let Some((definition, eager_create_function)) = self.eager_create_functions.pop() {
-            match eager_create_function {
-                EagerCreateFunction::Async(_) => {
-                    panic!(
-                        "unable to call an async eager create function in a sync context for: {:?}
-
-please use instead:
-1. Context::create_async(modules).await
-2. Context::auto_register_async().await
-3. ContextOptions::create_async(options, modules).await
-4. ContextOptions::auto_register_async(options).await
-",
-                        definition
-                    )
-                }
-                EagerCreateFunction::Sync(eager_create_function) => {
-                    eager_create_function(self, definition.key.name)
-                }
-            }
-        }
+        self.evaluate_providers();
+        self.create_eager_instances();
     }
 
-    /// Async version of [`Context::create_eager_instances`].
+    /// Async version of [`Context::refresh`].
     ///
     /// If no provider in the context has an async constructor and that provider needs to be eagerly created,
-    /// this method is the same as [`Context::create_eager_instances`].
+    /// this method is the same as [`Context::refresh`].
     ///
-    /// See [`Context::create_eager_instances`] for more details.
+    /// See [`Context::refresh`] for more details.
     ///
     /// # Panics
     ///
+    /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
     /// - Panics if there is a provider that panics on construction.
-    pub async fn create_eager_instances_async(&mut self) {
-        if self.eager_create_functions.is_empty() {
-            return;
-        }
+    pub async fn refresh_async(&mut self) {
+        self.create_eager_instances_async().await;
 
-        self.eager_create_functions.reverse();
-
-        while let Some((definition, eager_create_function)) = self.eager_create_functions.pop() {
-            match eager_create_function {
-                EagerCreateFunction::Async(eager_create_function) => {
-                    eager_create_function(self, definition.key.name).await
-                }
-                EagerCreateFunction::Sync(eager_create_function) => {
-                    eager_create_function(self, definition.key.name)
-                }
-            }
-        }
+        self.evaluate_providers();
+        self.create_eager_instances_async().await;
     }
 
     /// Returns an instance based on the given type and default name `""`.
@@ -982,34 +1031,38 @@ please use instead:
 
 impl Context {
     #[track_caller]
+    fn load_provider(&mut self, eager_create: bool, provider: DynProvider) {
+        let need_eager_create = self.eager_create || eager_create || provider.eager_create();
+
+        let allow_all_scope = !self.allow_only_singleton_eager_create;
+        let allow_only_singleton_and_it_is_singleton = self.allow_only_singleton_eager_create
+            && matches!(provider.definition().scope, Scope::Singleton);
+
+        let allow_eager_create = allow_all_scope || allow_only_singleton_and_it_is_singleton;
+
+        if need_eager_create && allow_eager_create {
+            self.eager_create_functions.push((
+                provider.definition().clone(),
+                provider.eager_create_function(),
+            ));
+        }
+
+        self.provider_registry.insert(provider, self.allow_override);
+    }
+
+    #[track_caller]
     fn load_providers(&mut self, eager_create: bool, providers: Vec<DynProvider>) {
         let Some(providers) = flatten(providers, DynProvider::binding_providers) else {
             return;
         };
 
         providers.into_iter().for_each(|provider| {
-            if !(provider.condition())(self) {
-                #[cfg(feature = "debug-print")]
-                tracing::warn!("(×) condition not met: {:?}", provider.definition());
+            if provider.condition().is_some() {
+                self.conditional_providers.push((eager_create, provider));
                 return;
             }
 
-            let need_eager_create = self.eager_create || eager_create || provider.eager_create();
-
-            let allow_all_scope = !self.allow_only_singleton_eager_create;
-            let allow_only_singleton_and_it_is_singleton = self.allow_only_singleton_eager_create
-                && matches!(provider.definition().scope, Scope::Singleton);
-
-            let allow_eager_create = allow_all_scope || allow_only_singleton_and_it_is_singleton;
-
-            if need_eager_create && allow_eager_create {
-                self.eager_create_functions.push((
-                    provider.definition().clone(),
-                    provider.eager_create_function(),
-                ));
-            }
-
-            self.provider_registry.insert(provider, self.allow_override);
+            self.load_provider(eager_create, provider);
         });
     }
 
@@ -1023,6 +1076,74 @@ impl Context {
             self.provider_registry.remove(key);
             self.singleton_registry.remove(key);
         });
+    }
+
+    #[track_caller]
+    fn create_eager_instances(&mut self) {
+        if self.eager_create_functions.is_empty() {
+            return;
+        }
+
+        self.eager_create_functions.reverse();
+
+        while let Some((definition, eager_create_function)) = self.eager_create_functions.pop() {
+            match eager_create_function {
+                EagerCreateFunction::Async(_) => {
+                    panic!(
+                        "unable to call an async eager create function in a sync context for: {:?}
+
+please use instead:
+1. Context::create_async(modules).await
+2. Context::auto_register_async().await
+3. ContextOptions::create_async(options, modules).await
+4. ContextOptions::auto_register_async(options).await
+",
+                        definition
+                    )
+                }
+                EagerCreateFunction::Sync(eager_create_function) => {
+                    eager_create_function(self, definition.key.name)
+                }
+            }
+        }
+    }
+
+    async fn create_eager_instances_async(&mut self) {
+        if self.eager_create_functions.is_empty() {
+            return;
+        }
+
+        self.eager_create_functions.reverse();
+
+        while let Some((definition, eager_create_function)) = self.eager_create_functions.pop() {
+            match eager_create_function {
+                EagerCreateFunction::Async(eager_create_function) => {
+                    eager_create_function(self, definition.key.name).await
+                }
+                EagerCreateFunction::Sync(eager_create_function) => {
+                    eager_create_function(self, definition.key.name)
+                }
+            }
+        }
+    }
+
+    #[track_caller]
+    fn evaluate_providers(&mut self) {
+        if self.conditional_providers.is_empty() {
+            return;
+        }
+
+        self.conditional_providers.reverse();
+
+        while let Some((eager_create, provider)) = self.conditional_providers.pop() {
+            if !(provider.condition().unwrap())(self) {
+                #[cfg(feature = "debug-print")]
+                tracing::warn!("(×) condition not met: {:?}", provider.definition());
+                continue;
+            }
+
+            self.load_provider(eager_create, provider);
+        }
     }
 
     #[track_caller]
@@ -1377,8 +1498,7 @@ impl ContextOptions {
     /// # Panics
     ///
     /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
-    /// - Panics if there is a provider whose constructor is async and the context's `eager_create`
-    /// or the module's `eager_create` or the provider's `eager_create` is set to true.
+    /// - Panics if there is a provider whose constructor is async and the provider will be eagerly created.
     /// - Panics if there is a provider that panics on construction.
     ///
     /// # Example
@@ -1405,7 +1525,7 @@ impl ContextOptions {
     #[track_caller]
     pub fn create(self, modules: Vec<ResolveModule>) -> Context {
         let mut cx = self.inner_create(|cx| cx.load_modules(modules));
-        cx.create_eager_instances();
+        cx.refresh();
         cx
     }
 
@@ -1418,8 +1538,7 @@ impl ContextOptions {
     /// # Panics
     ///
     /// - Panics if there are multiple providers with the same key and the context's `allow_override` is set to false.
-    /// - Panics if there is a provider whose constructor is async and the context's `eager_create`
-    /// or the module's `eager_create` or the provider's `eager_create` is set to true.
+    /// - Panics if there is a provider whose constructor is async and the provider will be eagerly created.
     /// - Panics if there is a provider that panics on construction.
     ///
     /// [`AutoRegisterModule`]: crate::AutoRegisterModule
@@ -1434,7 +1553,7 @@ impl ContextOptions {
             cx.load_providers(module.eager_create(), module.providers())
         });
 
-        cx.create_eager_instances();
+        cx.refresh();
         cx
     }
 
@@ -1451,7 +1570,7 @@ impl ContextOptions {
     /// - Panics if there is a provider that panics on construction.
     pub async fn create_async(self, modules: Vec<ResolveModule>) -> Context {
         let mut cx = self.inner_create(|cx| cx.load_modules(modules));
-        cx.create_eager_instances_async().await;
+        cx.refresh_async().await;
         cx
     }
 
@@ -1476,7 +1595,7 @@ impl ContextOptions {
             cx.load_providers(module.eager_create(), module.providers())
         });
 
-        cx.create_eager_instances_async().await;
+        cx.refresh_async().await;
         cx
     }
 }

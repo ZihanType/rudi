@@ -74,7 +74,7 @@ pub(crate) enum EagerCreateFunction {
 pub struct Provider<T> {
     definition: Definition,
     eager_create: bool,
-    condition: fn(&Context) -> bool,
+    condition: Option<fn(&Context) -> bool>,
     constructor: Constructor<T>,
     clone_instance: Option<fn(&T) -> T>,
     eager_create_function: EagerCreateFunction,
@@ -111,7 +111,7 @@ impl<T: 'static> Provider<T> {
     pub(crate) fn with_name(
         name: Cow<'static, str>,
         eager_create: bool,
-        condition: fn(&Context) -> bool,
+        condition: Option<fn(&Context) -> bool>,
         constructor: Constructor<T>,
         clone_instance: Option<fn(&T) -> T>,
         eager_create_function: EagerCreateFunction,
@@ -143,7 +143,7 @@ impl<T: 'static> Provider<T> {
     pub(crate) fn with_definition(
         definition: Definition,
         eager_create: bool,
-        condition: fn(&Context) -> bool,
+        condition: Option<fn(&Context) -> bool>,
         constructor: Constructor<T>,
         clone_instance: Option<fn(&T) -> T>,
         eager_create_function: EagerCreateFunction,
@@ -166,7 +166,7 @@ impl<T: 'static + Clone> Provider<T> {
         Provider {
             definition: Definition::new::<T>(name, Scope::Singleton, Color::Sync),
             eager_create: false,
-            condition: |_| true,
+            condition: None,
             constructor: Constructor::Sync(Rc::new(move |_| instance.clone())),
             clone_instance: Some(Clone::clone),
             eager_create_function: EagerCreateFunction::Sync(sync_eager_create_function::<T>()),
@@ -180,7 +180,7 @@ impl<T: 'static + Clone> Provider<T> {
 pub struct DynProvider {
     definition: Definition,
     eager_create: bool,
-    condition: fn(&Context) -> bool,
+    condition: Option<fn(&Context) -> bool>,
     eager_create_function: EagerCreateFunction,
     binding_providers: Option<Vec<DynProvider>>,
     binding_definitions: Option<Vec<Definition>>,
@@ -208,7 +208,7 @@ impl DynProvider {
         self.origin.downcast_ref::<Provider<T>>()
     }
 
-    pub(crate) fn condition(&self) -> fn(&Context) -> bool {
+    pub(crate) fn condition(&self) -> Option<fn(&Context) -> bool> {
         self.condition
     }
 
@@ -311,8 +311,8 @@ macro_rules! define_provider_common {
             constructor: Constructor<T>,
             name: Cow<'static, str>,
             eager_create: bool,
-            condition: fn(&Context) -> bool,
-            bind_closures: Vec<Box<dyn FnOnce(Definition, bool, fn(&Context) -> bool) -> DynProvider>>,
+            condition: Option<fn(&Context) -> bool>,
+            bind_closures: Vec<Box<dyn FnOnce(Definition, bool, Option<fn(&Context) -> bool>) -> DynProvider>>,
         }
 
         impl<T> $provider<T> {
@@ -332,7 +332,7 @@ macro_rules! define_provider_common {
             }
 
             /// Sets whether or not to insert the provider into the [`Context`] based on the condition.
-            pub fn condition(mut self, condition: fn(&Context) -> bool) -> Self {
+            pub fn condition(mut self, condition: Option<fn(&Context) -> bool>) -> Self {
                 self.condition = condition;
                 self
             }
@@ -375,7 +375,7 @@ macro_rules! define_provider_sync {
                 constructor: Constructor::Sync(Rc::new(constructor)),
                 name: Cow::Borrowed(""),
                 eager_create: false,
-                condition: |_| true,
+                condition: None,
                 bind_closures: Vec::new(),
             }
         }
@@ -422,7 +422,7 @@ macro_rules! define_provider_sync {
                 U: 'static $(+ $bound)*,
                 F: Fn(T) -> U + 'static,
             {
-                let bind_closure = |definition: Definition, eager_create: bool, condition: fn(&Context) -> bool| {
+                let bind_closure = |definition: Definition, eager_create: bool, condition: Option<fn(&Context) -> bool>| {
                     let name = definition.key.name.clone();
 
                     Provider::with_definition(
@@ -518,7 +518,7 @@ macro_rules! define_provider_async {
                 constructor: Constructor::Async(Rc::new(constructor)),
                 name: Cow::Borrowed(""),
                 eager_create: false,
-                condition: |_| true,
+                condition: None,
                 bind_closures: Vec::new(),
             }
         }
@@ -566,7 +566,7 @@ macro_rules! define_provider_async {
                 U: 'static $(+ $bound)*,
                 F: Fn(T) -> U + 'static + Clone,
             {
-                let bind_closure = |definition: Definition, eager_create: bool, condition: fn(&Context) -> bool| {
+                let bind_closure = |definition: Definition, eager_create: bool, condition: Option<fn(&Context) -> bool>| {
                     let name = definition.key.name.clone();
 
                     Provider::with_definition(

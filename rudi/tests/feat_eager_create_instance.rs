@@ -146,7 +146,7 @@ fn eager_create_module_twice() {
     assert!(COUNT.with(|created| *created.borrow() == 1));
     assert!(cx.singletons_len() == 1);
 
-    cx.create_eager_instances();
+    cx.refresh();
 
     assert!(COUNT.with(|created| *created.borrow() == 1));
     assert!(cx.singletons_len() == 1);
@@ -443,7 +443,7 @@ async fn eager_create_module_twice_async() {
     assert!(COUNT.with(|created| *created.borrow() == 1));
     assert!(cx.singletons_len() == 1);
 
-    cx.create_eager_instances_async().await;
+    cx.refresh_async().await;
 
     assert!(COUNT.with(|created| *created.borrow() == 1));
     assert!(cx.singletons_len() == 1);
