@@ -1,7 +1,4 @@
-use std::collections::{
-    hash_map::{Iter, Keys},
-    HashMap,
-};
+use std::collections::HashMap;
 
 use crate::{DynProvider, DynSingletonInstance, Key, Provider, SingletonInstance};
 
@@ -77,13 +74,5 @@ impl ProviderRegistry {
 
     pub(crate) fn remove(&mut self, key: &Key) -> Option<DynProvider> {
         self.registry.remove(key)
-    }
-
-    pub(crate) fn keys(&self) -> Keys<'_, Key, DynProvider> {
-        self.registry.keys()
-    }
-
-    pub(crate) fn iter(&self) -> Iter<'_, Key, DynProvider> {
-        self.registry.iter()
     }
 }

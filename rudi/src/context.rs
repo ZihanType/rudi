@@ -960,7 +960,7 @@ impl Context {
     pub fn get_providers_by_type<T: 'static>(&self) -> Vec<&Provider<T>> {
         let type_id = TypeId::of::<T>();
 
-        self.provider_registry
+        self.provider_registry()
             .iter()
             .filter(|(key, _)| key.ty.id == type_id)
             .filter_map(|(_, provider)| provider.as_provider())
@@ -1216,7 +1216,7 @@ please check all the references to the above type, there are 3 scenarios that wi
     fn keys<T: 'static>(&self) -> Vec<Key> {
         let type_id = TypeId::of::<T>();
 
-        self.provider_registry
+        self.provider_registry()
             .keys()
             .filter(|&key| key.ty.id == type_id)
             .cloned()
