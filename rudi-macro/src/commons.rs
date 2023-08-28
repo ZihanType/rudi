@@ -70,7 +70,7 @@ pub(crate) fn generate_only_one_field_or_argument_resolve_method(
         name,
         option,
         default,
-        vector,
+        vec,
     } = attr.simplify();
 
     if let Some(ty) = option {
@@ -101,7 +101,7 @@ pub(crate) fn generate_only_one_field_or_argument_resolve_method(
         });
     }
 
-    if let Some(ty) = vector {
+    if let Some(ty) = vec {
         return Ok(match color {
             Color::Async => quote! {
                 cx.resolve_by_type_async::<#ty>().await

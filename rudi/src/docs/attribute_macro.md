@@ -148,7 +148,7 @@ Use `#[di]` to specify which variant of the enum will be constructed.
 ### `#[di]`: used on `field` of struct, `field` of variant of enum and `argument` of function
 
 - name
-  - conflict: `vector`
+  - conflict: `vec`
   - type: any expression that implements `Into<Cow<'static, str>>`.
   - example: `#[di(name = "abc")]` / `#[di(name = a::b::NAME)]` / `#[di(name = nth(42))]`
   - optional: true
@@ -159,7 +159,7 @@ Use `#[di]` to specify which variant of the enum will be constructed.
     - [`Context::resolve_with_name_async`]
 
 - option
-  - conflict: `default`, `vector`
+  - conflict: `default`, `vec`
   - require: The current `field` or `argument`, which must be of type [`Option<T>`].
   - type: `T`.
   - example: `#[di(option = i32)]` / `#[di(option = String)]`
@@ -180,7 +180,7 @@ Use `#[di]` to specify which variant of the enum will be constructed.
     - [`Context::resolve_option_with_name_async`]
 
 - default
-  - conflict: `option`, `vector`
+  - conflict: `option`, `vec`
   - require: If no default value is specified, the current `field` or `argument` must implement the [`Default`] trait.
   - type: empty, or an arbitrary expression type.
   - example: `#[di(default)]` / `#[di(default = 42)]` / `#[di(default = a::b::func())]`
@@ -200,11 +200,11 @@ Use `#[di]` to specify which variant of the enum will be constructed.
     - [`Context::resolve_option_with_name`]
     - [`Context::resolve_option_with_name_async`]
 
-- vector
+- vec
   - conflict: `name`, `option`, `default`
   - require: The current `field` or `argument`, which must be of type [`Vec<T>`].
   - type: `T`.
-  - example: `#[di(vector = i32)]` / `#[di(vector = String)]`
+  - example: `#[di(vec = i32)]` / `#[di(vec = String)]`
   - optional: true
   - default: **None**
   - description:
@@ -297,7 +297,7 @@ async fn Run<T: Debug + 'static>(
     async_: Async,
     generics: T,
     enum_: Enum,
-    #[di(vector = u32)] only_one_u32: Vec<u32>,
+    #[di(vec = u32)] only_one_u32: Vec<u32>,
 ) {
     assert_eq!(format!("{:?}", name_and_binds), format!("{:?}", dyn_debug));
     assert_eq!(async_.0, 42);
@@ -373,7 +373,7 @@ struct E(#[di(default)] i32);
 #[Transient]
 struct F(#[di(default = 42)] i32);
 
-// vector
+// vec
 
 #[Singleton]
 fn Five() -> Vec<i64> {
@@ -389,7 +389,7 @@ fn Six() -> i64 {
 struct G(Vec<i64>);
 
 #[Transient]
-struct H(#[di(vector = i64)] Vec<i64>);
+struct H(#[di(vec = i64)] Vec<i64>);
 
 #[Singleton]
 fn Run(a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: G) {

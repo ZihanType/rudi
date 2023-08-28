@@ -6,7 +6,7 @@ use syn::{meta::ParseNestedMeta, parse_quote, spanned::Spanned, Attribute, Expr,
 //     name = "..",
 //     option = T,
 //     default = 42,
-//     vector = T,
+//     vec = T,
 // )]
 
 #[derive(Default)]
@@ -14,7 +14,7 @@ pub(crate) struct FieldOrArgumentAttribute {
     name: Option<(Span, Expr)>,
     option: Option<(Span, Type)>,
     default: Option<(Span, Expr)>,
-    vector: Option<(Span, Type)>,
+    vec: Option<(Span, Type)>,
 }
 
 impl FieldOrArgumentAttribute {
@@ -61,13 +61,13 @@ impl FieldOrArgumentAttribute {
             return Ok(());
         }
 
-        if meta_path.is_ident("vector") {
-            check_duplicate!(vector);
-            self.vector = Some((meta_path_span, meta.value()?.parse::<Type>()?));
+        if meta_path.is_ident("vec") {
+            check_duplicate!(vec);
+            self.vec = Some((meta_path_span, meta.value()?.parse::<Type>()?));
             return Ok(());
         }
 
-        Err(meta.error("the argument must be one of: `name`, `option`, `default`, `vector`"))
+        Err(meta.error("the argument must be one of: `name`, `option`, `default`, `vec`"))
     }
 }
 
@@ -82,39 +82,39 @@ impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
             name,
             option,
             default,
-            vector,
+            vec,
         } = &field_or_argument_attr;
 
-        if let (Some((name, _)), Some((vector, _))) = (name, vector) {
+        if let (Some((name, _)), Some((vec, _))) = (name, vec) {
             macro_rules! err {
                 ($span:expr) => {
                     syn::Error::new(
                         $span.clone(),
-                        "the `name` and `vector` arguments cannot be used together",
+                        "the `name` and `vec` arguments cannot be used together",
                     )
                 };
             }
 
             let mut e = err!(name);
-            e.combine(err!(vector));
+            e.combine(err!(vec));
 
             return Err(e);
         }
 
-        match (option, default, vector) {
-            (Some((option, _)), Some((default, _)), Some((vector, _))) => {
+        match (option, default, vec) {
+            (Some((option, _)), Some((default, _)), Some((vec, _))) => {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
                             $span.clone(),
-                            "the `option`, `default`, and `vector` arguments cannot be used together",
+                            "the `option`, `default`, and `vec` arguments cannot be used together",
                         )
                     };
                 }
 
                 let mut e = err!(option);
                 e.combine(err!(default));
-                e.combine(err!(vector));
+                e.combine(err!(vec));
 
                 return Err(e);
             }
@@ -133,33 +133,33 @@ impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
 
                 return Err(e);
             }
-            (Some((option, _)), None, Some((vector, _))) => {
+            (Some((option, _)), None, Some((vec, _))) => {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
                             $span.clone(),
-                            "the `option` and `vector` arguments cannot be used together",
+                            "the `option` and `vec` arguments cannot be used together",
                         )
                     };
                 }
 
                 let mut e = err!(option);
-                e.combine(err!(vector));
+                e.combine(err!(vec));
 
                 return Err(e);
             }
-            (None, Some((default, _)), Some((vector, _))) => {
+            (None, Some((default, _)), Some((vec, _))) => {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
                             $span.clone(),
-                            "the `default` and `vector` arguments cannot be used together",
+                            "the `default` and `vec` arguments cannot be used together",
                         )
                     };
                 }
 
                 let mut e = err!(default);
-                e.combine(err!(vector));
+                e.combine(err!(vec));
 
                 return Err(e);
             }
@@ -213,7 +213,7 @@ impl FieldOrArgumentAttribute {
             name,
             option,
             default,
-            vector,
+            vec,
         } = self;
 
         SimpleFieldOrArgumentAttribute {
@@ -222,7 +222,7 @@ impl FieldOrArgumentAttribute {
                 .unwrap_or_else(|| quote!("")),
             option: option.map(|(_, ty)| ty),
             default: default.map(|(_, expr)| expr),
-            vector: vector.map(|(_, ty)| ty),
+            vec: vec.map(|(_, ty)| ty),
         }
     }
 }
@@ -231,5 +231,5 @@ pub(crate) struct SimpleFieldOrArgumentAttribute {
     pub(crate) name: TokenStream,
     pub(crate) option: Option<Type>,
     pub(crate) default: Option<Expr>,
-    pub(crate) vector: Option<Type>,
+    pub(crate) vec: Option<Type>,
 }

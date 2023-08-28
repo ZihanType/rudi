@@ -92,7 +92,7 @@ fn default() {
 }
 
 #[test]
-fn vector() {
+fn vec() {
     #[Singleton]
     fn One() -> Vec<i32> {
         vec![1]
@@ -109,7 +109,7 @@ fn vector() {
 
     #[derive(Clone)]
     #[Singleton]
-    struct B(#[di(vector = i32)] Vec<i32>);
+    struct B(#[di(vec = i32)] Vec<i32>);
 
     struct MyModule;
 
