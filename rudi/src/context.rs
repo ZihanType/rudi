@@ -1010,6 +1010,141 @@ impl Context {
         let key = Key::new::<T>(name.into());
         self.singleton_registry.contains(&key)
     }
+
+    /// Returns a reference to a singleton based on the given type and default name `""`.
+    ///
+    /// # Panics
+    ///
+    /// - Panics if no singleton is registered for the given type and default name `""`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton};
+    ///
+    /// #[derive(Clone, Debug)]
+    /// #[Singleton(eager_create)]
+    /// struct A;
+    ///
+    /// # fn main() {
+    /// let cx = Context::auto_register();
+    /// let a = cx.get_singleton::<A>();
+    /// assert_eq!(format!("{:?}", a), "A");
+    /// # }
+    /// ```
+    #[track_caller]
+    pub fn get_singleton<T: 'static>(&self) -> &T {
+        self.get_singleton_with_name("")
+    }
+
+    /// Returns a reference to a singleton based on the given type and name.
+    ///
+    /// # Panics
+    ///
+    /// - Panics if no singleton is registered for the given type and name.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton};
+    ///
+    /// #[derive(Clone, Debug)]
+    /// #[Singleton(eager_create, name = "a")]
+    /// struct A;
+    ///
+    /// # fn main() {
+    /// let cx = Context::auto_register();
+    /// let a = cx.get_singleton_with_name::<A>("a");
+    /// assert_eq!(format!("{:?}", a), "A");
+    /// # }
+    /// ```
+    #[track_caller]
+    pub fn get_singleton_with_name<T: 'static>(&self, name: impl Into<Cow<'static, str>>) -> &T {
+        let key = Key::new::<T>(name.into());
+        self.singleton_registry
+            .get_ref(&key)
+            .unwrap_or_else(|| panic!("no singleton registered for: {:?}", key))
+    }
+
+    /// Returns an optional reference to a singleton based on the given type and default name `""`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton};
+    ///
+    /// #[derive(Clone, Debug)]
+    /// #[Singleton(eager_create)]
+    /// struct A;
+    ///
+    /// # fn main() {
+    /// let cx = Context::auto_register();
+    /// assert!(cx.get_singleton_option::<A>().is_some());
+    /// # }
+    /// ```
+    pub fn get_singleton_option<T: 'static>(&self) -> Option<&T> {
+        self.get_singleton_option_with_name("")
+    }
+
+    /// Returns an optional reference to a singleton based on the given type and name.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton};
+    ///
+    /// #[derive(Clone, Debug)]
+    /// #[Singleton(eager_create, name = "a")]
+    /// struct A;
+    ///
+    /// # fn main() {
+    /// let cx = Context::auto_register();
+    /// assert!(cx.get_singleton_option_with_name::<A>("a").is_some());
+    /// # }
+    /// ```
+    pub fn get_singleton_option_with_name<T: 'static>(
+        &self,
+        name: impl Into<Cow<'static, str>>,
+    ) -> Option<&T> {
+        let key = Key::new::<T>(name.into());
+        self.singleton_registry.get_ref(&key)
+    }
+
+    /// Returns a collection of references to singletons based on the given type.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton};
+    ///
+    /// #[Singleton(eager_create, name = "a")]
+    /// fn A() -> i32 {
+    ///     1
+    /// }
+    ///
+    /// #[Singleton(eager_create, name = "b")]
+    /// fn B() -> i32 {
+    ///     2
+    /// }
+    ///
+    /// fn main() {
+    ///     let cx = Context::auto_register();
+    ///     assert_eq!(
+    ///         cx.get_singletons_by_type::<i32>().into_iter().sum::<i32>(),
+    ///         3
+    ///     );
+    /// }
+    /// ```
+    pub fn get_singletons_by_type<T: 'static>(&self) -> Vec<&T> {
+        let type_id = TypeId::of::<T>();
+
+        self.singleton_registry()
+            .iter()
+            .filter(|(key, _)| key.ty.id == type_id)
+            .filter_map(|(_, singleton)| singleton.as_singleton())
+            .map(|singleton| singleton.get_ref())
+            .collect()
+    }
 }
 
 impl Context {
@@ -1131,7 +1266,7 @@ please use instead:
 
     #[track_caller]
     fn resolve_keyed<T: 'static>(&mut self, key: Key) -> Option<T> {
-        let singleton = self.singleton_registry.get::<T>(&key);
+        let singleton = self.singleton_registry.get_owned::<T>(&key);
         if singleton.is_some() {
             return singleton;
         }
@@ -1165,7 +1300,7 @@ please check all the references to the above type, there are 3 scenarios that wi
     }
 
     async fn resolve_keyed_async<T: 'static>(&mut self, key: Key) -> Option<T> {
-        let singleton = self.singleton_registry.get::<T>(&key);
+        let singleton = self.singleton_registry.get_owned::<T>(&key);
         if singleton.is_some() {
             return singleton;
         }

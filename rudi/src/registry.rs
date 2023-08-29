@@ -20,8 +20,12 @@ impl SingletonRegistry {
         self.registry.insert(key, instance.into());
     }
 
-    pub(crate) fn get<T: 'static>(&self, key: &Key) -> Option<T> {
+    pub(crate) fn get_owned<T: 'static>(&self, key: &Key) -> Option<T> {
         Some(self.registry.get(key)?.as_singleton::<T>()?.get_owned())
+    }
+
+    pub(crate) fn get_ref<T: 'static>(&self, key: &Key) -> Option<&T> {
+        Some(self.registry.get(key)?.as_singleton::<T>()?.get_ref())
     }
 
     pub(crate) fn contains(&self, key: &Key) -> bool {
