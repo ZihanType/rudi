@@ -90,15 +90,23 @@ pub struct Definition {
     pub scope: Scope,
     /// The color of the provider.
     pub color: Color,
+    /// Whether the provider is conditional.
+    pub conditional: bool,
 }
 
 impl Definition {
-    pub(crate) fn new<T: 'static>(name: Cow<'static, str>, scope: Scope, color: Color) -> Self {
+    pub(crate) fn new<T: 'static>(
+        name: Cow<'static, str>,
+        scope: Scope,
+        color: Color,
+        conditional: bool,
+    ) -> Self {
         Self {
             key: Key::new::<T>(name),
             origin: None,
             scope,
             color,
+            conditional,
         }
     }
 
@@ -107,7 +115,8 @@ impl Definition {
             key: Key { name, ty },
             scope,
             color,
-            ..
+            conditional,
+            origin: _origin,
         } = self;
 
         Self {
@@ -115,6 +124,7 @@ impl Definition {
             origin: Some(ty),
             scope,
             color,
+            conditional,
         }
     }
 }

@@ -134,6 +134,7 @@ impl<T: 'static> Provider<T> {
                 Constructor::Async(_) => Color::Async,
                 Constructor::Sync(_) => Color::Sync,
             },
+            condition.is_some(),
         );
 
         Provider {
@@ -172,7 +173,7 @@ impl<T: 'static> Provider<T> {
 impl<T: 'static + Clone> Provider<T> {
     pub(crate) fn standalone(name: Cow<'static, str>, instance: T) -> Self {
         Provider {
-            definition: Definition::new::<T>(name, Scope::Singleton, Color::Sync),
+            definition: Definition::new::<T>(name, Scope::Singleton, Color::Sync, false),
             eager_create: false,
             condition: None,
             constructor: Constructor::Sync(Rc::new(move |_| instance.clone())),
