@@ -1,6 +1,6 @@
 #![doc = include_str!("./docs/lib.md")]
 #![forbid(unsafe_code)]
-#![deny(private_in_public, unreachable_pub)]
+#![deny(private_interfaces, private_bounds, unreachable_pub)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(rustdoc::broken_intra_doc_links)]
 #![warn(missing_docs)]
