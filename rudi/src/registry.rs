@@ -53,10 +53,10 @@ impl ProviderRegistry {
         let key = provider.key().clone();
 
         if !self.registry.contains_key(&key) {
-            #[cfg(feature = "debug-print")]
+            #[cfg(feature = "tracing")]
             tracing::debug!("(+) insert new: {:?}", definition);
         } else if allow_override {
-            #[cfg(feature = "debug-print")]
+            #[cfg(feature = "tracing")]
             tracing::warn!("(!) override by `key`: {:?}", definition);
         } else {
             panic!(

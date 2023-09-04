@@ -11,8 +11,9 @@ Here are links to the most important sections of the docs:
 
 ## Feature Flags
 
-- `auto-register` (*Default*): Enables automatic registration of types and functions with `#[Singleton]` and `#[Transient]` attributes.
-- `debug-print`: Enables logging of all providers registered in the `Context` on creation via the [tracing](https://github.com/tokio-rs/tracing) crate.
+- `rudi-macro` (*Default*): Enables the `#[Singleton]` and `#[Transient]` attribute macros.
+- `auto-register` (*Default*): Enables automatic registration of types and functions.
+- `tracing`: Adds support for logging with [`tracing`](https://crates.io/crates/tracing).
 
 ## Example
 

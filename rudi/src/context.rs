@@ -1255,7 +1255,7 @@ please use instead:
 
         while let Some((eager_create, provider)) = self.conditional_providers.pop() {
             if !(provider.condition().unwrap())(self) {
-                #[cfg(feature = "debug-print")]
+                #[cfg(feature = "tracing")]
                 tracing::warn!("(×) condition not met: {:?}", provider.definition());
                 continue;
             }

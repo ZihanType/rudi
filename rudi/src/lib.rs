@@ -27,9 +27,13 @@ pub use future::*;
 pub use module::*;
 pub use provider::*;
 pub(crate) use registry::*;
+#[cfg_attr(docsrs, doc(cfg(feature = "rudi-macro")))]
+#[cfg(feature = "rudi-macro")]
 /// Define a singleton provider.
 #[doc = include_str!("docs/attribute_macro.md")]
 pub use rudi_macro::Singleton;
+#[cfg_attr(docsrs, doc(cfg(feature = "rudi-macro")))]
+#[cfg(feature = "rudi-macro")]
 /// Define a transient provider.
 #[doc = include_str!("docs/attribute_macro.md")]
 pub use rudi_macro::Transient;
