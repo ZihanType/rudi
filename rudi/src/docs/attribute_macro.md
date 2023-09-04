@@ -125,13 +125,6 @@ fn main() {
   - default: **true**
   - description: Specifies whether a defined `Provider` should be auto-registered to [`AutoRegisterModule`](crate::AutoRegisterModule). When the `auto-register` feature is enabled (which is enabled by default), this argument can be used if auto-registration is not desired, or if auto-registration is not possible due to the presence of generics.
 
-- rudi_path
-  - type: path to the `rudi` crate.
-  - example: `#[Singleton(rudi_path = path::to::rudi)]`
-  - optional: true
-  - default: **::rudi**
-  - description: Specifies the path to the `rudi` crate. This argument is used when the `rudi` crate is not in the root of the crate.
-
 #### An argument that can only be used on `struct` and `enum`
 
 - async
@@ -140,6 +133,15 @@ fn main() {
   - optional: true
   - default: **false**
   - description: Specifies whether the constructor method of a defined `Provider` is asynchronous. Only valid when used on `struct` and `enum`, for `impl block` and `fn` cases use `async fn`.
+
+### `#[di]`: used on `struct`, `enum`, `impl block` and `fn`
+
+- rudi_path
+  - type: path to the `rudi` crate.
+  - example: `#[di(rudi_path = path::to::rudi)]`
+  - optional: true
+  - default: **::rudi**
+  - description: Specifies the path to the `rudi` crate. This argument is used when the `rudi` crate is not in the root of the crate.
 
 ### `#[di]`: used on `variant` of enum
 
@@ -251,7 +253,8 @@ struct NameAndEagerCreate;
 #[Transient(name = name_b(), binds = [transform])]
 struct NameAndBinds;
 
-#[Transient(name = name_c(), rudi_path = crate::ru_di)]
+#[Transient(name = name_c())]
+#[di(rudi_path = crate::ru_di)]
 async fn AsyncDep() -> i32 {
     42
 }

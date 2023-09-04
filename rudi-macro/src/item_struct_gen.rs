@@ -4,6 +4,7 @@ use syn::ItemStruct;
 
 use crate::{
     commons::{self, Color, FieldResolveMethods, Scope},
+    rudi_path_attribute,
     struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };
 
@@ -12,6 +13,8 @@ pub(crate) fn generate(
     mut item_struct: ItemStruct,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
+    let rudi_path = rudi_path_attribute::rudi_path(&mut item_struct.attrs)?;
+
     let SimpleStructOrFunctionAttribute {
         name,
         eager_create,
@@ -19,7 +22,6 @@ pub(crate) fn generate(
         binds,
         async_,
         auto_register,
-        rudi_path,
     } = attr.simplify();
 
     #[cfg(feature = "auto-register")]

@@ -4,6 +4,7 @@ use syn::{spanned::Spanned, ItemEnum};
 
 use crate::{
     commons::{self, Color, FieldResolveMethods, Scope},
+    rudi_path_attribute,
     struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };
 
@@ -12,6 +13,8 @@ pub(crate) fn generate(
     mut item_enum: ItemEnum,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
+    let rudi_path = rudi_path_attribute::rudi_path(&mut item_enum.attrs)?;
+
     if item_enum.variants.is_empty() {
         return Err(syn::Error::new(item_enum.span(), "not support empty enum"));
     }
@@ -23,7 +26,6 @@ pub(crate) fn generate(
         binds,
         async_,
         auto_register,
-        rudi_path,
     } = attr.simplify();
 
     #[cfg(feature = "auto-register")]

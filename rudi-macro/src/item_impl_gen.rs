@@ -6,6 +6,7 @@ use syn::{
 
 use crate::{
     commons::{self, Color, Scope},
+    rudi_path_attribute,
     struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };
 
@@ -25,6 +26,8 @@ pub(crate) fn generate(
     mut item_impl: ItemImpl,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
+    let rudi_path = rudi_path_attribute::rudi_path(&mut item_impl.attrs)?;
+
     if let Some((async_, _)) = attr.async_ {
         return Err(syn::Error::new(
             async_,
@@ -82,7 +85,7 @@ pub(crate) fn generate(
                 return Err(e);
             }
 
-            generate_default_provider_impl(f, self_ty, generics, &simple, scope)?
+            generate_default_provider_impl(f, self_ty, generics, &simple, scope, rudi_path)?
         }
     };
 
@@ -101,6 +104,7 @@ fn generate_default_provider_impl(
     struct_generics: &Generics,
     attr: &SimpleStructOrFunctionAttribute,
     scope: Scope,
+    rudi_path: Path,
 ) -> syn::Result<TokenStream> {
     let SimpleStructOrFunctionAttribute {
         name,
@@ -109,7 +113,6 @@ fn generate_default_provider_impl(
         binds,
         async_: _,
         auto_register,
-        rudi_path,
     } = attr;
 
     #[cfg(feature = "auto-register")]

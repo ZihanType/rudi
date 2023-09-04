@@ -4,6 +4,7 @@ mod item_enum_gen;
 mod item_fn_gen;
 mod item_impl_gen;
 mod item_struct_gen;
+mod rudi_path_attribute;
 mod struct_or_function_attribute;
 
 use proc_macro::TokenStream;

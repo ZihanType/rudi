@@ -4,6 +4,7 @@ use syn::{GenericParam, ItemFn, ReturnType};
 
 use crate::{
     commons::{self, Color, Scope},
+    rudi_path_attribute,
     struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };
 
@@ -17,6 +18,8 @@ pub(crate) fn generate(
     mut item_fn: ItemFn,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
+    let rudi_path = rudi_path_attribute::rudi_path(&mut item_fn.attrs)?;
+
     if let Some((async_, _)) = attr.async_ {
         return Err(syn::Error::new(
             async_,
@@ -31,7 +34,6 @@ pub(crate) fn generate(
         binds,
         async_: _,
         auto_register,
-        rudi_path,
     } = attr.simplify();
 
     #[cfg(feature = "auto-register")]

@@ -204,7 +204,8 @@ mod tests {
 
     #[test]
     fn rudi_path() {
-        #[Transient(rudi_path = crate::ru_di)]
+        #[Transient]
+        #[di(rudi_path = crate::ru_di)]
         struct A;
 
         struct MyModule;
