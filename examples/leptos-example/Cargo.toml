@@ -11,5 +11,5 @@ include.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rudi = { workspace = true }
+rudi = { workspace = true, features = ["rudi-macro"] }
 leptos = { workspace = true, features = ["serde", "csr"] }

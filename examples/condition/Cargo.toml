@@ -11,4 +11,4 @@ include.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rudi = { workspace = true, features = ["auto-register"] }
+rudi = { workspace = true, features = ["rudi-macro", "auto-register"] }
