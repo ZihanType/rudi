@@ -1668,6 +1668,7 @@ impl ContextOptions {
 
         let mut cx = self.inner_create(|cx| {
             let module = ResolveModule::new::<AutoRegisterModule>();
+            cx.loaded_modules.push(module.ty());
             cx.load_providers(module.eager_create(), module.providers())
         });
 
@@ -1710,6 +1711,7 @@ impl ContextOptions {
 
         let mut cx = self.inner_create(|cx| {
             let module = ResolveModule::new::<AutoRegisterModule>();
+            cx.loaded_modules.push(module.ty());
             cx.load_providers(module.eager_create(), module.providers())
         });
 
