@@ -46,7 +46,7 @@ enum C {
     B(B),
 }
 
-// Register `fn(cx) -> () { Run(cx.resolve::<B>()) }` as the constructor for `()`
+// Register `fn(cx) -> () { Run(cx.resolve::<B>(), cx.resolve::<C>()) }` as the constructor for `()`
 #[Singleton]
 fn Run(b: B, c: C) {
     println!("{:?}", b);
