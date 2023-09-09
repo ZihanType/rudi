@@ -163,10 +163,10 @@ Use `#[di]` to specify which variant of the enum will be constructed.
 - option
   - conflict: `default`, `vec`
   - require: The current `field` or `argument`, which must be of type [`Option<T>`].
-  - type: `T`.
-  - example: `#[di(option = i32)]` / `#[di(option = String)]`
+  - type: bool.
+  - example: `#[di(option)]`
   - optional: true
-  - default: **None**
+  - default: **false**
   - description:
 
     From the call to the following method
@@ -205,10 +205,10 @@ Use `#[di]` to specify which variant of the enum will be constructed.
 - vec
   - conflict: `name`, `option`, `default`
   - require: The current `field` or `argument`, which must be of type [`Vec<T>`].
-  - type: `T`.
-  - example: `#[di(vec = i32)]` / `#[di(vec = String)]`
+  - type: bool.
+  - example: `#[di(vec)]`
   - optional: true
-  - default: **None**
+  - default: **false**
   - description:
 
     From the call to the following method
@@ -300,7 +300,7 @@ async fn Run<T: Debug + 'static>(
     async_: Async,
     generics: T,
     enum_: Enum,
-    #[di(vec = u32)] only_one_u32: Vec<u32>,
+    #[di(vec)] only_one_u32: Vec<u32>,
 ) {
     assert_eq!(format!("{:?}", name_and_binds), format!("{:?}", dyn_debug));
     assert_eq!(async_.0, 42);
@@ -366,7 +366,7 @@ fn Four() -> i16 {
 struct C(Option<i16>);
 
 #[Transient]
-struct D(#[di(option = i16)] Option<i16>);
+struct D(#[di(option)] Option<i16>);
 
 // default
 
@@ -392,7 +392,7 @@ fn Six() -> i64 {
 struct G(Vec<i64>);
 
 #[Transient]
-struct H(#[di(vec = i64)] Vec<i64>);
+struct H(#[di(vec)] Vec<i64>);
 
 #[Singleton]
 fn Run(a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: G) {

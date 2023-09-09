@@ -73,13 +73,13 @@ pub(crate) fn generate_only_one_field_or_argument_resolve_method(
         vec,
     } = attr.simplify();
 
-    if let Some(ty) = option {
+    if option {
         return Ok(match color {
             Color::Async => quote! {
-                cx.resolve_option_with_name_async::<#ty>(#name).await
+                cx.resolve_option_with_name_async(#name).await
             },
             Color::Sync => quote! {
-                cx.resolve_option_with_name::<#ty>(#name)
+                cx.resolve_option_with_name(#name)
             },
         });
     }
@@ -101,13 +101,13 @@ pub(crate) fn generate_only_one_field_or_argument_resolve_method(
         });
     }
 
-    if let Some(ty) = vec {
+    if vec {
         return Ok(match color {
             Color::Async => quote! {
-                cx.resolve_by_type_async::<#ty>().await
+                cx.resolve_by_type_async().await
             },
             Color::Sync => quote! {
-                cx.resolve_by_type::<#ty>()
+                cx.resolve_by_type()
             },
         });
     }

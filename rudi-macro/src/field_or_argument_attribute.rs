@@ -1,20 +1,20 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{meta::ParseNestedMeta, parse_quote, spanned::Spanned, Attribute, Expr, Token, Type};
+use syn::{meta::ParseNestedMeta, parse_quote, spanned::Spanned, Attribute, Expr, Token};
 
 // #[di(
 //     name = "..",
-//     option = T,
+//     option,
 //     default = 42,
-//     vec = T,
+//     vec,
 // )]
 
 #[derive(Default)]
 pub(crate) struct FieldOrArgumentAttribute {
     name: Option<(Span, Expr)>,
-    option: Option<(Span, Type)>,
+    option: Option<Span>,
     default: Option<(Span, Expr)>,
-    vec: Option<(Span, Type)>,
+    vec: Option<Span>,
 }
 
 impl FieldOrArgumentAttribute {
@@ -42,7 +42,7 @@ impl FieldOrArgumentAttribute {
 
         if meta_path.is_ident("option") {
             check_duplicate!(option);
-            self.option = Some((meta_path_span, meta.value()?.parse::<Type>()?));
+            self.option = Some(meta_path_span);
             return Ok(());
         }
 
@@ -63,7 +63,7 @@ impl FieldOrArgumentAttribute {
 
         if meta_path.is_ident("vec") {
             check_duplicate!(vec);
-            self.vec = Some((meta_path_span, meta.value()?.parse::<Type>()?));
+            self.vec = Some(meta_path_span);
             return Ok(());
         }
 
@@ -85,7 +85,7 @@ impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
             vec,
         } = &field_or_argument_attr;
 
-        if let (Some((name, _)), Some((vec, _))) = (name, vec) {
+        if let (Some((name, _)), Some(vec)) = (name, vec) {
             macro_rules! err {
                 ($span:expr) => {
                     syn::Error::new(
@@ -102,7 +102,7 @@ impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
         }
 
         match (option, default, vec) {
-            (Some((option, _)), Some((default, _)), Some((vec, _))) => {
+            (Some(option), Some((default, _)), Some(vec)) => {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
@@ -118,7 +118,7 @@ impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
 
                 return Err(e);
             }
-            (Some((option, _)), Some((default, _)), None) => {
+            (Some(option), Some((default, _)), None) => {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
@@ -133,7 +133,7 @@ impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
 
                 return Err(e);
             }
-            (Some((option, _)), None, Some((vec, _))) => {
+            (Some(option), None, Some(vec)) => {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
@@ -148,7 +148,7 @@ impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
 
                 return Err(e);
             }
-            (None, Some((default, _)), Some((vec, _))) => {
+            (None, Some((default, _)), Some(vec)) => {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
@@ -220,16 +220,16 @@ impl FieldOrArgumentAttribute {
             name: name
                 .map(|(_, expr)| quote!(#expr))
                 .unwrap_or_else(|| quote!("")),
-            option: option.map(|(_, ty)| ty),
+            option: option.is_some(),
             default: default.map(|(_, expr)| expr),
-            vec: vec.map(|(_, ty)| ty),
+            vec: vec.is_some(),
         }
     }
 }
 
 pub(crate) struct SimpleFieldOrArgumentAttribute {
     pub(crate) name: TokenStream,
-    pub(crate) option: Option<Type>,
+    pub(crate) option: bool,
     pub(crate) default: Option<Expr>,
-    pub(crate) vec: Option<Type>,
+    pub(crate) vec: bool,
 }
