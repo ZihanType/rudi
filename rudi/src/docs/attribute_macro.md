@@ -15,10 +15,10 @@ use rudi::{Context, Singleton, Transient};
 
 // impl block
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct A;
 
-#[Singleton(name = "a")]
+#[Singleton]
 impl A {
     fn new() -> Self {
         Self
@@ -27,40 +27,37 @@ impl A {
 
 // struct
 
-#[Singleton(name = "b")]
-#[derive(Clone)]
-struct B(#[di(name = "a")] A);
-
-// fn
-
-#[Transient]
-fn C(#[di(name = "b")] b: B) -> i32 {
-    let _ = b;
-    42
-}
+#[Singleton]
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct B(A);
 
 // enum
 
 #[allow(dead_code)]
+#[derive(Debug, PartialEq, Eq)]
 #[Transient]
-enum D {
+enum C {
     One,
 
-    Two(i32),
+    Two(A),
 
     #[di]
     Three {
-        #[di(name = "b")]
         b: B,
     },
 }
 
+// fn
+
+#[Singleton]
+fn Run(a: A, b: B, c: C) {
+    assert_eq!(b, B(a));
+    assert_eq!(c, C::Three { b: B(a) });
+}
+
 fn main() {
     let mut cx = Context::auto_register();
-    let number = cx.resolve::<i32>();
-    println!("number = {}", number);
-    let d = cx.resolve::<D>();
-    assert!(matches!(d, D::Three { .. }));
+    cx.resolve()
 }
 ```
 
