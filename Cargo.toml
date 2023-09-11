@@ -3,7 +3,7 @@ resolver = "2"
 members = ["rudi", "rudi-macro", "examples/*"]
 
 [workspace.package]
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 authors = ["zihan <ZihanType@proton.me>"]
 license = "MIT/Apache-2.0"
@@ -13,8 +13,8 @@ include = ["src/**/*", "Cargo.toml"]
 
 [workspace.dependencies]
 # self
-rudi = { version = "0.5.0", path = "./rudi", default-features = false }
-rudi-macro = { version = "0.5.0", path = "./rudi-macro", default-features = false }
+rudi = { version = "0.6.0", path = "./rudi", default-features = false }
+rudi-macro = { version = "0.6.0", path = "./rudi-macro", default-features = false }
 
 # dependencies
 proc-macro2 = { version = "1", default-features = false }
