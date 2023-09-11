@@ -380,7 +380,7 @@ impl Context {
         });
     }
 
-    /// Refresh the context.
+    /// Flush the context.
     ///
     /// This method has two purposes:
     ///
@@ -428,7 +428,7 @@ impl Context {
     /// assert!(!cx.contains_provider::<A>());
     /// assert!(!cx.contains_singleton::<B>());
     ///
-    /// cx.refresh();
+    /// cx.flush();
     ///
     /// // evaluate condition
     /// assert!(cx.contains_provider::<A>());
@@ -474,46 +474,46 @@ impl Context {
     /// fn main() {
     ///     let mut cx = Context::default();
     ///
-    ///     // Method 1, call `load_modules` and then call `refresh` immediately
+    ///     // Method 1, call `load_modules` and then call `flush` immediately
     ///     cx.load_modules(modules![AModule]);
-    ///     cx.refresh();
+    ///     cx.flush();
     ///     cx.load_modules(modules![BModule]);
-    ///     cx.refresh();
+    ///     cx.flush();
     ///
     ///     // The evaluation result of `A`'s `condition` is `false`, so `A` will not be created
     ///     assert!(!cx.contains_provider::<A>());
     ///
     ///     let mut cx = Context::default();
     ///
-    ///     // Method 2, call all `load_modules` first, then call `refresh`
+    ///     // Method 2, call all `load_modules` first, then call `flush`
     ///     cx.load_modules(modules![AModule]);
     ///     cx.load_modules(modules![BModule]);
-    ///     cx.refresh();
+    ///     cx.flush();
     ///
     ///     // The evaluation result of `A`'s `condition` is `true`, so `A` will be created
     ///     assert!(cx.contains_provider::<A>());
     /// }
     /// ```
     #[track_caller]
-    pub fn refresh(&mut self) {
+    pub fn flush(&mut self) {
         self.create_eager_instances();
 
         self.evaluate_providers();
         self.create_eager_instances();
     }
 
-    /// Async version of [`Context::refresh`].
+    /// Async version of [`Context::flush`].
     ///
     /// If no provider in the context has an async constructor and that provider needs to be eagerly created,
-    /// this method is the same as [`Context::refresh`].
+    /// this method is the same as [`Context::flush`].
     ///
-    /// See [`Context::refresh`] for more details.
+    /// See [`Context::flush`] for more details.
     ///
     /// # Panics
     ///
     /// - Panics if there are multiple providers with the same key and the context's [`allow_override`](Context::allow_override) is false.
     /// - Panics if there is a provider that panics on construction.
-    pub async fn refresh_async(&mut self) {
+    pub async fn flush_async(&mut self) {
         self.create_eager_instances_async().await;
 
         self.evaluate_providers();
@@ -2130,7 +2130,7 @@ impl ContextOptions {
     #[track_caller]
     pub fn create(self, modules: Vec<ResolveModule>) -> Context {
         let mut cx = self.inner_create(|cx| cx.load_modules(modules));
-        cx.refresh();
+        cx.flush();
         cx
     }
 
@@ -2159,7 +2159,7 @@ impl ContextOptions {
             cx.load_providers(module.eager_create(), module.providers())
         });
 
-        cx.refresh();
+        cx.flush();
         cx
     }
 
@@ -2176,7 +2176,7 @@ impl ContextOptions {
     /// - Panics if there is a provider that panics on construction.
     pub async fn create_async(self, modules: Vec<ResolveModule>) -> Context {
         let mut cx = self.inner_create(|cx| cx.load_modules(modules));
-        cx.refresh_async().await;
+        cx.flush_async().await;
         cx
     }
 
@@ -2202,7 +2202,7 @@ impl ContextOptions {
             cx.load_providers(module.eager_create(), module.providers())
         });
 
-        cx.refresh_async().await;
+        cx.flush_async().await;
         cx
     }
 }
