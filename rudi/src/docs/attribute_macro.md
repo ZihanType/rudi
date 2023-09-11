@@ -308,102 +308,137 @@ Use `#[di]` to specify which variant of the enum will be constructed.
 ## Struct, enum and function attributes example
 
 ```rust
-use std::{borrow::Cow, fmt::Debug, marker::PhantomData, rc::Rc};
+use std::{fmt::Debug, rc::Rc};
 
-use rudi as ru_di;
-use rudi::{components, modules, AutoRegisterModule, Context, Module, Singleton, Transient};
+use rudi::{Context, Singleton, Transient};
 
-const NAME_A: &str = "a";
+// name
 
-const fn name_b() -> &'static str {
-    "b"
+#[Transient]
+fn One() -> i8 {
+    1
 }
 
-fn name_c() -> impl Into<Cow<'static, str>> {
-    "c"
+#[Transient(name = "2")]
+fn Two() -> i8 {
+    2
 }
+
+// eager_create
+
+#[Singleton(name = "3")]
+fn Three() -> i16 {
+    3
+}
+
+#[Singleton(name = "4", eager_create)]
+fn Four() -> i16 {
+    4
+}
+
+// condition
+
+fn _5_condition(cx: &Context) -> bool {
+    !cx.contains_singleton_with_name::<i32>("5")
+}
+
+#[Singleton(name = "5", condition = _5_condition)]
+fn Five() -> i32 {
+    5
+}
+
+#[Singleton(name = "6", condition = |_cx| false)]
+fn Six() -> i32 {
+    6
+}
+
+// binds
 
 fn transform<T: Debug + 'static>(t: T) -> Rc<dyn Debug> {
     Rc::new(t)
 }
 
-#[derive(Clone, Debug)]
-#[Singleton(name = NAME_A, eager_create)]
-struct NameAndEagerCreate;
-
-#[derive(Debug)]
-#[Transient(name = name_b(), binds = [transform])]
-struct NameAndBinds;
-
-#[Transient(name = name_c())]
-#[di(rudi_path = crate::ru_di)]
-async fn AsyncDep() -> i32 {
-    42
+#[Singleton(name = "7")]
+fn Seven() -> i64 {
+    7
 }
 
-#[derive(Debug)]
+#[Singleton(name = "8", binds = [transform])]
+fn Eight() -> i64 {
+    8
+}
+
+// auto_register
+
+#[Singleton(name = "9")]
+fn Nine() -> i128 {
+    9
+}
+
+#[Singleton(name = "10", auto_register = false)]
+fn Ten() -> i128 {
+    10
+}
+
+// async
+
+#[Transient]
+struct A;
+
 #[Transient(async)]
-struct Async(#[di(name = name_c())] i32);
+struct B;
 
-#[Transient(auto_register = false)]
-async fn Generics<T: Debug + 'static>(#[di(name = name_c())] t: T) -> T {
-    t
+// rudi_path
+
+mod a {
+    pub use rudi::*;
 }
+
+#[Transient]
+#[di(rudi_path = rudi)]
+struct C;
+
+#[Transient]
+#[di(rudi_path = a)]
+struct D;
+
+// `#[di]` used on `variant` of enum
 
 #[allow(dead_code)]
-#[derive(Clone)]
-#[Singleton(async)]
-enum Enum {
+#[derive(PartialEq, Eq, Debug)]
+#[Transient]
+enum EF {
     #[di]
-    A(#[di(name = name_c())] i32),
-
-    B,
-}
-
-fn u32_condition(cx: &Context) -> bool {
-    !cx.contains_provider::<u32>()
-}
-
-#[Singleton(condition = u32_condition)]
-fn OneU32() -> u32 {
-    1
-}
-
-#[Singleton(condition = u32_condition)]
-fn TwoU32() -> u32 {
-    2
-}
-
-#[Singleton(auto_register = false)]
-async fn Run<T: Debug + 'static>(
-    #[di(name = NAME_A)] _name_and_eager_create: NameAndEagerCreate,
-    #[di(name = name_b())] name_and_binds: NameAndBinds,
-    #[di(name = name_b())] dyn_debug: Rc<dyn Debug>,
-    async_: Async,
-    generics: T,
-    enum_: Enum,
-    #[di(vec)] only_one_u32: Vec<u32>,
-) {
-    assert_eq!(format!("{:?}", name_and_binds), format!("{:?}", dyn_debug));
-    assert_eq!(async_.0, 42);
-    println!("generics: {:?}", generics);
-    assert!(matches!(enum_, Enum::A(42)));
-    assert_eq!(only_one_u32.len(), 1);
-}
-
-struct MyModule<T>(PhantomData<T>);
-
-impl<T: Debug + 'static> Module for MyModule<T> {
-    fn providers() -> Vec<rudi::DynProvider> {
-        components![Generics<T>, Run<T>]
-    }
+    E,
+    F,
 }
 
 #[tokio::main]
 async fn main() {
-    let mut cx = Context::create(modules![AutoRegisterModule, MyModule<i32>]);
+    let mut cx = Context::auto_register();
 
-    cx.resolve_async().await
+    assert_eq!(cx.resolve::<i8>(), 1);
+    assert_eq!(cx.resolve_with_name::<i8>("2"), 2);
+
+    assert!(!cx.contains_singleton_with_name::<i16>("3"));
+    assert!(cx.contains_singleton_with_name::<i16>("4"));
+
+    assert!(cx.contains_provider_with_name::<i32>("5"));
+    assert!(!cx.contains_provider_with_name::<i32>("6"));
+
+    assert!(cx.resolve_option_with_name::<Rc<dyn Debug>>("7").is_none());
+    assert!(cx.resolve_option_with_name::<Rc<dyn Debug>>("8").is_some());
+
+    assert!(cx.get_provider_with_name::<i128>("9").is_some());
+    assert!(cx.get_provider_with_name::<i128>("10").is_none());
+
+    assert!(cx.resolve_option::<A>().is_some());
+    assert!(cx.resolve_option_async::<B>().await.is_some());
+
+    assert!(cx.resolve_option::<C>().is_some());
+    assert!(cx.resolve_option::<D>().is_some());
+
+    assert_eq!(cx.resolve::<EF>(), EF::E);
 }
 ```
 

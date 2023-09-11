@@ -1,222 +1,132 @@
-use std::{any::TypeId, fmt::Debug, rc::Rc};
+use std::{fmt::Debug, rc::Rc};
 
-use rudi as ru_di;
-use rudi::{components, modules, Context, DynProvider, Module, Singleton};
+use rudi::{Context, Singleton, Transient};
 
-#[test]
-fn name() {
-    #[derive(Clone)]
-    #[Singleton]
-    struct A;
+// name
 
-    #[derive(Clone)]
-    #[Singleton(name = "b")]
-    struct B;
-
-    struct MyModule;
-
-    impl Module for MyModule {
-        fn providers() -> Vec<DynProvider> {
-            components![A, B]
-        }
-    }
-
-    let mut cx = Context::create(modules![MyModule]);
-
-    assert!(cx.resolve_option::<A>().is_some());
-
-    assert!(cx.resolve_option::<B>().is_none());
-    assert!(cx.resolve_option_with_name::<B>("b").is_some());
+#[Transient]
+fn One() -> i8 {
+    1
 }
 
-#[test]
-fn eager_create() {
-    #[derive(Clone)]
-    #[Singleton]
-    struct A;
-
-    #[derive(Clone)]
-    #[Singleton(eager_create)]
-    struct B;
-
-    struct MyModule;
-
-    impl Module for MyModule {
-        fn providers() -> Vec<DynProvider> {
-            components![A, B]
-        }
-    }
-
-    let cx = Context::create(modules![MyModule]);
-
-    assert_eq!(cx.singleton_registry().len(), 1);
-    assert!(!cx.contains_singleton::<A>());
-    assert!(cx.contains_singleton::<B>());
+#[Transient(name = "2")]
+fn Two() -> i8 {
+    2
 }
 
-#[test]
-fn condition() {
-    #[derive(Clone)]
-    #[Singleton]
-    struct A;
+// eager_create
 
-    #[derive(Clone)]
-    #[Singleton(condition = |_| false)]
-    struct B;
-
-    struct MyModule;
-
-    impl Module for MyModule {
-        fn providers() -> Vec<DynProvider> {
-            components![A, B]
-        }
-    }
-
-    let mut cx = Context::create(modules![MyModule]);
-
-    assert_eq!(cx.provider_registry().len(), 1);
-    assert!(cx.resolve_option::<A>().is_some());
-    assert!(cx.resolve_option::<B>().is_none());
+#[Singleton(name = "3")]
+fn Three() -> i16 {
+    3
 }
 
-#[test]
-fn binds() {
-    fn transform<T: Debug + 'static>(t: T) -> Rc<dyn Debug> {
-        Rc::new(t)
-    }
-
-    #[derive(Clone, Debug)]
-    #[Singleton]
-    struct A;
-
-    #[derive(Clone, Debug)]
-    #[Singleton(binds = [transform])]
-    struct B;
-
-    struct MyModule;
-
-    impl Module for MyModule {
-        fn providers() -> Vec<DynProvider> {
-            components![A, B]
-        }
-    }
-
-    let cx = Context::create(modules![MyModule]);
-    assert_eq!(cx.get_providers_by_type::<Rc<dyn Debug>>().len(), 1);
-
-    let provider = cx.get_provider::<Rc<dyn Debug>>().unwrap();
-    assert_eq!(
-        provider.definition().origin.as_ref().unwrap().id,
-        TypeId::of::<B>()
-    );
+#[Singleton(name = "4", eager_create)]
+fn Four() -> i16 {
+    4
 }
 
-#[cfg(feature = "auto-register")]
-#[test]
-fn auto_register() {
-    #[derive(Clone)]
-    #[Singleton]
-    struct A;
+// condition
 
-    #[derive(Clone)]
-    #[Singleton(auto_register = false)]
-    struct B;
-
-    let cx = Context::auto_register();
-
-    assert!(cx.get_provider::<A>().is_some());
-    assert!(cx.get_provider::<B>().is_none());
+fn _5_condition(cx: &Context) -> bool {
+    !cx.contains_singleton_with_name::<i32>("5")
 }
 
-#[test]
-fn no_async() {
-    #[Singleton]
-    fn One() -> i32 {
-        1
-    }
-
-    #[derive(Clone)]
-    #[Singleton]
-    struct A(i32);
-
-    struct MyModule;
-
-    impl Module for MyModule {
-        fn providers() -> Vec<DynProvider> {
-            components![One, A]
-        }
-    }
-
-    let mut cx = Context::create(modules![MyModule]);
-    assert_eq!(cx.resolve::<A>().0, 1);
+#[Singleton(name = "5", condition = _5_condition)]
+fn Five() -> i32 {
+    5
 }
 
-#[test]
-#[should_panic]
-fn panicky_async() {
-    #[Singleton]
-    async fn One() -> i32 {
-        1
-    }
+#[Singleton(name = "6", condition = |_cx| false)]
+fn Six() -> i32 {
+    6
+}
 
-    #[derive(Clone)]
-    #[Singleton(async)]
-    struct A(i32);
+// binds
 
-    struct MyModule;
+fn transform<T: Debug + 'static>(t: T) -> Rc<dyn Debug> {
+    Rc::new(t)
+}
 
-    impl Module for MyModule {
-        fn providers() -> Vec<DynProvider> {
-            components![One, A]
-        }
-    }
+#[Singleton(name = "7")]
+fn Seven() -> i64 {
+    7
+}
 
-    let mut cx = Context::create(modules![MyModule]);
-    assert_eq!(cx.resolve::<A>().0, 1);
+#[Singleton(name = "8", binds = [transform])]
+fn Eight() -> i64 {
+    8
+}
+
+// auto_register
+
+#[Singleton(name = "9")]
+fn Nine() -> i128 {
+    9
+}
+
+#[Singleton(name = "10", auto_register = false)]
+fn Ten() -> i128 {
+    10
+}
+
+// async
+
+#[Transient]
+struct A;
+
+#[Transient(async)]
+struct B;
+
+// rudi_path
+
+mod a {
+    pub use rudi::*;
+}
+
+#[Transient]
+#[di(rudi_path = rudi)]
+struct C;
+
+#[Transient]
+#[di(rudi_path = a)]
+struct D;
+
+// `#[di]` used on `variant` of enum
+
+#[allow(dead_code)]
+#[derive(PartialEq, Eq, Debug)]
+#[Transient]
+enum EF {
+    #[di]
+    E,
+    F,
 }
 
 #[tokio::test]
-async fn successful_async() {
-    #[Singleton]
-    async fn One() -> i32 {
-        1
-    }
+async fn struct_or_function_attr() {
+    let mut cx = Context::auto_register();
 
-    #[derive(Clone)]
-    #[Singleton(async)]
-    struct A(i32);
+    assert_eq!(cx.resolve::<i8>(), 1);
+    assert_eq!(cx.resolve_with_name::<i8>("2"), 2);
 
-    struct MyModule;
+    assert!(!cx.contains_singleton_with_name::<i16>("3"));
+    assert!(cx.contains_singleton_with_name::<i16>("4"));
 
-    impl Module for MyModule {
-        fn providers() -> Vec<DynProvider> {
-            components![One, A]
-        }
-    }
+    assert!(cx.contains_provider_with_name::<i32>("5"));
+    assert!(!cx.contains_provider_with_name::<i32>("6"));
 
-    let mut cx = Context::create(modules![MyModule]);
-    assert_eq!(cx.resolve_async::<A>().await.0, 1);
-}
+    assert!(cx.resolve_option_with_name::<Rc<dyn Debug>>("7").is_none());
+    assert!(cx.resolve_option_with_name::<Rc<dyn Debug>>("8").is_some());
 
-#[cfg(test)]
-mod tests {
-    use crate::ru_di::{components, modules, Context, DynProvider, Module, Transient};
+    assert!(cx.get_provider_with_name::<i128>("9").is_some());
+    assert!(cx.get_provider_with_name::<i128>("10").is_none());
 
-    #[test]
-    fn rudi_path() {
-        #[Transient]
-        #[di(rudi_path = crate::ru_di)]
-        struct A;
+    assert!(cx.resolve_option::<A>().is_some());
+    assert!(cx.resolve_option_async::<B>().await.is_some());
 
-        struct MyModule;
+    assert!(cx.resolve_option::<C>().is_some());
+    assert!(cx.resolve_option::<D>().is_some());
 
-        impl Module for MyModule {
-            fn providers() -> Vec<DynProvider> {
-                components![A]
-            }
-        }
-
-        let mut cx = Context::create(modules![MyModule]);
-        assert!(cx.resolve_option::<A>().is_some());
-    }
+    assert_eq!(cx.resolve::<EF>(), EF::E);
 }
