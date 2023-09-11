@@ -5,7 +5,7 @@ use syn::{
 };
 
 use crate::{
-    commons::{self, Color, Scope},
+    commons::{self, ArgumentResolveStmts, Color, Scope},
     rudi_path_attribute,
     struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };
@@ -127,21 +127,18 @@ fn generate_default_provider_impl(
         ReturnType::Type(_, fn_return_type) => {
             let return_type_eq_struct_type = &**fn_return_type == struct_type_with_generics;
 
-            let return_type_eq_self_type = match &**fn_return_type {
-                Type::Path(TypePath {
-                    qself,
-                    path:
-                        Path {
-                            leading_colon,
-                            segments,
-                        },
-                }) => {
-                    qself.is_none()
-                        && leading_colon.is_none()
-                        && segments.len() == 1
-                        && segments.first().unwrap().ident == "Self"
-                }
-                _ => false,
+            let return_type_eq_self_type = if let Type::Path(TypePath {
+                qself: None,
+                path:
+                    Path {
+                        leading_colon: None,
+                        segments,
+                    },
+            }) = &**fn_return_type
+            {
+                segments.len() == 1 && segments.first().unwrap().ident == "Self"
+            } else {
+                false
             };
 
             (return_type_eq_struct_type, return_type_eq_self_type)
@@ -164,7 +161,11 @@ fn generate_default_provider_impl(
         None => Color::Sync,
     };
 
-    let args = commons::generate_argument_resolve_methods(&mut impl_item_fn.sig.inputs, color)?;
+    let ArgumentResolveStmts {
+        mut_ref_cx_stmts,
+        ref_cx_stmts,
+        args,
+    } = commons::generate_argument_resolve_methods(&mut impl_item_fn.sig.inputs, color, scope)?;
 
     let create_provider = commons::generate_create_provider(scope, color);
 
@@ -177,14 +178,20 @@ fn generate_default_provider_impl(
             quote! {
                 #[allow(unused_variables)]
                 |cx| ::std::boxed::Box::pin(async {
-                    Self::#fn_ident(#(#args),*).await
+                    #(#mut_ref_cx_stmts)*
+                    #(#ref_cx_stmts)*
+                    Self::#fn_ident(#(#args,)*).await
                 })
             }
         }
         Color::Sync => {
             quote! {
                 #[allow(unused_variables)]
-                |cx| Self::#fn_ident(#(#args),*)
+                |cx| {
+                    #(#mut_ref_cx_stmts)*
+                    #(#ref_cx_stmts)*
+                    Self::#fn_ident(#(#args,)*)
+                }
             }
         }
     };

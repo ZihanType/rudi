@@ -3,7 +3,7 @@ use quote::quote;
 use syn::{GenericParam, ItemFn, ReturnType};
 
 use crate::{
-    commons::{self, Color, Scope},
+    commons::{self, ArgumentResolveStmts, Color, Scope},
     rudi_path_attribute,
     struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };
@@ -49,7 +49,11 @@ pub(crate) fn generate(
         None => Color::Sync,
     };
 
-    let args = commons::generate_argument_resolve_methods(&mut item_fn.sig.inputs, color)?;
+    let ArgumentResolveStmts {
+        mut_ref_cx_stmts,
+        ref_cx_stmts,
+        args,
+    } = commons::generate_argument_resolve_methods(&mut item_fn.sig.inputs, color, scope)?;
 
     let create_provider = commons::generate_create_provider(scope, color);
 
@@ -106,14 +110,20 @@ pub(crate) fn generate(
             quote! {
                 #[allow(unused_variables)]
                 |cx| ::std::boxed::Box::pin(async {
-                     #ident #turbofish (#(#args),*).await
+                    #(#mut_ref_cx_stmts)*
+                    #(#ref_cx_stmts)*
+                    #ident #turbofish (#(#args,)*).await
                 })
             }
         }
         Color::Sync => {
             quote! {
                 #[allow(unused_variables)]
-                |cx| #ident #turbofish (#(#args),*)
+                |cx| {
+                    #(#mut_ref_cx_stmts)*
+                    #(#ref_cx_stmts)*
+                    #ident #turbofish (#(#args,)*)
+                }
             }
         }
     };

@@ -149,6 +149,8 @@ Use `#[di]` to specify which variant of the enum will be constructed.
 
 ### `#[di]`: used on `field` of struct, `field` of variant of enum and `argument` of function
 
+#### Common arguments that can be used in `#[Singleton]` and `#[Transient]`
+
 - name
   - conflict: `vec`
   - type: any expression that implements `Into<Cow<'static, str>>`.
@@ -222,6 +224,89 @@ Use `#[di]` to specify which variant of the enum will be constructed.
   - refer:
     - [`Context::resolve_by_type`]
     - [`Context::resolve_by_type_async`]
+
+#### An argument that can only be used in `#[Singleton]`
+
+- ref
+  - require:
+    - exist `option` argument: The current `field` or `argument`, which must be of type [`Option<&T>`].
+    - exist `vec` argument: The current `field` or `argument`, which must be of type [`Vec<&T>`].
+    - exist `default` argument or not, the current `field` or `argument`, which must be of type `&T`.
+    - if using a type alias, specify the original type using `#[di(ref = T)]`, where `T` is a non-reference type.
+  - type: `Option<Type>`
+  - example: `#[di(ref)]` / `#[di(ref = i32)]` / `#[di(option, ref)]` / `#[di(option, ref = i32)]` / `#[di(vec, ref)]`/ `#[di(vec, ref = i32)]` / `#[di(default, ref)]`  / `#[di(default, ref = i32)]`
+  - optional: true
+  - default: **None**
+  - description:
+
+    Specifies the reference type of the dependency to be taken out of `Context`.
+
+    1. Not exist `option`, `vec` and `default` argument, will call the following method
+
+        ```rust ignore
+        // async
+        cx.just_create_singleton_with_name_async::<T>(name).await;
+        let var = cx.get_singleton_with_name(name);
+
+        // sync
+        cx.just_create_singleton_with_name::<T>(name);
+        let var = cx.get_singleton_with_name(name);
+        ```
+
+    2. Exist `option` argument, will call the following method
+
+        ```rust ignore
+        // async
+        cx.try_create_singleton_with_name_async::<T>(name).await;
+        let var = cx.get_singleton_option_with_name(name);
+
+        // sync
+        cx.try_create_singleton_with_name::<T>(name);
+        let var = cx.get_singleton_option_with_name(name);
+        ```
+
+    3. Exist `vec` argument, will call the following method
+
+        ```rust ignore
+        // async
+        cx.try_create_singletons_by_type_async::<T>().await;
+        let var = cx.get_singletons_by_type();
+
+        // sync
+        cx.try_create_singletons_by_type::<T>();
+        let var = cx.get_singletons_by_type();
+        ```
+
+    4. Exist `default` argument, will call the following method
+
+        ```rust ignore
+        // async
+        cx.try_create_singleton_with_name_async::<T>(name).await;
+        let var = match cx.get_singleton_option_with_name(name) {
+            Some(value) => value,
+            None => default,
+        };
+
+        // sync
+        cx.try_create_singleton_with_name::<T>(name);
+        let var = match cx.get_singleton_option_with_name(name) {
+            Some(value) => value,
+            None => default,
+        };
+        ```
+
+    5. If specified using `#[di(ref = R)]`, then all of the above `T`s will be replaced with the specified type `R`.
+
+  - refer:
+    - [`Context::just_create_singleton_with_name_async`]
+    - [`Context::just_create_singleton_with_name`]
+    - [`Context::try_create_singleton_with_name_async`]
+    - [`Context::try_create_singleton_with_name`]
+    - [`Context::try_create_singletons_by_type_async`]
+    - [`Context::try_create_singletons_by_type`]
+    - [`Context::get_singleton_with_name`]
+    - [`Context::get_singleton_option_with_name`]
+    - [`Context::get_singletons_by_type`]
 
 ## Struct, enum and function attributes example
 
@@ -383,7 +468,7 @@ fn Five() -> Vec<i64> {
     vec![5]
 }
 
-#[Singleton]
+#[Singleton(eager_create)]
 fn Six() -> i64 {
     6
 }
@@ -395,7 +480,7 @@ struct G(Vec<i64>);
 struct H(#[di(vec)] Vec<i64>);
 
 #[Singleton]
-fn Run(a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: G) {
+fn Run(a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H) {
     assert_eq!(a.0, 1);
     assert_eq!(b.0, 2);
 
@@ -406,11 +491,40 @@ fn Run(a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: G) {
     assert_eq!(f.0, 42);
 
     assert_eq!(g.0[0], 5);
-    assert_eq!(h.0[0], 5);
+    assert_eq!(h.0[0], 6);
+}
+
+#[Singleton(name = "ref")]
+fn Run2(
+    #[di(ref)] one: &i8,
+    #[di(ref, name = "2")] two: &i8,
+
+    #[di(ref)] three: &Option<i16>,
+    #[di(ref, option)] four: Option<&i16>,
+
+    #[di(ref, default = &0)] zero: &i32,
+    #[di(ref, default = &42)] forty_two: &i32,
+
+    #[di(ref)] five: &Vec<i64>,
+    #[di(ref, vec)] six: Vec<&i64>,
+) {
+    assert_eq!(one, &1);
+    assert_eq!(two, &2);
+
+    assert_eq!(three, &Some(3));
+    assert_eq!(four, Some(&4));
+
+    assert_eq!(zero, &0);
+    assert_eq!(forty_two, &42);
+
+    assert_eq!(five, &vec![5]);
+    assert_eq!(six, vec![&6]);
 }
 
 fn main() {
     let mut cx = Context::auto_register();
-    cx.resolve()
+    cx.resolve::<()>();
+    cx.resolve_with_name::<()>("ref");
 }
+
 ```

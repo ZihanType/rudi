@@ -1,12 +1,13 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{meta::ParseNestedMeta, parse_quote, spanned::Spanned, Attribute, Expr, Token};
+use syn::{meta::ParseNestedMeta, parse_quote, spanned::Spanned, Attribute, Expr, Token, Type};
 
 // #[di(
 //     name = "..",
 //     option,
 //     default = 42,
 //     vec,
+//     ref = T
 // )]
 
 #[derive(Default)]
@@ -15,6 +16,7 @@ pub(crate) struct FieldOrArgumentAttribute {
     option: Option<Span>,
     default: Option<(Span, Expr)>,
     vec: Option<Span>,
+    pub(crate) ref_: Option<(Span, Option<Type>)>,
 }
 
 impl FieldOrArgumentAttribute {
@@ -67,7 +69,23 @@ impl FieldOrArgumentAttribute {
             return Ok(());
         }
 
-        Err(meta.error("the argument must be one of: `name`, `option`, `default`, `vec`"))
+        if meta_path.is_ident("ref") {
+            if self.ref_.is_some() {
+                return Err(meta.error("duplicate `ref` argument"));
+            }
+
+            self.ref_ = Some((
+                meta_path_span,
+                if meta.input.is_empty() || meta.input.peek(Token![,]) {
+                    None
+                } else {
+                    Some(meta.value()?.parse::<Type>()?)
+                },
+            ));
+            return Ok(());
+        }
+
+        Err(meta.error("the argument must be one of: `name`, `option`, `default`, `vec`, `ref`"))
     }
 }
 
@@ -83,13 +101,14 @@ impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
             option,
             default,
             vec,
+            ref_: _ref_,
         } = &field_or_argument_attr;
 
         if let (Some((name, _)), Some(vec)) = (name, vec) {
             macro_rules! err {
                 ($span:expr) => {
                     syn::Error::new(
-                        $span.clone(),
+                        *$span,
                         "the `name` and `vec` arguments cannot be used together",
                     )
                 };
@@ -106,7 +125,7 @@ impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
-                            $span.clone(),
+                            *$span,
                             "the `option`, `default`, and `vec` arguments cannot be used together",
                         )
                     };
@@ -122,7 +141,7 @@ impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
-                            $span.clone(),
+                            *$span,
                             "the `option` and `default` arguments cannot be used together",
                         )
                     };
@@ -137,7 +156,7 @@ impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
-                            $span.clone(),
+                            *$span,
                             "the `option` and `vec` arguments cannot be used together",
                         )
                     };
@@ -152,7 +171,7 @@ impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
                 macro_rules! err {
                     ($span:expr) => {
                         syn::Error::new(
-                            $span.clone(),
+                            *$span,
                             "the `default` and `vec` arguments cannot be used together",
                         )
                     };
@@ -214,6 +233,7 @@ impl FieldOrArgumentAttribute {
             option,
             default,
             vec,
+            ref_,
         } = self;
 
         SimpleFieldOrArgumentAttribute {
@@ -223,6 +243,7 @@ impl FieldOrArgumentAttribute {
             option: option.is_some(),
             default: default.map(|(_, expr)| expr),
             vec: vec.is_some(),
+            ref_: ref_.map(|(_, ty)| ty),
         }
     }
 }
@@ -232,4 +253,5 @@ pub(crate) struct SimpleFieldOrArgumentAttribute {
     pub(crate) option: bool,
     pub(crate) default: Option<Expr>,
     pub(crate) vec: bool,
+    pub(crate) ref_: Option<Option<Type>>,
 }

@@ -1,8 +1,9 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{
-    punctuated::Punctuated, spanned::Spanned, Attribute, Field, Fields, FieldsNamed, FieldsUnnamed,
-    FnArg, Ident, PatType, Token,
+    parse_quote, punctuated::Punctuated, spanned::Spanned, AngleBracketedGenericArguments,
+    Attribute, Field, Fields, FieldsNamed, FieldsUnnamed, FnArg, GenericArgument, Ident, PatType,
+    Path, PathArguments, PathSegment, Stmt, Token, Type, TypePath, TypeReference,
 };
 
 use crate::field_or_argument_attribute::{
@@ -48,100 +49,460 @@ pub(crate) fn generate_create_provider(scope: Scope, color: Color) -> TokenStrea
     }
 }
 
-pub(crate) fn generate_only_one_field_or_argument_resolve_method(
+fn extract_ref_type(ty: &Type) -> syn::Result<&Type> {
+    fn require_type_ref(ty: &Type) -> Option<&TypeReference> {
+        match ty {
+            Type::Reference(type_ref) => Some(type_ref),
+            _ => None,
+        }
+    }
+
+    fn get_type_from_ref(
+        TypeReference {
+            mutability, elem, ..
+        }: &TypeReference,
+    ) -> syn::Result<&Type> {
+        if mutability.is_some() {
+            Err(syn::Error::new(
+                mutability.span(),
+                "not support mutable reference",
+            ))
+        } else {
+            Ok(elem)
+        }
+    }
+
+    let mut ty: &Type = match require_type_ref(ty) {
+        Some(type_ref) => get_type_from_ref(type_ref)?,
+        None => {
+            return Err(syn::Error::new(
+                ty.span(),
+                "not support non-reference type, \
+        please change to a reference type, \
+        or if using a type alias, specify the original type using `#[di(ref = T)]`, \
+        where `T` is a non-reference type",
+            ))
+        }
+    };
+
+    loop {
+        ty = match require_type_ref(ty) {
+            Some(type_ref) => get_type_from_ref(type_ref)?,
+            None => break,
+        };
+    }
+
+    Ok(ty)
+}
+
+fn extract_path_type<'a>(ty: &'a Type, ty_name: &str) -> syn::Result<&'a Type> {
+    let Type::Path(TypePath {
+        qself: None,
+        path: Path {
+            leading_colon: None,
+            segments,
+        },
+    }) = ty
+    else {
+        return Err(syn::Error::new(
+            ty.span(),
+            format!("only support `{}<T>` type", ty_name),
+        ));
+    };
+
+    let Some(segment) = segments.last() else {
+        return Err(syn::Error::new(
+            ty.span(),
+            "not support path type with empty segments",
+        ));
+    };
+
+    let PathSegment {
+        ident,
+        arguments: PathArguments::AngleBracketed(AngleBracketedGenericArguments { args, .. }),
+    } = segment
+    else {
+        return Err(syn::Error::new(
+            segment.span(),
+            "only support angle bracketed generic argument",
+        ));
+    };
+
+    if ident != ty_name {
+        return Err(syn::Error::new(
+            ident.span(),
+            format!("only support `{}<T>` type", ty_name),
+        ));
+    }
+
+    let Some(arg) = args.first() else {
+        return Err(syn::Error::new(
+            segment.span(),
+            format!(
+                "not support `{}<T>` type with empty generic arguments ",
+                ty_name
+            ),
+        ));
+    };
+
+    if args.len() > 1 {
+        let msg = format!(
+            "only support `{}<T>` type with one generic argument",
+            ty_name
+        );
+
+        if let Some(e) = args
+            .iter()
+            .skip(1)
+            .map(|arg| syn::Error::new(arg.span(), &msg))
+            .reduce(|mut a, b| {
+                a.combine(b);
+                a
+            })
+        {
+            return Err(e);
+        }
+    }
+
+    if let GenericArgument::Type(ty) = arg {
+        extract_ref_type(ty)
+    } else {
+        Err(syn::Error::new(
+            arg.span(),
+            "only support generic argument type",
+        ))
+    }
+}
+
+fn extract_option_type(ty: &Type) -> syn::Result<&Type> {
+    extract_path_type(ty, "Option")
+}
+
+fn extract_vec_type(ty: &Type) -> syn::Result<&Type> {
+    extract_path_type(ty, "Vec")
+}
+
+enum ResolveOneValue {
+    Owned {
+        resolve: Stmt,
+    },
+    Ref {
+        resolve_singleton: Stmt,
+        get_singleton: Stmt,
+    },
+}
+
+struct ResolveOne {
+    stmt: ResolveOneValue,
+    variable: Ident,
+}
+
+fn generate_only_one_field_or_argument_resolve_method(
     attrs: &mut Vec<Attribute>,
     color: Color,
-) -> syn::Result<TokenStream> {
+    index: usize,
+    field_or_argument_ty: &Type,
+    scope: Scope,
+) -> syn::Result<ResolveOne> {
     let attr = match FieldOrArgumentAttribute::from_attrs(attrs)? {
         Some(attr) => attr,
         None => {
-            return Ok(match color {
-                Color::Async => quote! {
-                    cx.resolve_with_name_async("").await
+            let ident = format_ident!("owned_{}", index);
+
+            let resolve = match color {
+                Color::Async => parse_quote! {
+                    let #ident = cx.resolve_with_name_async("").await;
                 },
-                Color::Sync => quote! {
-                    cx.resolve_with_name("")
+                Color::Sync => parse_quote! {
+                    let #ident = cx.resolve_with_name("");
                 },
-            })
+            };
+
+            return Ok(ResolveOne {
+                stmt: ResolveOneValue::Owned { resolve },
+                variable: ident,
+            });
         }
     };
+
+    match (scope, &attr.ref_) {
+        (Scope::Singleton, _) => {}
+        (/* not singleton */ _, Some((span, _))) => {
+            return Err(syn::Error::new(
+                *span,
+                "only support `ref` argument in `#[Singleton]` item",
+            ))
+        }
+        _ => {}
+    }
 
     let SimpleFieldOrArgumentAttribute {
         name,
         option,
         default,
         vec,
+        ref_,
     } = attr.simplify();
 
+    let ident = if ref_.is_some() {
+        format_ident!("ref_{}", index)
+    } else {
+        format_ident!("owned_{}", index)
+    };
+
     if option {
-        return Ok(match color {
-            Color::Async => quote! {
-                cx.resolve_option_with_name_async(#name).await
-            },
-            Color::Sync => quote! {
-                cx.resolve_option_with_name(#name)
-            },
-        });
+        return match ref_ {
+            Some(ref_ty) => {
+                let ty = if let Some(ty) = ref_ty {
+                    quote!(#ty)
+                } else {
+                    let ty = extract_option_type(field_or_argument_ty)?;
+                    quote!(#ty)
+                };
+
+                let resolve_singleton = match color {
+                    Color::Async => parse_quote! {
+                        cx.try_create_singleton_with_name_async::<#ty>(#name).await;
+                    },
+                    Color::Sync => parse_quote! {
+                        cx.try_create_singleton_with_name::<#ty>(#name);
+                    },
+                };
+
+                let get_singleton = parse_quote! {
+                    let #ident = cx.get_singleton_option_with_name(#name);
+                };
+
+                Ok(ResolveOne {
+                    stmt: ResolveOneValue::Ref {
+                        resolve_singleton,
+                        get_singleton,
+                    },
+                    variable: ident,
+                })
+            }
+            None => {
+                let resolve = match color {
+                    Color::Async => parse_quote! {
+                        let #ident = cx.resolve_option_with_name_async(#name).await;
+                    },
+                    Color::Sync => parse_quote! {
+                        let #ident = cx.resolve_option_with_name(#name);
+                    },
+                };
+
+                Ok(ResolveOne {
+                    stmt: ResolveOneValue::Owned { resolve },
+                    variable: ident,
+                })
+            }
+        };
     }
 
     if let Some(default) = default {
-        return Ok(match color {
-            Color::Async => quote! {
-                match cx.resolve_option_with_name_async(#name).await {
-                    Some(value) => value,
-                    None => #default,
-                }
-            },
-            Color::Sync => quote! {
-                match cx.resolve_option_with_name(#name) {
-                    Some(value) => value,
-                    None => #default,
-                }
-            },
-        });
+        return match ref_ {
+            Some(ref_ty) => {
+                let ty = if let Some(ty) = ref_ty {
+                    quote!(#ty)
+                } else {
+                    let ty = extract_ref_type(field_or_argument_ty)?;
+                    quote!(#ty)
+                };
+
+                let resolve_singleton = match color {
+                    Color::Async => parse_quote! {
+                        cx.try_create_singleton_with_name_async::<#ty>(#name).await;
+                    },
+                    Color::Sync => parse_quote! {
+                        cx.try_create_singleton_with_name::<#ty>(#name);
+                    },
+                };
+
+                let get_singleton = parse_quote! {
+                    let #ident = match cx.get_singleton_option_with_name(#name) {
+                        Some(value) => value,
+                        None => #default,
+                    };
+                };
+
+                Ok(ResolveOne {
+                    stmt: ResolveOneValue::Ref {
+                        resolve_singleton,
+                        get_singleton,
+                    },
+                    variable: ident,
+                })
+            }
+            None => {
+                let resolve = match color {
+                    Color::Async => parse_quote! {
+                        let #ident = match cx.resolve_option_with_name_async(#name).await {
+                            Some(value) => value,
+                            None => #default,
+                        };
+                    },
+                    Color::Sync => parse_quote! {
+                        let #ident = match cx.resolve_option_with_name(#name) {
+                            Some(value) => value,
+                            None => #default,
+                        };
+                    },
+                };
+
+                Ok(ResolveOne {
+                    stmt: ResolveOneValue::Owned { resolve },
+                    variable: ident,
+                })
+            }
+        };
     }
 
     if vec {
-        return Ok(match color {
-            Color::Async => quote! {
-                cx.resolve_by_type_async().await
-            },
-            Color::Sync => quote! {
-                cx.resolve_by_type()
-            },
-        });
+        return match ref_ {
+            Some(ref_ty) => {
+                let ty = if let Some(ty) = ref_ty {
+                    quote!(#ty)
+                } else {
+                    let ty = extract_vec_type(field_or_argument_ty)?;
+                    quote!(#ty)
+                };
+
+                let resolve_singleton = match color {
+                    Color::Async => parse_quote! {
+                        cx.try_create_singletons_by_type_async::<#ty>().await;
+                    },
+                    Color::Sync => parse_quote! {
+                        cx.try_create_singletons_by_type::<#ty>();
+                    },
+                };
+
+                let get_singleton = parse_quote! {
+                    let #ident = cx.get_singletons_by_type();
+                };
+
+                Ok(ResolveOne {
+                    stmt: ResolveOneValue::Ref {
+                        resolve_singleton,
+                        get_singleton,
+                    },
+                    variable: ident,
+                })
+            }
+            None => {
+                let resolve = match color {
+                    Color::Async => parse_quote! {
+                        let #ident = cx.resolve_by_type_async().await;
+                    },
+                    Color::Sync => parse_quote! {
+                        let #ident = cx.resolve_by_type();
+                    },
+                };
+
+                Ok(ResolveOne {
+                    stmt: ResolveOneValue::Owned { resolve },
+                    variable: ident,
+                })
+            }
+        };
     }
 
-    Ok(match color {
-        Color::Async => quote! {
-            cx.resolve_with_name_async(#name).await
-        },
-        Color::Sync => quote! {
-            cx.resolve_with_name(#name)
-        },
-    })
+    match ref_ {
+        Some(ref_ty) => {
+            let ty = if let Some(ty) = ref_ty {
+                quote!(#ty)
+            } else {
+                let ty = extract_ref_type(field_or_argument_ty)?;
+                quote!(#ty)
+            };
+
+            let resolve_singleton = match color {
+                Color::Async => parse_quote! {
+                    cx.just_create_singleton_with_name_async::<#ty>(#name).await;
+                },
+                Color::Sync => parse_quote! {
+                    cx.just_create_singleton_with_name::<#ty>(#name);
+                },
+            };
+
+            let get_singleton = parse_quote! {
+                let #ident = cx.get_singleton_with_name(#name);
+            };
+
+            Ok(ResolveOne {
+                stmt: ResolveOneValue::Ref {
+                    resolve_singleton,
+                    get_singleton,
+                },
+                variable: ident,
+            })
+        }
+        None => {
+            let resolve = match color {
+                Color::Async => parse_quote! {
+                    let #ident = cx.resolve_with_name_async(#name).await;
+                },
+                Color::Sync => parse_quote! {
+                    let #ident = cx.resolve_with_name(#name);
+                },
+            };
+
+            Ok(ResolveOne {
+                stmt: ResolveOneValue::Owned { resolve },
+                variable: ident,
+            })
+        }
+    }
+}
+
+pub(crate) struct ArgumentResolveStmts {
+    pub(crate) mut_ref_cx_stmts: Vec<Stmt>,
+    pub(crate) ref_cx_stmts: Vec<Stmt>,
+    pub(crate) args: Vec<Ident>,
 }
 
 pub(crate) fn generate_argument_resolve_methods(
     inputs: &mut Punctuated<FnArg, Token![,]>,
     color: Color,
-) -> syn::Result<Vec<TokenStream>> {
-    let mut args = Vec::new();
+    scope: Scope,
+) -> syn::Result<ArgumentResolveStmts> {
+    let capacity = inputs.len();
 
-    for input in inputs.iter_mut() {
+    let mut mut_ref_cx_stmts = Vec::with_capacity(capacity);
+    let mut ref_cx_stmts = Vec::with_capacity(capacity);
+    let mut args = Vec::with_capacity(capacity);
+
+    for (index, input) in inputs.iter_mut().enumerate() {
         match input {
             FnArg::Receiver(r) => {
                 return Err(syn::Error::new(r.span(), "not support `self` receiver"))
             }
-            FnArg::Typed(PatType { attrs, .. }) => {
-                args.push(generate_only_one_field_or_argument_resolve_method(
-                    attrs, color,
-                )?);
+            FnArg::Typed(PatType { attrs, ty, .. }) => {
+                let ResolveOne { stmt, variable } =
+                    generate_only_one_field_or_argument_resolve_method(
+                        attrs, color, index, ty, scope,
+                    )?;
+
+                match stmt {
+                    ResolveOneValue::Owned { resolve } => mut_ref_cx_stmts.push(resolve),
+                    ResolveOneValue::Ref {
+                        resolve_singleton,
+                        get_singleton,
+                    } => {
+                        mut_ref_cx_stmts.push(resolve_singleton);
+                        ref_cx_stmts.push(get_singleton);
+                    }
+                }
+
+                args.push(variable);
             }
         }
     }
 
-    Ok(args)
+    Ok(ArgumentResolveStmts {
+        mut_ref_cx_stmts,
+        ref_cx_stmts,
+        args,
+    })
 }
 
 #[cfg(feature = "auto-register")]
@@ -188,42 +549,116 @@ pub(crate) fn check_auto_register_with_generics(
     Ok(())
 }
 
-pub(crate) enum FieldResolveMethods {
+pub(crate) struct FieldResolveStmts {
+    pub(crate) mut_ref_cx_stmts: Vec<Stmt>,
+    pub(crate) ref_cx_stmts: Vec<Stmt>,
+    pub(crate) fields: ResolvedFields,
+}
+
+pub(crate) enum ResolvedFields {
     Unit,
-    Named(Vec<Ident>, Vec<TokenStream>),
-    Unnamed(Vec<TokenStream>),
+    Named {
+        field_names: Vec<Ident>,
+        field_values: Vec<Ident>,
+    },
+    Unnamed(Vec<Ident>),
 }
 
 pub(crate) fn generate_field_resolve_methods(
     fields: &mut Fields,
     color: Color,
-) -> syn::Result<FieldResolveMethods> {
+    scope: Scope,
+) -> syn::Result<FieldResolveStmts> {
     match fields {
-        Fields::Unit => Ok(FieldResolveMethods::Unit),
+        Fields::Unit => Ok(FieldResolveStmts {
+            mut_ref_cx_stmts: Vec::new(),
+            ref_cx_stmts: Vec::new(),
+            fields: ResolvedFields::Unit,
+        }),
         Fields::Named(FieldsNamed { named, .. }) => {
-            let len = named.len();
-            let mut idents = Vec::with_capacity(len);
-            let mut resolve_methods = Vec::with_capacity(len);
+            let capacity = named.len();
 
-            for Field { attrs, ident, .. } in named {
-                resolve_methods.push(generate_only_one_field_or_argument_resolve_method(
-                    attrs, color,
-                )?);
-                idents.push(ident.clone().unwrap());
+            let mut mut_ref_cx_stmts = Vec::with_capacity(capacity);
+            let mut ref_cx_stmts = Vec::with_capacity(capacity);
+            let mut field_values = Vec::with_capacity(capacity);
+
+            let mut field_names = Vec::with_capacity(capacity);
+
+            for (
+                index,
+                Field {
+                    attrs,
+                    ident: field_name,
+                    ty,
+                    ..
+                },
+            ) in named.into_iter().enumerate()
+            {
+                let ResolveOne {
+                    stmt,
+                    variable: field_value,
+                } = generate_only_one_field_or_argument_resolve_method(
+                    attrs, color, index, ty, scope,
+                )?;
+
+                match stmt {
+                    ResolveOneValue::Owned { resolve } => mut_ref_cx_stmts.push(resolve),
+                    ResolveOneValue::Ref {
+                        resolve_singleton,
+                        get_singleton,
+                    } => {
+                        mut_ref_cx_stmts.push(resolve_singleton);
+                        ref_cx_stmts.push(get_singleton);
+                    }
+                }
+
+                field_values.push(field_value);
+                field_names.push(field_name.clone().unwrap());
             }
 
-            Ok(FieldResolveMethods::Named(idents, resolve_methods))
+            Ok(FieldResolveStmts {
+                mut_ref_cx_stmts,
+                ref_cx_stmts,
+                fields: ResolvedFields::Named {
+                    field_names,
+                    field_values,
+                },
+            })
         }
         Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
-            let mut resolve_methods = Vec::with_capacity(unnamed.len());
+            let capacity = unnamed.len();
 
-            for Field { attrs, .. } in unnamed {
-                resolve_methods.push(generate_only_one_field_or_argument_resolve_method(
-                    attrs, color,
-                )?);
+            let mut mut_ref_cx_stmts = Vec::with_capacity(capacity);
+            let mut ref_cx_stmts = Vec::with_capacity(capacity);
+            let mut field_values = Vec::with_capacity(capacity);
+
+            for (index, Field { attrs, ty, .. }) in unnamed.into_iter().enumerate() {
+                let ResolveOne {
+                    stmt,
+                    variable: field_value,
+                } = generate_only_one_field_or_argument_resolve_method(
+                    attrs, color, index, ty, scope,
+                )?;
+
+                match stmt {
+                    ResolveOneValue::Owned { resolve } => mut_ref_cx_stmts.push(resolve),
+                    ResolveOneValue::Ref {
+                        resolve_singleton,
+                        get_singleton,
+                    } => {
+                        mut_ref_cx_stmts.push(resolve_singleton);
+                        ref_cx_stmts.push(get_singleton);
+                    }
+                }
+
+                field_values.push(field_value);
             }
 
-            Ok(FieldResolveMethods::Unnamed(resolve_methods))
+            Ok(FieldResolveStmts {
+                mut_ref_cx_stmts,
+                ref_cx_stmts,
+                fields: ResolvedFields::Unnamed(field_values),
+            })
         }
     }
 }

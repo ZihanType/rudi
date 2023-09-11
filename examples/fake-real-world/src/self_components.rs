@@ -39,7 +39,7 @@ pub struct RedisConfig {
 
 #[Singleton]
 impl RedisConfig {
-    fn load(_application_config: Rc<ApplicationConfig>) -> Self {
+    fn load(#[di(ref)] _application_config: &ApplicationConfig) -> Self {
         RedisConfig {
             url: "redis://localhost:6379".to_string(),
         }
@@ -53,7 +53,7 @@ pub struct DatabaseConfig {
 
 #[Singleton]
 impl DatabaseConfig {
-    fn load(_application_config: Rc<ApplicationConfig>) -> Self {
+    fn load(#[di(ref)] _application_config: &ApplicationConfig) -> Self {
         DatabaseConfig {
             url: "postgres://localhost:5432".to_string(),
         }

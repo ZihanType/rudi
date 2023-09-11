@@ -1,10 +1,6 @@
 use std::{any::Any, borrow::Cow, rc::Rc};
 
-use crate::{
-    context::Context,
-    definition::{Color, Definition, Scope},
-    BoxFuture, FutureExt, Key,
-};
+use crate::{BoxFuture, Color, Context, Definition, FutureExt, Key, Scope};
 
 /// A trait for giving a type a default [`Provider`].
 ///
@@ -264,7 +260,7 @@ where
 
 fn sync_eager_create_function<T: 'static>() -> fn(&mut Context, Cow<'static, str>) {
     |cx, name| {
-        cx.resolve_with_name::<T>(name);
+        cx.just_create::<T>(name);
     }
 }
 
@@ -301,7 +297,7 @@ fn async_eager_create_function<T: 'static>(
 ) -> for<'a> fn(&'a mut Context, Cow<'static, str>) -> BoxFuture<'a, ()> {
     |cx, name| {
         async {
-            cx.resolve_with_name_async::<T>(name).await;
+            cx.just_create_async::<T>(name).await;
         }
         .boxed()
     }

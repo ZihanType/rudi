@@ -7,11 +7,8 @@ pub struct SingletonInstance<T> {
 }
 
 impl<T> SingletonInstance<T> {
-    pub(crate) fn new(instance: &T, clone: fn(&T) -> T) -> Self {
-        Self {
-            instance: clone(instance),
-            clone,
-        }
+    pub(crate) fn new(instance: T, clone: fn(&T) -> T) -> Self {
+        Self { instance, clone }
     }
 
     /// Returns the owned instance.

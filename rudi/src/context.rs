@@ -1,10 +1,9 @@
 use std::{any::TypeId, borrow::Cow, collections::HashMap, rc::Rc};
 
 use crate::{
-    module::ResolveModule,
-    provider::{DynProvider, Provider},
-    BoxFuture, Constructor, Definition, DynSingletonInstance, EagerCreateFunction, Key,
-    ProviderRegistry, Scope, SingletonInstance, SingletonRegistry, Type,
+    BoxFuture, Constructor, Definition, DynProvider, DynSingletonInstance, EagerCreateFunction,
+    Key, Provider, ProviderRegistry, ResolveModule, Scope, SingletonInstance, SingletonRegistry,
+    Type,
 };
 
 /// A context is a container for all the providers and singletons.
@@ -574,9 +573,11 @@ impl Context {
     /// ```
     #[track_caller]
     pub fn resolve_with_name<T: 'static>(&mut self, name: impl Into<Cow<'static, str>>) -> T {
-        let key = Key::new::<T>(name.into());
-        self.resolve_keyed(key.clone())
-            .unwrap_or_else(|| panic!("no provider registered for: {:?}", key))
+        match self.inner_resolve(name.into(), Behaviour::CreateThenReturn) {
+            Resolved::Ok(instance) => instance,
+            Resolved::NotFoundProvider(key) => no_provider_panic(key),
+            Resolved::NotSingleton(_) | Resolved::NoReturn => unreachable!(),
+        }
     }
 
     /// Returns an optional instance based on the given type and default name `""`.
@@ -631,8 +632,8 @@ impl Context {
         &mut self,
         name: impl Into<Cow<'static, str>>,
     ) -> Option<T> {
-        let key = Key::new::<T>(name.into());
-        self.resolve_keyed(key)
+        self.inner_resolve(name.into(), Behaviour::CreateThenReturn)
+            .ok()
     }
 
     /// Returns a collection of instances of the given type.
@@ -664,10 +665,212 @@ impl Context {
     /// ```
     #[track_caller]
     pub fn resolve_by_type<T: 'static>(&mut self) -> Vec<T> {
-        self.keys::<T>()
+        self.names::<T>()
             .into_iter()
-            .filter_map(|key| self.resolve_keyed(key))
+            .filter_map(|name| self.inner_resolve(name, Behaviour::CreateThenReturn).ok())
             .collect()
+    }
+
+    #[doc(hidden)]
+    #[track_caller]
+    pub fn just_create<T: 'static>(&mut self, name: Cow<'static, str>) {
+        match self.inner_resolve::<T>(name, Behaviour::JustCreate) {
+            Resolved::NoReturn => {}
+            Resolved::NotFoundProvider(key) => no_provider_panic(key),
+            Resolved::Ok(_) | Resolved::NotSingleton(_) => unreachable!(),
+        }
+    }
+
+    /// Creates a singleton instance based on the given type and default name `""` but does not return it.
+    ///
+    /// # Panics
+    ///
+    /// - Panics if no provider is registered for the given type and default name `""`.
+    /// - Panics if there is a provider whose constructor is async.
+    /// - Panics if there is a provider that panics on construction.
+    /// - Panics if the provider is not a singleton.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton};
+    ///
+    /// #[derive(Clone)]
+    /// #[Singleton]
+    /// struct A;
+    ///
+    /// # fn main() {
+    /// let mut cx = Context::auto_register();
+    /// assert!(!cx.contains_singleton::<A>());
+    /// cx.just_create_singleton::<A>();
+    /// assert!(cx.contains_singleton::<A>());
+    /// # }
+    /// ```
+    #[track_caller]
+    pub fn just_create_singleton<T: 'static>(&mut self) {
+        self.just_create_singleton_with_name::<T>("");
+    }
+
+    /// Creates a singleton instance based on the given type and name but does not return it.
+    ///
+    /// # Panics
+    ///
+    /// - Panics if no provider is registered for the given type and name.
+    /// - Panics if there is a provider whose constructor is async.
+    /// - Panics if there is a provider that panics on construction.
+    /// - Panics if the provider is not a singleton.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton};
+    ///
+    /// #[derive(Clone)]
+    /// #[Singleton(name = "a")]
+    /// struct A;
+    ///
+    /// # fn main() {
+    /// let mut cx = Context::auto_register();
+    /// assert!(!cx.contains_singleton_with_name::<A>("a"));
+    /// cx.just_create_singleton_with_name::<A>("a");
+    /// assert!(cx.contains_singleton_with_name::<A>("a"));
+    /// # }
+    /// ```
+    #[track_caller]
+    pub fn just_create_singleton_with_name<T: 'static>(
+        &mut self,
+        name: impl Into<Cow<'static, str>>,
+    ) {
+        match self.inner_resolve::<T>(name.into(), Behaviour::JustCreateSingleton) {
+            Resolved::NoReturn => {}
+            Resolved::NotFoundProvider(key) => no_provider_panic(key),
+            Resolved::NotSingleton(definition) => not_singleton_panic(definition),
+            Resolved::Ok(_) => unreachable!(),
+        }
+    }
+
+    /// Try to create a singleton instance based on the given type and default name `""` but does not return it.
+    ///
+    /// If no provider is registered for the given type and default name `""`, or the provider is not a singleton,
+    /// this method will do nothing.
+    ///
+    /// # Panics
+    ///
+    /// - Panics if there is a provider whose constructor is async.
+    /// - Panics if there is a provider that panics on construction.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton, Transient};
+    ///
+    /// #[derive(Clone)]
+    /// #[Singleton]
+    /// struct A;
+    ///
+    /// #[Transient]
+    /// struct B;
+    ///
+    /// # fn main() {
+    /// let mut cx = Context::auto_register();
+    ///
+    /// assert!(!cx.contains_singleton::<A>());
+    /// assert!(!cx.contains_singleton::<B>());
+    ///
+    /// cx.try_create_singleton::<A>();
+    /// cx.try_create_singleton::<B>();
+    ///
+    /// assert!(cx.contains_singleton::<A>());
+    /// assert!(!cx.contains_singleton::<B>());
+    /// # }
+    /// ```
+    #[track_caller]
+    pub fn try_create_singleton<T: 'static>(&mut self) {
+        self.try_create_singleton_with_name::<T>("");
+    }
+
+    /// Try to create a singleton instance based on the given type and name but does not return it.
+    ///
+    /// If no provider is registered for the given type and default name `""`, or the provider is not a singleton,
+    /// this method will do nothing.
+    ///
+    /// # Panics
+    ///
+    /// - Panics if there is a provider whose constructor is async.
+    /// - Panics if there is a provider that panics on construction.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton, Transient};
+    ///
+    /// #[derive(Clone)]
+    /// #[Singleton(name = "a")]
+    /// struct A;
+    ///
+    /// #[Transient(name = "b")]
+    /// struct B;
+    ///
+    /// # fn main() {
+    /// let mut cx = Context::auto_register();
+    ///
+    /// assert!(!cx.contains_singleton_with_name::<A>("a"));
+    /// assert!(!cx.contains_singleton_with_name::<B>("b"));
+    ///
+    /// cx.try_create_singleton_with_name::<A>("a");
+    /// cx.try_create_singleton_with_name::<B>("b");
+    ///
+    /// assert!(cx.contains_singleton_with_name::<A>("a"));
+    /// assert!(!cx.contains_singleton_with_name::<B>("b"));
+    /// # }
+    /// ```
+    #[track_caller]
+    pub fn try_create_singleton_with_name<T: 'static>(
+        &mut self,
+        name: impl Into<Cow<'static, str>>,
+    ) {
+        match self.inner_resolve::<T>(name.into(), Behaviour::JustCreateSingleton) {
+            Resolved::NoReturn | Resolved::NotFoundProvider(_) | Resolved::NotSingleton(_) => {}
+            Resolved::Ok(_) => unreachable!(),
+        }
+    }
+
+    /// Try to create singleton instances based on the given type but does not return them.
+    ///
+    /// If some providers are not singletons, this method will not create them.
+    ///
+    /// # Panics
+    ///
+    /// - Panics if there is a provider whose constructor is async.
+    /// - Panics if there is a provider that panics on construction.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton, Transient};
+    ///
+    /// #[Singleton]
+    /// fn One() -> i32 {
+    ///     1
+    /// }
+    ///
+    /// #[Transient]
+    /// fn Two() -> i32 {
+    ///     2
+    /// }
+    ///
+    /// fn main() {
+    ///     let mut cx = Context::auto_register();
+    ///     assert!(!cx.contains_singleton::<i32>());
+    ///     cx.try_create_singletons_by_type::<i32>();
+    ///     assert_eq!(cx.get_singleton::<i32>(), &1);
+    /// }
+    /// ```
+    #[track_caller]
+    pub fn try_create_singletons_by_type<T: 'static>(&mut self) {
+        self.names::<T>()
+            .into_iter()
+            .for_each(|name| self.try_create_singleton_with_name::<T>(name))
     }
 
     /// Async version of [`Context::resolve`].
@@ -732,10 +935,14 @@ impl Context {
         &mut self,
         name: impl Into<Cow<'static, str>>,
     ) -> T {
-        let key = Key::new::<T>(name.into());
-        self.resolve_keyed_async(key.clone())
+        match self
+            .inner_resolve_async(name.into(), Behaviour::CreateThenReturn)
             .await
-            .unwrap_or_else(|| panic!("no provider registered for: {:?}", key))
+        {
+            Resolved::Ok(instance) => instance,
+            Resolved::NotFoundProvider(key) => no_provider_panic(key),
+            Resolved::NotSingleton(_) | Resolved::NoReturn => unreachable!(),
+        }
     }
 
     /// Async version of [`Context::resolve_option`].
@@ -798,8 +1005,9 @@ impl Context {
         &mut self,
         name: impl Into<Cow<'static, str>>,
     ) -> Option<T> {
-        let key = Key::new::<T>(name.into());
-        self.resolve_keyed_async(key).await
+        self.inner_resolve_async(name.into(), Behaviour::CreateThenReturn)
+            .await
+            .ok()
     }
 
     /// Async version of [`Context::resolve_by_type`].
@@ -836,17 +1044,218 @@ impl Context {
     /// }
     /// ```
     pub async fn resolve_by_type_async<T: 'static>(&mut self) -> Vec<T> {
-        let keys = self.keys::<T>();
+        let names = self.names::<T>();
 
-        let mut instances = Vec::with_capacity(keys.len());
+        let mut instances = Vec::with_capacity(names.len());
 
-        for key in keys {
-            if let Some(instance) = self.resolve_keyed_async(key).await {
+        for name in names {
+            if let Some(instance) = self
+                .inner_resolve_async(name, Behaviour::CreateThenReturn)
+                .await
+                .ok()
+            {
                 instances.push(instance);
             }
         }
 
         instances
+    }
+
+    #[doc(hidden)]
+    pub async fn just_create_async<T: 'static>(&mut self, name: Cow<'static, str>) {
+        match self
+            .inner_resolve_async::<T>(name, Behaviour::JustCreate)
+            .await
+        {
+            Resolved::NoReturn => {}
+            Resolved::NotFoundProvider(key) => no_provider_panic(key),
+            Resolved::Ok(_) | Resolved::NotSingleton(_) => unreachable!(),
+        }
+    }
+
+    /// Async version of [`Context::just_create_singleton`].
+    ///
+    /// # Panics
+    ///
+    /// - Panics if no provider is registered for the given type and default name `""`.
+    /// - Panics if there is a provider that panics on construction.
+    /// - Panics if the provider is not a singleton.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton};
+    ///
+    /// #[derive(Clone)]
+    /// #[Singleton(async)]
+    /// struct A;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut cx = Context::auto_register();
+    ///     assert!(!cx.contains_singleton::<A>());
+    ///     cx.just_create_singleton_async::<A>().await;
+    ///     assert!(cx.contains_singleton::<A>());
+    /// }
+    /// ```
+    pub async fn just_create_singleton_async<T: 'static>(&mut self) {
+        self.just_create_singleton_with_name_async::<T>("").await;
+    }
+
+    /// Async version of [`Context::just_create_singleton_with_name`].
+    ///
+    /// # Panics
+    ///
+    /// - Panics if no provider is registered for the given type and name.
+    /// - Panics if there is a provider that panics on construction.
+    /// - Panics if the provider is not a singleton.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton};
+    ///
+    /// #[derive(Clone)]
+    /// #[Singleton(async, name = "a")]
+    /// struct A;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut cx = Context::auto_register();
+    ///     assert!(!cx.contains_singleton_with_name::<A>("a"));
+    ///     cx.just_create_singleton_with_name_async::<A>("a").await;
+    ///     assert!(cx.contains_singleton_with_name::<A>("a"));
+    /// }
+    /// ```
+    pub async fn just_create_singleton_with_name_async<T: 'static>(
+        &mut self,
+        name: impl Into<Cow<'static, str>>,
+    ) {
+        match self
+            .inner_resolve_async::<T>(name.into(), Behaviour::JustCreateSingleton)
+            .await
+        {
+            Resolved::NoReturn => {}
+            Resolved::NotFoundProvider(key) => no_provider_panic(key),
+            Resolved::NotSingleton(definition) => not_singleton_panic(definition),
+            Resolved::Ok(_) => unreachable!(),
+        }
+    }
+
+    /// Async version of [`Context::try_create_singleton`].
+    ///
+    /// # Panics
+    ///
+    /// - Panics if there is a provider that panics on construction.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton, Transient};
+    ///
+    /// #[derive(Clone)]
+    /// #[Singleton(async)]
+    /// struct A;
+    ///
+    /// #[Transient(async)]
+    /// struct B;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut cx = Context::auto_register();
+    ///
+    ///     assert!(!cx.contains_singleton::<A>());
+    ///     assert!(!cx.contains_singleton::<B>());
+    ///
+    ///     cx.try_create_singleton_async::<A>().await;
+    ///     cx.try_create_singleton_async::<B>().await;
+    ///
+    ///     assert!(cx.contains_singleton::<A>());
+    ///     assert!(!cx.contains_singleton::<B>());
+    /// }
+    /// ```
+    pub async fn try_create_singleton_async<T: 'static>(&mut self) {
+        self.try_create_singleton_with_name_async::<T>("").await;
+    }
+
+    /// Async version of [`Context::try_create_singleton_with_name`].
+    ///
+    /// # Panics
+    ///
+    /// - Panics if there is a provider that panics on construction.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton, Transient};
+    ///
+    /// #[derive(Clone)]
+    /// #[Singleton(async, name = "a")]
+    /// struct A;
+    ///
+    /// #[Transient(async, name = "b")]
+    /// struct B;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut cx = Context::auto_register();
+    ///
+    ///     assert!(!cx.contains_singleton_with_name::<A>("a"));
+    ///     assert!(!cx.contains_singleton_with_name::<B>("b"));
+    ///
+    ///     cx.try_create_singleton_with_name_async::<A>("a").await;
+    ///     cx.try_create_singleton_with_name_async::<B>("b").await;
+    ///
+    ///     assert!(cx.contains_singleton_with_name::<A>("a"));
+    ///     assert!(!cx.contains_singleton_with_name::<B>("b"));
+    /// }
+    /// ```
+    pub async fn try_create_singleton_with_name_async<T: 'static>(
+        &mut self,
+        name: impl Into<Cow<'static, str>>,
+    ) {
+        match self
+            .inner_resolve_async::<T>(name.into(), Behaviour::JustCreateSingleton)
+            .await
+        {
+            Resolved::NoReturn | Resolved::NotFoundProvider(_) | Resolved::NotSingleton(_) => {}
+            Resolved::Ok(_) => unreachable!(),
+        }
+    }
+
+    /// Async version of [`Context::try_create_singletons_by_type`].
+    ///
+    /// # Panics
+    ///
+    /// - Panics if there is a provider that panics on construction.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{Context, Singleton, Transient};
+    ///
+    /// #[Singleton]
+    /// async fn One() -> i32 {
+    ///     1
+    /// }
+    ///
+    /// #[Transient]
+    /// async fn Two() -> i32 {
+    ///     2
+    /// }
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut cx = Context::auto_register();
+    ///     assert!(!cx.contains_singleton::<i32>());
+    ///     cx.try_create_singletons_by_type_async::<i32>().await;
+    ///     assert_eq!(cx.get_singleton::<i32>(), &1);
+    /// }
+    /// ```
+    pub async fn try_create_singletons_by_type_async<T: 'static>(&mut self) {
+        for name in self.names::<T>() {
+            self.try_create_singleton_with_name_async::<T>(name).await;
+        }
     }
 
     /// Returns true if the context contains a provider for the specified type and default name `""`.
@@ -1147,6 +1556,117 @@ impl Context {
     }
 }
 
+#[derive(Clone, Copy)]
+enum Behaviour {
+    CreateThenReturn,
+    JustCreate,
+    JustCreateSingleton,
+}
+
+enum Resolved<T> {
+    Ok(T),
+    NotFoundProvider(Key),
+    NotSingleton(Definition),
+    NoReturn,
+}
+
+impl<T> Resolved<T> {
+    fn ok(self) -> Option<T> {
+        match self {
+            Resolved::Ok(instance) => Some(instance),
+            _ => None,
+        }
+    }
+}
+
+macro_rules! async_resolve {
+    ($cx:expr, $constructor:expr, $key:expr, $definition:expr) => {
+        match $constructor {
+            Constructor::Async(constructor) => {
+                $cx.resolve_instance_async($key.clone(), constructor).await
+            }
+            Constructor::Sync(constructor) => $cx.resolve_instance($key.clone(), constructor),
+        }
+    };
+}
+
+macro_rules! sync_resolve {
+    ($cx:expr, $constructor:expr, $key:expr, $definition:expr) => {
+        match $constructor {
+            Constructor::Async(_) => {
+                panic!(
+                    "unable to call an async constructor in a sync context for: {:?}
+
+please check all the references to the above type, there are 3 scenarios that will be referenced:
+1. use `Context::resolve_xxx::<Type>(cx)` to get instances of the type, change to `Context::resolve_xxx_async::<Type>(cx).await`.
+2. use `yyy: Type` as a field of a struct, or a field of a variant of a enum, use `#[Singleton(async)]` or `#[Transient(async)]` on the struct or enum.
+3. use `zzz: Type` as a argument of a function, add the `async` keyword to the function.
+",
+                    $definition
+                )
+            }
+            Constructor::Sync(constructor) => $cx.resolve_instance($key.clone(), constructor),
+        }
+    };
+}
+
+macro_rules! inner_resolve_impl {
+    ($cx:expr, $name:expr, $behaviour:expr, $resolve_macro:ident) => {{
+        let key = Key::new::<T>($name);
+
+        if $cx.singleton_registry.contains(&key) {
+            return match $behaviour {
+                Behaviour::CreateThenReturn => {
+                    Resolved::Ok($cx.singleton_registry.get_owned::<T>(&key).unwrap())
+                }
+                Behaviour::JustCreate | Behaviour::JustCreateSingleton => Resolved::NoReturn,
+            };
+        }
+
+        let Some(provider) = $cx.provider_registry.get(&key) else {
+            return Resolved::NotFoundProvider(key);
+        };
+
+        let definition = provider.definition();
+
+        match ($behaviour, provider.definition().scope) {
+            (_, Scope::Singleton) => {}
+            (Behaviour::JustCreateSingleton, /* not singleton */ _) => {
+                return Resolved::NotSingleton(definition.clone())
+            }
+            _ => {}
+        }
+
+        let constructor = provider.constructor();
+        let clone_instance = provider.clone_instance();
+
+        let instance = $resolve_macro!($cx, constructor, key, definition);
+
+        if let Some(clone_instance) = clone_instance {
+            match $behaviour {
+                Behaviour::CreateThenReturn => {
+                    $cx.singleton_registry.insert(
+                        key,
+                        SingletonInstance::new(clone_instance(&instance), clone_instance),
+                    );
+                }
+                Behaviour::JustCreate | Behaviour::JustCreateSingleton => {
+                    $cx.singleton_registry
+                        .insert(key, SingletonInstance::new(instance, clone_instance));
+
+                    return Resolved::NoReturn;
+                }
+            };
+        }
+
+        match $behaviour {
+            Behaviour::CreateThenReturn => Resolved::Ok(instance),
+            Behaviour::JustCreate => Resolved::NoReturn,
+            Behaviour::JustCreateSingleton => unreachable!(),
+        }
+    }};
+}
+
 impl Context {
     #[track_caller]
     fn load_provider(&mut self, eager_create: bool, provider: DynProvider) {
@@ -1265,63 +1785,20 @@ please use instead:
     }
 
     #[track_caller]
-    fn resolve_keyed<T: 'static>(&mut self, key: Key) -> Option<T> {
-        let singleton = self.singleton_registry.get_owned::<T>(&key);
-        if singleton.is_some() {
-            return singleton;
-        }
-
-        let provider = self.provider_registry.get(&key)?;
-        let constructor = provider.constructor();
-        let clone_instance = provider.clone_instance();
-
-        let instance = match constructor {
-            Constructor::Async(_) => {
-                panic!(
-                    "unable to call an async constructor in a sync context for: {:?}
-
-please check all the references to the above type, there are 3 scenarios that will be referenced:
-1. use `Context::resolve_xxx::<Type>(cx)` to get instances of the type, change to `Context::resolve_xxx_async::<Type>(cx).await`.
-2. use `yyy: Type` as a field of a struct, or a field of a variant of a enum, use `#[Singleton(async)]` or `#[Transient(async)]` on the struct or enum.
-3. use `zzz: Type` as a argument of a function, add the `async` keyword to the function.
-",
-                    provider.definition()
-                )
-            }
-            Constructor::Sync(constructor) => self.resolve_instance(key.clone(), constructor),
-        };
-
-        if let Some(clone_instance) = clone_instance {
-            self.singleton_registry
-                .insert(key, SingletonInstance::new(&instance, clone_instance));
-        }
-
-        Some(instance)
+    fn inner_resolve<T: 'static>(
+        &mut self,
+        name: Cow<'static, str>,
+        behaviour: Behaviour,
+    ) -> Resolved<T> {
+        inner_resolve_impl!(self, name, behaviour, sync_resolve)
     }
 
-    async fn resolve_keyed_async<T: 'static>(&mut self, key: Key) -> Option<T> {
-        let singleton = self.singleton_registry.get_owned::<T>(&key);
-        if singleton.is_some() {
-            return singleton;
-        }
-
-        let provider = self.provider_registry.get(&key)?;
-        let constructor = provider.constructor();
-        let clone_instance = provider.clone_instance();
-
-        let instance = match constructor {
-            Constructor::Async(constructor) => {
-                self.resolve_instance_async(key.clone(), constructor).await
-            }
-            Constructor::Sync(constructor) => self.resolve_instance(key.clone(), constructor),
-        };
-
-        if let Some(clone_instance) = clone_instance {
-            self.singleton_registry
-                .insert(key, SingletonInstance::new(&instance, clone_instance));
-        }
-
-        Some(instance)
+    async fn inner_resolve_async<T: 'static>(
+        &mut self,
+        name: Cow<'static, str>,
+        behaviour: Behaviour,
+    ) -> Resolved<T> {
+        inner_resolve_impl!(self, name, behaviour, async_resolve)
     }
 
     #[track_caller]
@@ -1348,15 +1825,25 @@ please check all the references to the above type, there are 3 scenarios that wi
         instance
     }
 
-    fn keys<T: 'static>(&self) -> Vec<Key> {
+    fn names<T: 'static>(&self) -> Vec<Cow<'static, str>> {
         let type_id = TypeId::of::<T>();
 
         self.provider_registry()
             .keys()
             .filter(|&key| key.ty.id == type_id)
-            .cloned()
+            .map(|key| key.name.clone())
             .collect()
     }
+}
+
+#[inline(always)]
+fn no_provider_panic(key: Key) -> ! {
+    panic!("no provider registered for: {:?}", key)
+}
+
+#[inline(always)]
+fn not_singleton_panic(definition: Definition) -> ! {
+    panic!("registered provider is not singleton for: {:?}", definition)
 }
 
 fn flatten<T, F>(mut unresolved: Vec<T>, get_sublist: F) -> Option<Vec<T>>

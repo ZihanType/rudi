@@ -1,7 +1,7 @@
 #[doc(hidden)]
 pub use inventory::submit;
 
-use crate::{module::Module, provider::DynProvider};
+use crate::{DynProvider, Module};
 
 #[doc(hidden)]
 pub struct ProviderRegister {

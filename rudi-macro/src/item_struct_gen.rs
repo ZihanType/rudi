@@ -3,7 +3,7 @@ use quote::quote;
 use syn::ItemStruct;
 
 use crate::{
-    commons::{self, Color, FieldResolveMethods, Scope},
+    commons::{self, Color, FieldResolveStmts, ResolvedFields, Scope},
     rudi_path_attribute,
     struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };
@@ -34,7 +34,11 @@ pub(crate) fn generate(
 
     let color = if async_ { Color::Async } else { Color::Sync };
 
-    let fields = commons::generate_field_resolve_methods(&mut item_struct.fields, color)?;
+    let FieldResolveStmts {
+        mut_ref_cx_stmts,
+        ref_cx_stmts,
+        fields,
+    } = commons::generate_field_resolve_methods(&mut item_struct.fields, color, scope)?;
 
     let create_provider = commons::generate_create_provider(scope, color);
 
@@ -43,23 +47,26 @@ pub(crate) fn generate(
     let (impl_generics, ty_generics, where_clause) = item_struct.generics.split_for_impl();
 
     let instance = match fields {
-        FieldResolveMethods::Unit => quote! {
+        ResolvedFields::Unit => quote! {
             #struct_ident
         },
-        FieldResolveMethods::Named(idents, resolve_methods) => {
+        ResolvedFields::Named {
+            field_names,
+            field_values,
+        } => {
             quote! {
                 #struct_ident {
                     #(
-                        #idents: #resolve_methods,
+                        #field_names: #field_values,
                     )*
                 }
             }
         }
-        FieldResolveMethods::Unnamed(resolve_methods) => {
+        ResolvedFields::Unnamed(field_values) => {
             quote! {
                 #struct_ident(
                     #(
-                        #resolve_methods,
+                        #field_values,
                     )*
                 )
             }
@@ -71,6 +78,8 @@ pub(crate) fn generate(
             quote! {
                 #[allow(unused_variables)]
                 |cx| ::std::boxed::Box::pin(async {
+                    #(#mut_ref_cx_stmts)*
+                    #(#ref_cx_stmts)*
                     #instance
                 })
             }
@@ -78,7 +87,11 @@ pub(crate) fn generate(
         Color::Sync => {
             quote! {
                 #[allow(unused_variables)]
-                |cx| #instance
+                |cx| {
+                    #(#mut_ref_cx_stmts)*
+                    #(#ref_cx_stmts)*
+                    #instance
+                }
             }
         }
     };

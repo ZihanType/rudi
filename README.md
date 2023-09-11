@@ -59,8 +59,9 @@ fn main() {
 - Manual and automatic registration (thanks to [inventory](https://github.com/dtolnay/inventory)).
 - Easy binding of trait implementations and trait objects.
 - Distinguishing different instances with types and names.
-- Generics (but must be monomorphized and manually registered).
-- Conditional registration.
+- Generics (but must be monomorphized and manually registered) ([example](./examples/hello-world-with-generic/)).
+- Conditional registration ([example](./examples/condition/)).
+- References (but only `singleton` lifetime) ([example](./examples/reference/)).
 
 ## More complex example
 

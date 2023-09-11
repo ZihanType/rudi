@@ -1,4 +1,4 @@
-use crate::{provider::DynProvider, Type};
+use crate::{DynProvider, Type};
 
 /// Represents a module.
 ///
