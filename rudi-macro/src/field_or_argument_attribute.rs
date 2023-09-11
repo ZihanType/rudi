@@ -87,14 +87,9 @@ impl FieldOrArgumentAttribute {
 
         Err(meta.error("the argument must be one of: `name`, `option`, `default`, `vec`, `ref`"))
     }
-}
 
-impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
-    type Error = syn::Error;
-
-    fn try_from(attr: &Attribute) -> Result<Self, Self::Error> {
-        let mut field_or_argument_attr = FieldOrArgumentAttribute::default();
-        attr.parse_nested_meta(|meta| field_or_argument_attr.parse(meta))?;
+    fn parse_attr(&mut self, attr: &Attribute) -> syn::Result<()> {
+        attr.parse_nested_meta(|meta| self.parse(meta))?;
 
         let FieldOrArgumentAttribute {
             name,
@@ -102,7 +97,7 @@ impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
             default,
             vec,
             ref_: _ref_,
-        } = &field_or_argument_attr;
+        } = &self;
 
         if let (Some((name, _)), Some(vec)) = (name, vec) {
             macro_rules! err {
@@ -185,33 +180,20 @@ impl TryFrom<&Attribute> for FieldOrArgumentAttribute {
             _ => {}
         }
 
-        Ok(field_or_argument_attr)
+        Ok(())
     }
-}
 
-impl FieldOrArgumentAttribute {
-    pub(crate) fn from_attrs(
-        attrs: &mut Vec<Attribute>,
-    ) -> syn::Result<Option<FieldOrArgumentAttribute>> {
-        let mut field_or_argument_attr = None;
+    pub(crate) fn from_attrs(attrs: &mut Vec<Attribute>) -> syn::Result<FieldOrArgumentAttribute> {
+        let mut field_or_argument_attr = FieldOrArgumentAttribute::default();
         let mut errors = Vec::new();
-        let mut di_already_appeared = false;
 
         attrs.retain(|attr| {
             if !attr.path().is_ident("di") {
                 return true;
             }
 
-            if di_already_appeared {
-                let err = syn::Error::new(attr.span(), "duplicate `#[di(...)]` attribute");
-                errors.push(err);
-            } else {
-                di_already_appeared = true;
-
-                match FieldOrArgumentAttribute::try_from(attr) {
-                    Ok(o) => field_or_argument_attr = Some(o),
-                    Err(e) => errors.push(e),
-                }
+            if let Err(e) = field_or_argument_attr.parse_attr(attr) {
+                errors.push(e)
             }
 
             false

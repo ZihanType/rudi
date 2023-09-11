@@ -204,30 +204,11 @@ fn generate_only_one_field_or_argument_resolve_method(
     field_or_argument_ty: &Type,
     scope: Scope,
 ) -> syn::Result<ResolveOne> {
-    let attr = match FieldOrArgumentAttribute::from_attrs(attrs)? {
-        Some(attr) => attr,
-        None => {
-            let ident = format_ident!("owned_{}", index);
+    let attr = FieldOrArgumentAttribute::from_attrs(attrs)?;
 
-            let resolve = match color {
-                Color::Async => parse_quote! {
-                    let #ident = cx.resolve_with_name_async("").await;
-                },
-                Color::Sync => parse_quote! {
-                    let #ident = cx.resolve_with_name("");
-                },
-            };
-
-            return Ok(ResolveOne {
-                stmt: ResolveOneValue::Owned { resolve },
-                variable: ident,
-            });
-        }
-    };
-
-    match (scope, &attr.ref_) {
-        (Scope::Singleton, _) => {}
-        (/* not singleton */ _, Some((span, _))) => {
+    match (&attr.ref_, scope) {
+        (_, Scope::Singleton) => {}
+        (Some((span, _)), /* not singleton */ _) => {
             return Err(syn::Error::new(
                 *span,
                 "only support `ref` argument in `#[Singleton]` item",
