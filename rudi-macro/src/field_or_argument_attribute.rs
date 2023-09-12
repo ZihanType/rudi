@@ -20,7 +20,7 @@ pub(crate) struct FieldOrArgumentAttribute {
 }
 
 impl FieldOrArgumentAttribute {
-    fn parse(&mut self, meta: ParseNestedMeta) -> syn::Result<()> {
+    fn parse_meta(&mut self, meta: ParseNestedMeta) -> syn::Result<()> {
         let meta_path = &meta.path;
         let meta_path_span = meta_path.span();
 
@@ -82,6 +82,7 @@ impl FieldOrArgumentAttribute {
                     Some(meta.value()?.parse::<Type>()?)
                 },
             ));
+
             return Ok(());
         }
 
@@ -89,7 +90,7 @@ impl FieldOrArgumentAttribute {
     }
 
     fn parse_attr(&mut self, attr: &Attribute) -> syn::Result<()> {
-        attr.parse_nested_meta(|meta| self.parse(meta))?;
+        attr.parse_nested_meta(|meta| self.parse_meta(meta))?;
 
         let FieldOrArgumentAttribute {
             name,
