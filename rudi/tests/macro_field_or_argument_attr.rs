@@ -104,9 +104,51 @@ fn Run2(
     assert_eq!(six, vec![&6]);
 }
 
+mod alias {
+    use rudi::Singleton;
+
+    type OneAndTwo<'a> = &'a i8;
+
+    type Three<'a> = &'a Option<i16>;
+    type Four<'a> = Option<&'a i16>;
+
+    type ZeroAndFortyTwo<'a> = &'a i32;
+
+    type Five<'a> = &'a Vec<i64>;
+    type Six<'a> = Vec<&'a i64>;
+
+    #[Singleton(name = "ref alias")]
+    fn Run3(
+        #[di(ref = i8)] one: OneAndTwo<'_>,
+        #[di(ref = i8, name = "2")] two: OneAndTwo<'_>,
+
+        #[di(ref = Option<i16>)] three: Three<'_>,
+        #[di(ref = i16, option)] four: Four<'_>,
+
+        #[di(ref = i32, default = &0)] zero: ZeroAndFortyTwo<'_>,
+        #[di(ref = i32, default = &42)] forty_two: ZeroAndFortyTwo<'_>,
+
+        #[di(ref = Vec<i64>)] five: Five<'_>,
+        #[di(ref = i64, vec)] six: Six<'_>,
+    ) {
+        assert_eq!(one, &1);
+        assert_eq!(two, &2);
+
+        assert_eq!(three, &Some(3));
+        assert_eq!(four, Some(&4));
+
+        assert_eq!(zero, &0);
+        assert_eq!(forty_two, &42);
+
+        assert_eq!(five, &vec![5]);
+        assert_eq!(six, vec![&6]);
+    }
+}
+
 #[test]
 fn field_or_argument_attr() {
     let mut cx = Context::auto_register();
     cx.resolve::<()>();
     cx.resolve_with_name::<()>("ref");
+    cx.resolve_with_name::<()>("ref alias");
 }

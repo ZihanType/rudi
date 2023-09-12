@@ -231,12 +231,22 @@ Use `#[di]` to specify which variant of the enum will be constructed.
     - exist `default` argument or not, the current `field` or `argument`, which must be of type `&T`.
     - if using a type alias, specify the original type using `#[di(ref = T)]`, where `T` is a non-reference type.
   - type: `Option<Type>`
-  - example: `#[di(ref)]` / `#[di(ref = i32)]` / `#[di(option, ref)]` / `#[di(option, ref = i32)]` / `#[di(vec, ref)]`/ `#[di(vec, ref = i32)]` / `#[di(default, ref)]`  / `#[di(default, ref = i32)]`
+  - example:
+    - `#[di(ref)]`
+    - `#[di(ref = i32)]`
+    - `#[di(option, ref)]`
+    - `#[di(option, ref = i32)]`
+    - `#[di(vec, ref)]`
+    - `#[di(vec, ref = i32)]`
+    - `#[di(default, ref)]`
+    - `#[di(default, ref = i32)]`
+    - `#[di(default = &42, ref)]`
+    - `#[di(default = &42, ref = i32)]`
   - optional: true
   - default: **None**
   - description:
 
-    Specifies the reference type of the dependency to be taken out of `Context`.
+    Get a reference to `Singleton` from `Context` instead of having an ownership value.
 
     1. Not exist `option`, `vec` and `default` argument, will call the following method
 
@@ -553,10 +563,51 @@ fn Run2(
     assert_eq!(six, vec![&6]);
 }
 
+mod alias {
+    use rudi::Singleton;
+
+    type OneAndTwo<'a> = &'a i8;
+
+    type Three<'a> = &'a Option<i16>;
+    type Four<'a> = Option<&'a i16>;
+
+    type ZeroAndFortyTwo<'a> = &'a i32;
+
+    type Five<'a> = &'a Vec<i64>;
+    type Six<'a> = Vec<&'a i64>;
+
+    #[Singleton(name = "ref alias")]
+    fn Run3(
+        #[di(ref = i8)] one: OneAndTwo<'_>,
+        #[di(ref = i8, name = "2")] two: OneAndTwo<'_>,
+
+        #[di(ref = Option<i16>)] three: Three<'_>,
+        #[di(ref = i16, option)] four: Four<'_>,
+
+        #[di(ref = i32, default = &0)] zero: ZeroAndFortyTwo<'_>,
+        #[di(ref = i32, default = &42)] forty_two: ZeroAndFortyTwo<'_>,
+
+        #[di(ref = Vec<i64>)] five: Five<'_>,
+        #[di(ref = i64, vec)] six: Six<'_>,
+    ) {
+        assert_eq!(one, &1);
+        assert_eq!(two, &2);
+
+        assert_eq!(three, &Some(3));
+        assert_eq!(four, Some(&4));
+
+        assert_eq!(zero, &0);
+        assert_eq!(forty_two, &42);
+
+        assert_eq!(five, &vec![5]);
+        assert_eq!(six, vec![&6]);
+    }
+}
+
 fn main() {
     let mut cx = Context::auto_register();
     cx.resolve::<()>();
     cx.resolve_with_name::<()>("ref");
+    cx.resolve_with_name::<()>("ref alias");
 }
-
 ```
