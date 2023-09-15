@@ -1556,133 +1556,21 @@ impl Context {
     }
 }
 
-#[derive(Clone, Copy)]
-enum Behaviour {
-    CreateThenReturn,
-    JustCreate,
-    JustCreateSingleton,
-}
-
-enum Resolved<T> {
-    Ok(T),
-    NotFoundProvider(Key),
-    NotSingleton(Definition),
-    NoReturn,
-}
-
-impl<T> Resolved<T> {
-    fn ok(self) -> Option<T> {
-        match self {
-            Resolved::Ok(instance) => Some(instance),
-            _ => None,
-        }
-    }
-}
-
-macro_rules! async_resolve {
-    ($cx:expr, $constructor:expr, $key:expr, $definition:expr) => {
-        match $constructor {
-            Constructor::Async(constructor) => {
-                $cx.resolve_instance_async($key.clone(), constructor).await
-            }
-            Constructor::Sync(constructor) => $cx.resolve_instance($key.clone(), constructor),
-        }
-    };
-}
-
-macro_rules! sync_resolve {
-    ($cx:expr, $constructor:expr, $key:expr, $definition:expr) => {
-        match $constructor {
-            Constructor::Async(_) => {
-                panic!(
-                    "unable to call an async constructor in a sync context for: {:?}
-
-please check all the references to the above type, there are 3 scenarios that will be referenced:
-1. use `Context::resolve_xxx::<Type>(cx)` to get instances of the type, change to `Context::resolve_xxx_async::<Type>(cx).await`.
-2. use `yyy: Type` as a field of a struct, or a field of a variant of a enum, use `#[Singleton(async)]` or `#[Transient(async)]` on the struct or enum.
-3. use `zzz: Type` as a argument of a function, add the `async` keyword to the function.
-",
-                    $definition
-                )
-            }
-            Constructor::Sync(constructor) => $cx.resolve_instance($key.clone(), constructor),
-        }
-    };
-}
-
-macro_rules! inner_resolve_impl {
-    ($cx:expr, $name:expr, $behaviour:expr, $resolve_macro:ident) => {{
-        let key = Key::new::<T>($name);
-
-        if $cx.singleton_registry.contains(&key) {
-            return match $behaviour {
-                Behaviour::CreateThenReturn => {
-                    Resolved::Ok($cx.singleton_registry.get_owned::<T>(&key).unwrap())
-                }
-                Behaviour::JustCreate | Behaviour::JustCreateSingleton => Resolved::NoReturn,
-            };
-        }
-
-        let Some(provider) = $cx.provider_registry.get(&key) else {
-            return Resolved::NotFoundProvider(key);
-        };
-
-        let definition = provider.definition();
-
-        match ($behaviour, provider.definition().scope) {
-            (_, Scope::Singleton) => {}
-            (Behaviour::JustCreateSingleton, /* not singleton */ _) => {
-                return Resolved::NotSingleton(definition.clone())
-            }
-            _ => {}
-        }
-
-        let constructor = provider.constructor();
-        let clone_instance = provider.clone_instance();
-
-        let instance = $resolve_macro!($cx, constructor, key, definition);
-
-        if let Some(clone_instance) = clone_instance {
-            match $behaviour {
-                Behaviour::CreateThenReturn => {
-                    $cx.singleton_registry.insert(
-                        key,
-                        SingletonInstance::new(clone_instance(&instance), clone_instance),
-                    );
-                }
-                Behaviour::JustCreate | Behaviour::JustCreateSingleton => {
-                    $cx.singleton_registry
-                        .insert(key, SingletonInstance::new(instance, clone_instance));
-
-                    return Resolved::NoReturn;
-                }
-            };
-        }
-
-        match $behaviour {
-            Behaviour::CreateThenReturn => Resolved::Ok(instance),
-            Behaviour::JustCreate => Resolved::NoReturn,
-            Behaviour::JustCreateSingleton => unreachable!(),
-        }
-    }};
-}
-
 impl Context {
     #[track_caller]
     fn load_provider(&mut self, eager_create: bool, provider: DynProvider) {
+        let definition = provider.definition();
         let need_eager_create = self.eager_create || eager_create || provider.eager_create();
 
         let allow_all_scope = !self.allow_only_singleton_eager_create;
-        let allow_only_singleton_and_it_is_singleton = self.allow_only_singleton_eager_create
-            && matches!(provider.definition().scope, Scope::Singleton);
+        let allow_only_singleton_and_it_is_singleton =
+            self.allow_only_singleton_eager_create && matches!(definition.scope, Scope::Singleton);
 
         let allow_eager_create = allow_all_scope || allow_only_singleton_and_it_is_singleton;
 
         if need_eager_create && allow_eager_create {
-            self.eager_create_functions.push((
-                provider.definition().clone(),
-                provider.eager_create_function(),
-            ));
+            self.eager_create_functions
+                .push((definition.clone(), provider.eager_create_function()));
         }
 
         self.provider_registry.insert(provider, self.allow_override);
@@ -1784,13 +1672,111 @@ please use instead:
         }
     }
 
+    fn before_resolve<T: 'static>(
+        &mut self,
+        name: Cow<'static, str>,
+        behaviour: Behaviour,
+    ) -> Result<Resolved<T>, Holder<'_, T>> {
+        let key = Key::new::<T>(name);
+
+        if self.singleton_registry.contains(&key) {
+            return Ok(match behaviour {
+                Behaviour::CreateThenReturn => {
+                    Resolved::Ok(self.singleton_registry.get_owned::<T>(&key).unwrap())
+                }
+                Behaviour::JustCreate | Behaviour::JustCreateSingleton => Resolved::NoReturn,
+            });
+        }
+
+        let Some(provider) = self.provider_registry.get::<T>(&key) else {
+            return Ok(Resolved::NotFoundProvider(key));
+        };
+
+        let definition = provider.definition();
+
+        match (behaviour, definition.scope) {
+            (_, Scope::Singleton) => {}
+            (Behaviour::JustCreateSingleton, /* not singleton */ _) => {
+                return Ok(Resolved::NotSingleton(definition.clone()))
+            }
+            _ => {}
+        }
+
+        let constructor = provider.constructor();
+        let clone_instance = provider.clone_instance();
+
+        Err(Holder {
+            key,
+            constructor,
+            clone_instance,
+            definition,
+        })
+    }
+
+    fn after_resolve<T: 'static>(
+        &mut self,
+        key: Key,
+        behaviour: Behaviour,
+        instance: T,
+        clone_instance: Option<fn(&T) -> T>,
+    ) -> Resolved<T> {
+        if let Some(clone_instance) = clone_instance {
+            match behaviour {
+                Behaviour::CreateThenReturn => {
+                    self.singleton_registry.insert(
+                        key,
+                        SingletonInstance::new(clone_instance(&instance), clone_instance),
+                    );
+                }
+                Behaviour::JustCreate | Behaviour::JustCreateSingleton => {
+                    self.singleton_registry
+                        .insert(key, SingletonInstance::new(instance, clone_instance));
+
+                    return Resolved::NoReturn;
+                }
+            };
+        }
+
+        match behaviour {
+            Behaviour::CreateThenReturn => Resolved::Ok(instance),
+            Behaviour::JustCreate => Resolved::NoReturn,
+            Behaviour::JustCreateSingleton => unreachable!(),
+        }
+    }
+
     #[track_caller]
     fn inner_resolve<T: 'static>(
         &mut self,
         name: Cow<'static, str>,
         behaviour: Behaviour,
     ) -> Resolved<T> {
-        inner_resolve_impl!(self, name, behaviour, sync_resolve)
+        let Holder {
+            key,
+            constructor,
+            clone_instance,
+            definition,
+        } = match self.before_resolve(name, behaviour) {
+            Ok(o) => return o,
+            Err(e) => e,
+        };
+
+        let instance = match constructor {
+            Constructor::Async(_) => {
+                panic!(
+                    "unable to call an async constructor in a sync context for: {:?}
+
+please check all the references to the above type, there are 3 scenarios that will be referenced:
+1. use `Context::resolve_xxx::<Type>(cx)` to get instances of the type, change to `Context::resolve_xxx_async::<Type>(cx).await`.
+2. use `yyy: Type` as a field of a struct, or a field of a variant of a enum, use `#[Singleton(async)]` or `#[Transient(async)]` on the struct or enum.
+3. use `zzz: Type` as a argument of a function, add the `async` keyword to the function.
+",
+                    definition
+                )
+            }
+            Constructor::Sync(constructor) => self.resolve_instance(key.clone(), constructor),
+        };
+
+        self.after_resolve(key, behaviour, instance, clone_instance)
     }
 
     async fn inner_resolve_async<T: 'static>(
@@ -1798,7 +1784,28 @@ please use instead:
         name: Cow<'static, str>,
         behaviour: Behaviour,
     ) -> Resolved<T> {
-        inner_resolve_impl!(self, name, behaviour, async_resolve)
+        let Holder {
+            key,
+            constructor,
+            clone_instance,
+            ..
+        } = match self.before_resolve(name, behaviour) {
+            Ok(o) => return o,
+            Err(e) => e,
+        };
+
+        let instance = {
+            let key = key.clone();
+
+            match constructor {
+                Constructor::Async(constructor) => {
+                    self.resolve_instance_async(key, constructor).await
+                }
+                Constructor::Sync(constructor) => self.resolve_instance(key, constructor),
+            }
+        };
+
+        self.after_resolve(key, behaviour, instance, clone_instance)
     }
 
     #[track_caller]
@@ -1833,6 +1840,36 @@ please use instead:
             .filter(|&key| key.ty.id == type_id)
             .map(|key| key.name.clone())
             .collect()
+    }
+}
+
+#[derive(Clone, Copy)]
+enum Behaviour {
+    CreateThenReturn,
+    JustCreate,
+    JustCreateSingleton,
+}
+
+enum Resolved<T> {
+    Ok(T),
+    NotFoundProvider(Key),
+    NotSingleton(Definition),
+    NoReturn,
+}
+
+struct Holder<'a, T> {
+    key: Key,
+    constructor: Constructor<T>,
+    clone_instance: Option<fn(&T) -> T>,
+    definition: &'a Definition,
+}
+
+impl<T> Resolved<T> {
+    fn ok(self) -> Option<T> {
+        match self {
+            Resolved::Ok(instance) => Some(instance),
+            _ => None,
+        }
     }
 }
 
