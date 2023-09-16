@@ -1725,12 +1725,12 @@ please use instead:
                 Behaviour::CreateThenReturn => {
                     self.singleton_registry.insert(
                         key,
-                        SingletonInstance::new(clone_instance(&instance), clone_instance),
+                        SingletonInstance::new(clone_instance(&instance), clone_instance).into(),
                     );
                 }
                 Behaviour::JustCreate | Behaviour::JustCreateSingleton => {
                     self.singleton_registry
-                        .insert(key, SingletonInstance::new(instance, clone_instance));
+                        .insert(key, SingletonInstance::new(instance, clone_instance).into());
 
                     return Resolved::NoReturn;
                 }
@@ -1975,6 +1975,7 @@ pub struct ContextOptions {
     allow_only_singleton_eager_create: bool,
     eager_create: bool,
     providers: Vec<DynProvider>,
+    singletons: Vec<DynSingletonInstance>,
 }
 
 impl Default for ContextOptions {
@@ -1984,6 +1985,7 @@ impl Default for ContextOptions {
             allow_only_singleton_eager_create: true,
             eager_create: Default::default(),
             providers: Default::default(),
+            singletons: Default::default(),
         }
     }
 }
@@ -2103,8 +2105,12 @@ impl ContextOptions {
         T: 'static + Clone,
         N: Into<Cow<'static, str>>,
     {
-        let provider = Provider::standalone(name.into(), instance).into();
+        let provider = Provider::<T>::never_construct(name.into()).into();
+        let singleton = SingletonInstance::new(instance, Clone::clone).into();
+
         self.providers.push(provider);
+        self.singletons.push(singleton);
+
         self
     }
 
@@ -2117,6 +2123,7 @@ impl ContextOptions {
             allow_only_singleton_eager_create,
             eager_create,
             providers,
+            singletons,
         } = self;
 
         let mut cx = Context {
@@ -2127,7 +2134,14 @@ impl ContextOptions {
         };
 
         if !providers.is_empty() {
-            cx.load_providers(false, providers);
+            providers
+                .into_iter()
+                .zip(singletons)
+                .for_each(|(provider, singleton)| {
+                    let key = provider.key().clone();
+                    cx.provider_registry.insert(provider, allow_override);
+                    cx.singleton_registry.insert(key, singleton);
+                });
         }
 
         init(&mut cx);

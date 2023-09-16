@@ -167,14 +167,14 @@ impl<T: 'static> Provider<T> {
 }
 
 impl<T: 'static + Clone> Provider<T> {
-    pub(crate) fn standalone(name: Cow<'static, str>, instance: T) -> Self {
+    pub(crate) fn never_construct(name: Cow<'static, str>) -> Self {
         Provider {
             definition: Definition::new::<T>(name, Scope::Singleton, Color::Sync, false),
             eager_create: false,
             condition: None,
-            constructor: Constructor::Sync(Rc::new(move |_| instance.clone())),
-            clone_instance: Some(Clone::clone),
-            eager_create_function: EagerCreateFunction::Sync(sync_eager_create_function::<T>()),
+            constructor: Constructor::Sync(Rc::new(|_| unreachable!())),
+            clone_instance: None,
+            eager_create_function: EagerCreateFunction::Sync(|_, _| unreachable!()),
             binding_providers: None,
             binding_definitions: None,
         }

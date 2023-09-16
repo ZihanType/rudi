@@ -8,7 +8,7 @@ fn standalone_variables() {
         .instance("Hello world")
         .create(modules![]);
 
-    assert!(cx.singleton_registry().is_empty());
+    assert_eq!(cx.singleton_registry().len(), 3);
 
     assert_eq!(cx.resolve::<i32>(), 42);
     assert!(cx.resolve::<bool>());

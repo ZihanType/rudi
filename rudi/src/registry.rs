@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{DynProvider, DynSingletonInstance, Key, Provider, SingletonInstance};
+use crate::{DynProvider, DynSingletonInstance, Key, Provider};
 
 #[derive(Default)]
 pub(crate) struct SingletonRegistry {
@@ -12,12 +12,12 @@ impl SingletonRegistry {
         &self.registry
     }
 
-    pub(crate) fn insert<T: 'static>(&mut self, key: Key, instance: SingletonInstance<T>) {
+    pub(crate) fn insert(&mut self, key: Key, instance: DynSingletonInstance) {
         // There is no need to check the value of `allow_override` here,
         // because when inserting a provider and a singleton with the same key into the context,
         // the provider must be inserted first, followed by the singleton,
         // and the checking of `allow_override` has already been done when the provider is inserted.
-        self.registry.insert(key, instance.into());
+        self.registry.insert(key, instance);
     }
 
     pub(crate) fn get_owned<T: 'static>(&self, key: &Key) -> Option<T> {
