@@ -10,6 +10,7 @@ license = "MIT/Apache-2.0"
 homepage = "https://github.com/ZihanType/rudi"
 repository = "https://github.com/ZihanType/rudi"
 include = ["src/**/*", "Cargo.toml"]
+readme = "README.md"
 
 [workspace.dependencies]
 # self
