@@ -16,15 +16,11 @@ impl Trait for A {}
 
 #[Singleton(eager_create)]
 fn NewA() -> Rc<dyn Trait> {
-    COUNT.with(|c| {
-        let mut c = c.borrow_mut();
+    COUNT.with_borrow_mut(|c| {
         *c += 1;
     });
 
-    NAME.with(|n| {
-        let mut n = n.borrow_mut();
-        *n = "A";
-    });
+    NAME.set("A");
 
     Rc::new(A)
 }
@@ -36,15 +32,11 @@ impl Trait for B {}
 
 #[Singleton(eager_create)]
 fn NewB() -> Rc<dyn Trait> {
-    COUNT.with(|c| {
-        let mut c = c.borrow_mut();
+    COUNT.with_borrow_mut(|c| {
         *c += 1;
     });
 
-    NAME.with(|n| {
-        let mut n = n.borrow_mut();
-        *n = "B";
-    });
+    NAME.set("B");
 
     Rc::new(B)
 }
@@ -69,6 +61,6 @@ fn test() {
 
     Context::create(modules![MyModule1, MyModule2]);
 
-    assert!(COUNT.with(|c| *c.borrow()) == 1);
-    assert!(NAME.with(|n| *n.borrow()) == "B");
+    assert!(COUNT.with_borrow(|c| *c == 1));
+    assert!(NAME.with_borrow(|n| *n == "B"));
 }

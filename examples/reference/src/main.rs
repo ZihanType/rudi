@@ -8,17 +8,13 @@ thread_local! {
 }
 
 fn inc_count() {
-    COUNT.with(|c| {
-        let mut c = c.borrow_mut();
-        *c += 1;
+    COUNT.with_borrow_mut(|a| {
+        *a += 1;
     });
 }
 
 fn get_count() -> usize {
-    COUNT.with(|c| {
-        let c = c.borrow();
-        *c
-    })
+    COUNT.with_borrow(|a| *a)
 }
 
 // fake serialize trait

@@ -41,9 +41,7 @@ fn eager_create_provider() {
     #[Singleton(eager_create)]
     impl A {
         fn new() -> A {
-            CREATED.with(|created| {
-                *created.borrow_mut() = true;
-            });
+            CREATED.set(true);
 
             A
         }
@@ -61,7 +59,7 @@ fn eager_create_provider() {
     let cx = Context::create(modules![MyModule]);
 
     assert!(cx.singleton_registry().len() == 1);
-    assert!(CREATED.with(|created| *created.borrow()));
+    assert!(CREATED.with_borrow(|created| *created));
 }
 
 #[test]
@@ -76,8 +74,7 @@ fn eager_create_module() {
     #[Singleton(eager_create)]
     impl A {
         fn new() -> A {
-            COUNT.with(|c| {
-                let mut c = c.borrow_mut();
+            COUNT.with_borrow_mut(|c| {
                 *c += 1;
             });
 
@@ -102,12 +99,12 @@ fn eager_create_module() {
     let mut cx = Context::create(modules![MyModule]);
 
     assert!(cx.singleton_registry().len() == 1);
-    assert!(COUNT.with(|created| *created.borrow() == 1));
+    assert!(COUNT.with_borrow(|created| *created == 1));
 
     cx.resolve::<A>();
 
     assert!(cx.singleton_registry().len() == 1);
-    assert!(COUNT.with(|created| *created.borrow() == 1));
+    assert!(COUNT.with_borrow(|created| *created == 1));
 }
 
 #[test]
@@ -122,8 +119,7 @@ fn eager_create_module_twice() {
     #[Singleton(eager_create)]
     impl A {
         fn new() -> A {
-            COUNT.with(|c| {
-                let mut c = c.borrow_mut();
+            COUNT.with_borrow_mut(|c| {
                 *c += 1;
             });
 
@@ -143,12 +139,12 @@ fn eager_create_module_twice() {
 
     let mut cx = Context::create(modules![MyModule]);
 
-    assert!(COUNT.with(|created| *created.borrow() == 1));
+    assert!(COUNT.with_borrow(|created| *created == 1));
     assert!(cx.singleton_registry().len() == 1);
 
     cx.flush();
 
-    assert!(COUNT.with(|created| *created.borrow() == 1));
+    assert!(COUNT.with_borrow(|created| *created == 1));
     assert!(cx.singleton_registry().len() == 1);
 }
 
@@ -164,8 +160,7 @@ fn eager_create_two_modules() {
     #[Singleton(eager_create)]
     impl A {
         fn new() -> A {
-            COUNT.with(|c| {
-                let mut c = c.borrow_mut();
+            COUNT.with_borrow_mut(|c| {
                 *c += 1;
             });
 
@@ -179,8 +174,7 @@ fn eager_create_two_modules() {
     #[Singleton(eager_create)]
     impl B {
         fn new(a: A) -> B {
-            COUNT.with(|c| {
-                let mut c = c.borrow_mut();
+            COUNT.with_borrow_mut(|c| {
                 *c += 1;
             });
 
@@ -217,13 +211,13 @@ fn eager_create_two_modules() {
 
     let mut cx = Context::create(modules![MyModule1, MyModule2]);
 
-    assert!(COUNT.with(|created| *created.borrow() == 2));
+    assert!(COUNT.with_borrow(|created| *created == 2));
     assert!(cx.singleton_registry().len() == 2);
 
     cx.resolve::<A>();
     cx.resolve::<B>();
 
-    assert!(COUNT.with(|created| *created.borrow() == 2));
+    assert!(COUNT.with_borrow(|created| *created == 2));
     assert!(cx.singleton_registry().len() == 2);
 }
 
@@ -258,8 +252,7 @@ fn only_singleton_or_all_scope_eager_create() {
     #[Singleton]
     impl A {
         fn new() -> A {
-            COUNT.with(|c| {
-                let mut c = c.borrow_mut();
+            COUNT.with_borrow_mut(|c| {
                 *c += 1;
             });
 
@@ -272,8 +265,7 @@ fn only_singleton_or_all_scope_eager_create() {
     #[Transient]
     impl B {
         fn new() -> B {
-            COUNT.with(|c| {
-                let mut c = c.borrow_mut();
+            COUNT.with_borrow_mut(|c| {
                 *c += 1;
             });
 
@@ -292,13 +284,13 @@ fn only_singleton_or_all_scope_eager_create() {
     Context::options()
         .eager_create(true)
         .create(modules![MyModule]);
-    assert!(COUNT.with(|created| *created.borrow() == 1));
+    assert!(COUNT.with_borrow(|created| *created == 1));
 
     Context::options()
         .allow_only_singleton_eager_create(false)
         .eager_create(true)
         .create(modules![MyModule]);
-    assert!(COUNT.with(|created| *created.borrow() == 3));
+    assert!(COUNT.with_borrow(|created| *created == 3));
 }
 
 #[tokio::test]
@@ -338,9 +330,7 @@ async fn eager_create_provider_async() {
     #[Singleton(eager_create)]
     impl A {
         async fn new() -> A {
-            CREATED.with(|created| {
-                *created.borrow_mut() = true;
-            });
+            CREATED.set(true);
 
             A
         }
@@ -358,7 +348,7 @@ async fn eager_create_provider_async() {
     let cx = Context::create_async(modules![MyModule]).await;
 
     assert!(cx.singleton_registry().len() == 1);
-    assert!(CREATED.with(|created| *created.borrow()));
+    assert!(CREATED.with_borrow(|created| *created));
 }
 
 #[tokio::test]
@@ -373,8 +363,7 @@ async fn eager_create_module_async() {
     #[Singleton(eager_create)]
     impl A {
         async fn new() -> A {
-            COUNT.with(|c| {
-                let mut c = c.borrow_mut();
+            COUNT.with_borrow_mut(|c| {
                 *c += 1;
             });
 
@@ -399,12 +388,12 @@ async fn eager_create_module_async() {
     let mut cx = Context::create_async(modules![MyModule]).await;
 
     assert!(cx.singleton_registry().len() == 1);
-    assert!(COUNT.with(|created| *created.borrow() == 1));
+    assert!(COUNT.with_borrow(|created| *created == 1));
 
     cx.resolve_async::<A>().await;
 
     assert!(cx.singleton_registry().len() == 1);
-    assert!(COUNT.with(|created| *created.borrow() == 1));
+    assert!(COUNT.with_borrow(|created| *created == 1));
 }
 
 #[tokio::test]
@@ -419,8 +408,7 @@ async fn eager_create_module_twice_async() {
     #[Singleton(eager_create)]
     impl A {
         async fn new() -> A {
-            COUNT.with(|c| {
-                let mut c = c.borrow_mut();
+            COUNT.with_borrow_mut(|c| {
                 *c += 1;
             });
 
@@ -440,12 +428,12 @@ async fn eager_create_module_twice_async() {
 
     let mut cx = Context::create_async(modules![MyModule]).await;
 
-    assert!(COUNT.with(|created| *created.borrow() == 1));
+    assert!(COUNT.with_borrow(|created| *created == 1));
     assert!(cx.singleton_registry().len() == 1);
 
     cx.flush_async().await;
 
-    assert!(COUNT.with(|created| *created.borrow() == 1));
+    assert!(COUNT.with_borrow(|created| *created == 1));
     assert!(cx.singleton_registry().len() == 1);
 }
 
@@ -461,8 +449,7 @@ async fn eager_create_two_modules_async() {
     #[Singleton(eager_create)]
     impl A {
         async fn new() -> A {
-            COUNT.with(|c| {
-                let mut c = c.borrow_mut();
+            COUNT.with_borrow_mut(|c| {
                 *c += 1;
             });
 
@@ -476,8 +463,7 @@ async fn eager_create_two_modules_async() {
     #[Singleton(eager_create)]
     impl B {
         async fn new(a: A) -> B {
-            COUNT.with(|c| {
-                let mut c = c.borrow_mut();
+            COUNT.with_borrow_mut(|c| {
                 *c += 1;
             });
 
@@ -514,13 +500,13 @@ async fn eager_create_two_modules_async() {
 
     let mut cx = Context::create_async(modules![MyModule1, MyModule2]).await;
 
-    assert!(COUNT.with(|created| *created.borrow() == 2));
+    assert!(COUNT.with_borrow(|created| *created == 2));
     assert!(cx.singleton_registry().len() == 2);
 
     cx.resolve_async::<A>().await;
     cx.resolve_async::<B>().await;
 
-    assert!(COUNT.with(|created| *created.borrow() == 2));
+    assert!(COUNT.with_borrow(|created| *created == 2));
     assert!(cx.singleton_registry().len() == 2);
 }
 
@@ -555,8 +541,7 @@ async fn only_singleton_or_all_scope_eager_create_async() {
     #[Singleton]
     impl A {
         async fn new() -> A {
-            COUNT.with(|c| {
-                let mut c = c.borrow_mut();
+            COUNT.with_borrow_mut(|c| {
                 *c += 1;
             });
 
@@ -569,8 +554,7 @@ async fn only_singleton_or_all_scope_eager_create_async() {
     #[Transient]
     impl B {
         async fn new() -> B {
-            COUNT.with(|c| {
-                let mut c = c.borrow_mut();
+            COUNT.with_borrow_mut(|c| {
                 *c += 1;
             });
 
@@ -590,12 +574,12 @@ async fn only_singleton_or_all_scope_eager_create_async() {
         .eager_create(true)
         .create_async(modules![MyModule])
         .await;
-    assert!(COUNT.with(|created| *created.borrow() == 1));
+    assert!(COUNT.with_borrow(|created| *created == 1));
 
     Context::options()
         .allow_only_singleton_eager_create(false)
         .eager_create(true)
         .create_async(modules![MyModule])
         .await;
-    assert!(COUNT.with(|created| *created.borrow() == 3));
+    assert!(COUNT.with_borrow(|created| *created == 3));
 }
