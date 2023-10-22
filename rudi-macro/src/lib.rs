@@ -8,9 +8,10 @@ mod rudi_path_attribute;
 mod struct_or_function_attribute;
 
 use proc_macro::TokenStream;
+use rudi_core::Scope;
 use syn::{parse_macro_input, spanned::Spanned, Item};
 
-use crate::{commons::Scope, struct_or_function_attribute::StructOrFunctionAttribute};
+use crate::struct_or_function_attribute::StructOrFunctionAttribute;
 
 fn generate(args: TokenStream, input: TokenStream, scope: Scope) -> TokenStream {
     let mut attr = StructOrFunctionAttribute::default();

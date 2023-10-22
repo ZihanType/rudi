@@ -3,7 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::Type;
+use crate::{Color, Scope, Type};
 
 /// Represents a unique key for a provider.
 #[derive(Clone, Debug)]
@@ -52,24 +52,6 @@ impl Hash for Key {
         self.ty.hash(state);
         self.name.hash(state);
     }
-}
-
-/// Represents how the constructor is run
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Scope {
-    /// singleton, constructor will be run only once.
-    Singleton,
-    /// transient, constructor will be run every time.
-    Transient,
-}
-
-/// Represents the color of the constructor, i.e., async or sync.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Color {
-    /// async, constructor must run in an async context
-    Async,
-    /// sync, constructor can run in both sync and async context
-    Sync,
 }
 
 /// Represents a definition of a provider.

@@ -396,7 +396,7 @@ impl Context {
     /// and the [`eager_create`](crate::Context::eager_create) value of the `Context`.
     /// Then, the `allow_eager_create` is obtained by evaluating
     /// the `Context`'s [`allow_only_singleton_eager_create`](crate::Context::allow_only_singleton_eager_create)
-    /// and the provider's [`scope`](crate::definition::Scope).
+    /// and the provider's [`scope`](crate::Scope).
     /// If the result of the logical AND operation of `need_eager_create` and `allow_eager_create` is `true`,
     /// the provider's constructor will be pushed into a queue. When this method is called,
     /// the queue will be traversed and each constructor in the queue will be called to construct

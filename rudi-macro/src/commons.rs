@@ -1,5 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
+use rudi_core::{Color, Scope};
 use syn::{
     parse_quote, punctuated::Punctuated, spanned::Spanned, AngleBracketedGenericArguments,
     Attribute, Field, Fields, FieldsNamed, FieldsUnnamed, FnArg, GenericArgument, Ident, PatType,
@@ -9,28 +10,6 @@ use syn::{
 use crate::field_or_argument_attribute::{
     FieldOrArgumentAttribute, SimpleFieldOrArgumentAttribute,
 };
-
-#[derive(Clone, Copy)]
-pub(crate) enum Scope {
-    Singleton,
-    Transient,
-}
-
-#[cfg(feature = "auto-register")]
-impl Scope {
-    pub(crate) fn as_str(&self) -> &'static str {
-        match self {
-            Scope::Singleton => "Singleton",
-            Scope::Transient => "Transient",
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-pub(crate) enum Color {
-    Async,
-    Sync,
-}
 
 pub(crate) fn generate_create_provider(scope: Scope, color: Color) -> TokenStream {
     match (scope, color) {
@@ -520,9 +499,9 @@ pub(crate) fn check_auto_register_with_generics(
             generics.span(),
             format!(
                 "not support auto register generics {}, \
-                please remove generics, or use `#[{}(auto_register = false)]` to disable auto register",
+                please remove generics, or use `#[{:?}(auto_register = false)]` to disable auto register",
                 item_kind.as_str(),
-                scope.as_str()
+                scope
             ),
         ));
     }

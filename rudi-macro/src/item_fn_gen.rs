@@ -1,9 +1,10 @@
 use proc_macro2::TokenStream;
 use quote::quote;
+use rudi_core::{Color, Scope};
 use syn::{GenericParam, ItemFn, ReturnType};
 
 use crate::{
-    commons::{self, ArgumentResolveStmts, Color, Scope},
+    commons::{self, ArgumentResolveStmts},
     rudi_path_attribute,
     struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };

@@ -1,11 +1,12 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
+use rudi_core::{Color, Scope};
 use syn::{
     spanned::Spanned, Generics, ImplItem, ImplItemFn, ItemImpl, Path, ReturnType, Type, TypePath,
 };
 
 use crate::{
-    commons::{self, ArgumentResolveStmts, Color, Scope},
+    commons::{self, ArgumentResolveStmts},
     rudi_path_attribute,
     struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };

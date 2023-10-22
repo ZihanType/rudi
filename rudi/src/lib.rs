@@ -27,6 +27,7 @@ pub use future::*;
 pub use module::*;
 pub use provider::*;
 pub(crate) use registry::*;
+pub use rudi_core::*;
 #[cfg_attr(docsrs, doc(cfg(feature = "rudi-macro")))]
 #[cfg(feature = "rudi-macro")]
 /// Define a singleton provider.
