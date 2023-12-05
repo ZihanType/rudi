@@ -1,4 +1,4 @@
-/// Represents the scope of the instance
+/// Represents the scope of the provider.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Scope {
     /// singleton scope.

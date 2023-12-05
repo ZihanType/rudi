@@ -37,6 +37,7 @@ pub(crate) enum Constructor<T> {
     #[allow(clippy::type_complexity)]
     Async(Rc<dyn for<'a> Fn(&'a mut Context) -> BoxFuture<'a, T>>),
     Sync(Rc<dyn Fn(&mut Context) -> T>),
+    None,
 }
 
 impl<T> Clone for Constructor<T> {
@@ -44,6 +45,7 @@ impl<T> Clone for Constructor<T> {
         match self {
             Self::Async(c) => Self::Async(Rc::clone(c)),
             Self::Sync(c) => Self::Sync(Rc::clone(c)),
+            Self::None => Self::None,
         }
     }
 }
@@ -55,6 +57,8 @@ pub enum EagerCreateFunction {
     Async(for<'a> fn(&'a mut Context, Cow<'static, str>) -> BoxFuture<'a, ()>),
     /// sync eager create function.
     Sync(fn(&mut Context, Cow<'static, str>)),
+    /// no eager create function.
+    None,
 }
 
 /// Represents the provider of an instance of type `T`.
@@ -127,10 +131,11 @@ impl<T: 'static> Provider<T> {
         let definition = Definition::new::<T>(
             name,
             scope,
-            match constructor {
+            Some(match constructor {
                 Constructor::Async(_) => Color::Async,
                 Constructor::Sync(_) => Color::Sync,
-            },
+                Constructor::None => unreachable!(),
+            }),
             condition.is_some(),
         );
 
@@ -168,12 +173,12 @@ impl<T: 'static> Provider<T> {
 
     pub(crate) fn never_construct(name: Cow<'static, str>, scope: Scope) -> Self {
         Provider {
-            definition: Definition::new::<T>(name, scope, Color::Sync, false),
+            definition: Definition::new::<T>(name, scope, None, false),
             eager_create: false,
             condition: None,
-            constructor: Constructor::Sync(Rc::new(|_| unreachable!())),
+            constructor: Constructor::None,
             clone_instance: None,
-            eager_create_function: EagerCreateFunction::Sync(|_, _| unreachable!()),
+            eager_create_function: EagerCreateFunction::None,
             binding_providers: None,
             binding_definitions: None,
         }

@@ -73,8 +73,8 @@ pub struct Definition {
     pub origin: Option<Type>,
     /// The scope of the provider.
     pub scope: Scope,
-    /// The color of the provider.
-    pub color: Color,
+    /// The color of the constructor.
+    pub color: Option<Color>,
     /// Whether the provider is conditional.
     pub conditional: bool,
 }
@@ -83,7 +83,7 @@ impl Definition {
     pub(crate) fn new<T: 'static>(
         name: Cow<'static, str>,
         scope: Scope,
-        color: Color,
+        color: Option<Color>,
         conditional: bool,
     ) -> Self {
         Self {

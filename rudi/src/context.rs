@@ -1703,6 +1703,7 @@ please use instead:
                 EagerCreateFunction::Sync(eager_create_function) => {
                     eager_create_function(self, definition.key.name)
                 }
+                EagerCreateFunction::None => unreachable!(),
             }
         }
     }
@@ -1722,6 +1723,7 @@ please use instead:
                 EagerCreateFunction::Sync(eager_create_function) => {
                     eager_create_function(self, definition.key.name)
                 }
+                EagerCreateFunction::None => unreachable!(),
             }
         }
     }
@@ -1867,6 +1869,7 @@ please check all the references to the above type, there are 3 scenarios that wi
                 )
             }
             Constructor::Sync(constructor) => self.resolve_instance(key.clone(), constructor),
+            Constructor::None => unreachable!(),
         };
 
         self.after_resolve(key, behaviour, scope, instance, clone_instance)
@@ -1897,6 +1900,7 @@ please check all the references to the above type, there are 3 scenarios that wi
                     self.resolve_instance_async(key, constructor).await
                 }
                 Constructor::Sync(constructor) => self.resolve_instance(key, constructor),
+                Constructor::None => unreachable!(),
             }
         };
 
