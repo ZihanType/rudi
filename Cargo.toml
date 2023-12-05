@@ -12,6 +12,16 @@ repository = "https://github.com/ZihanType/rudi"
 include = ["src/**/*", "Cargo.toml"]
 readme = "README.md"
 
+[workspace.lints.rust]
+unsafe_code = "forbid"
+private_interfaces = "deny"
+private_bounds = "deny"
+unreachable_pub = "deny"
+missing_docs = "warn"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "warn"
+
 [workspace.dependencies]
 # self
 rudi = { version = "0.6.0", path = "./rudi", default-features = false }

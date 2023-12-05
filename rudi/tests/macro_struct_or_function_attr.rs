@@ -81,7 +81,7 @@ struct B;
 // rudi_path
 
 mod a {
-    pub use rudi::*;
+    pub(crate) use rudi::*;
 }
 
 #[Transient]

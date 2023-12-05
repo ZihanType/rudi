@@ -4,26 +4,27 @@ use rudi::Singleton;
 
 #[derive(Clone, Debug)]
 #[Singleton]
-pub struct ComponentA;
+pub(crate) struct ComponentA;
 
 #[derive(Clone)]
 #[Singleton]
-pub struct ComponentB {
-    pub a: ComponentA,
+pub(crate) struct ComponentB {
+    #[allow(dead_code)]
+    pub(crate) a: ComponentA,
 }
 
-pub trait Trait1 {
+pub(crate) trait Trait1 {
     fn as_any(&self) -> &dyn Any;
 }
 
-pub trait Trait2 {}
+pub(crate) trait Trait2 {}
 
 #[derive(Clone)]
 #[Singleton(binds = [Self::into_trait1, Self::into_trait2])]
-pub struct Component1;
+pub(crate) struct Component1;
 
 impl Component1 {
-    pub fn into_trait1(self) -> Rc<dyn Trait1> {
+    pub(crate) fn into_trait1(self) -> Rc<dyn Trait1> {
         Rc::new(self)
     }
 
@@ -42,10 +43,10 @@ impl Trait2 for Component1 {}
 
 #[derive(Clone)]
 #[Singleton(binds = [Self::into_trait1])]
-pub struct Component2;
+pub(crate) struct Component2;
 
 impl Component2 {
-    pub fn into_trait1(self) -> Rc<dyn Trait1> {
+    pub(crate) fn into_trait1(self) -> Rc<dyn Trait1> {
         Rc::new(self)
     }
 }
@@ -57,6 +58,7 @@ impl Trait1 for Component2 {
 }
 
 #[derive(Clone)]
-pub struct Holder {
-    pub id: usize,
+pub(crate) struct Holder {
+    #[allow(dead_code)]
+    pub(crate) id: usize,
 }
