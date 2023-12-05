@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    cmp::Ordering,
     hash::{Hash, Hasher},
 };
 
@@ -32,15 +33,15 @@ impl PartialEq for Key {
 impl Eq for Key {}
 
 impl PartialOrd for Key {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for Key {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         match self.ty.cmp(&other.ty) {
-            std::cmp::Ordering::Equal => {}
+            Ordering::Equal => {}
             ord => return ord,
         }
         self.name.cmp(&other.name)
@@ -65,8 +66,10 @@ pub struct Definition {
     /// return type of the method, and this field represents the parameter type of the method:
     /// - [`SingletonProvider::bind`](crate::SingletonProvider::bind)
     /// - [`TransientProvider::bind`](crate::TransientProvider::bind)
+    /// - [`SingleOwnerProvider::bind`](crate::SingleOwnerProvider::bind)
     /// - [`SingletonAsyncProvider::bind`](crate::SingletonAsyncProvider::bind)
     /// - [`TransientAsyncProvider::bind`](crate::TransientAsyncProvider::bind)
+    /// - [`SingleOwnerAsyncProvider::bind`](crate::SingleOwnerAsyncProvider::bind)
     pub origin: Option<Type>,
     /// The scope of the provider.
     pub scope: Scope,

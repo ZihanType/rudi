@@ -45,3 +45,9 @@ pub fn Singleton(args: TokenStream, input: TokenStream) -> TokenStream {
 pub fn Transient(args: TokenStream, input: TokenStream) -> TokenStream {
     generate(args, input, Scope::Transient)
 }
+
+#[proc_macro_attribute]
+#[allow(non_snake_case)]
+pub fn SingleOwner(args: TokenStream, input: TokenStream) -> TokenStream {
+    generate(args, input, Scope::SingleOwner)
+}

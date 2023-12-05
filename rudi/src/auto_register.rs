@@ -18,7 +18,7 @@ inventory::collect!(ProviderRegister);
 /// # Example
 ///
 /// ```rust
-/// use rudi::{auto_registered_providers, Module};
+/// use rudi::{auto_registered_providers, modules, Context, DynProvider, Module, SingleOwner};
 ///
 /// struct MyAutoRegisterModule;
 ///
@@ -27,10 +27,18 @@ inventory::collect!(ProviderRegister);
 ///         true
 ///     }
 ///
-///     fn providers() -> Vec<rudi::DynProvider> {
+///     fn providers() -> Vec<DynProvider> {
 ///         auto_registered_providers().collect()
 ///     }
 /// }
+///
+/// #[SingleOwner]
+/// struct A;
+///
+/// # fn main() {
+/// let cx = Context::create(modules![MyAutoRegisterModule]);
+/// assert!(cx.get_single_option::<A>().is_some());
+/// # }
 /// ```
 pub fn auto_registered_providers() -> impl Iterator<Item = DynProvider> {
     inventory::iter::<ProviderRegister>
@@ -47,7 +55,7 @@ pub fn auto_registered_providers() -> impl Iterator<Item = DynProvider> {
 /// # Example
 ///
 /// ```rust
-/// use rudi::{Context, Singleton, Transient};
+/// use rudi::{modules, AutoRegisterModule, Context, Singleton, Transient};
 ///
 /// #[Singleton]
 /// #[derive(Clone)]
@@ -57,7 +65,7 @@ pub fn auto_registered_providers() -> impl Iterator<Item = DynProvider> {
 /// struct B(A);
 ///
 /// # fn main() {
-/// let mut cx = Context::auto_register();
+/// let mut cx = Context::create(modules![AutoRegisterModule]);
 /// assert!(cx.resolve_option::<B>().is_some());
 /// # }
 /// ```
@@ -73,12 +81,12 @@ impl Module for AutoRegisterModule {
 ///
 /// If you have:
 ///   - Enabled the `auto-register` feature (which is enabled by default).
-///   - Define `Provider` using the `#[Singleton]` or `#[Transient]` macro.
-///   - `#[Singleton]` or `#[Transient]` does not use the `auto_register = false` attribute.
+///   - Define [`Provider`](crate::Provider) using the [`#[Singleton]`](crate::Singleton), [`#[Transient]`](crate::Transient) or [`#[SingleOwner]`](crate::SingleOwner) macro.
+///   - [`#[Singleton]`](crate::Singleton), [`#[Transient]`](crate::Transient) or [`#[SingleOwner]`](crate::SingleOwner) does not use the `auto_register = false` attribute.
 ///
 /// Then you don't need to use this macro to register `Provider`.
 ///
-/// But if you use function define a `Provider` and you want to use auto-registration,
+/// But if you use function define a [`Provider`](crate::Provider) and you want to use auto-registration,
 /// then you need to use this macro.
 ///
 /// # Example

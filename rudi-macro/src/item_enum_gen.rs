@@ -90,10 +90,10 @@ pub(crate) fn generate(
     let variant = annotated_di_variant.unwrap();
 
     let FieldResolveStmts {
-        mut_ref_cx_stmts,
+        ref_mut_cx_stmts,
         ref_cx_stmts,
         fields,
-    } = commons::generate_field_resolve_methods(&mut variant.fields, color, scope)?;
+    } = commons::generate_field_resolve_stmts(&mut variant.fields, color)?;
 
     let create_provider = commons::generate_create_provider(scope, color);
 
@@ -134,7 +134,7 @@ pub(crate) fn generate(
             quote! {
                 #[allow(unused_variables)]
                 |cx| ::std::boxed::Box::pin(async {
-                    #(#mut_ref_cx_stmts)*
+                    #(#ref_mut_cx_stmts)*
                     #(#ref_cx_stmts)*
                     #enum_ident::#instance
                 })
@@ -144,7 +144,7 @@ pub(crate) fn generate(
             quote! {
                 #[allow(unused_variables)]
                 |cx| {
-                    #(#mut_ref_cx_stmts)*
+                    #(#ref_mut_cx_stmts)*
                     #(#ref_cx_stmts)*
                     #enum_ident::#instance
                 }

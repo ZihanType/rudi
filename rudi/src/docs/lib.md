@@ -7,11 +7,11 @@ Rudi - an out-of-the-box dependency injection framework for Rust.
 Here are links to the most important sections of the docs:
 
 - [`Context`](crate::Context): The core of the entire dependency injection framework, responsible for managing all providers.
-- [`#[Singleton]`](crate::Singleton) / [`#[Transient]`](crate::Transient): Two attribute macros used to generate the implementation of [`DefaultProvider`](crate::DefaultProvider), thus registering providers.
+- [`#[Singleton]`](crate::Singleton) / [`#[Transient]`](crate::Transient) / [`#[SingleOwner]`](crate::SingleOwner): Two attribute macros used to generate the implementation of [`DefaultProvider`](crate::DefaultProvider), thus registering providers.
 
 ## Feature Flags
 
-- `rudi-macro` (*Default*): Enables the `#[Singleton]` and `#[Transient]` attribute macros.
+- `rudi-macro` (*Default*): Enables the `#[Singleton]`, `#[Transient]` and `#[SingleOwner]` attribute macros.
 - `auto-register` (*Default*): Enables automatic registration of types and functions.
 - `tracing`: Adds support for logging with [`tracing`](https://crates.io/crates/tracing).
 
@@ -54,7 +54,7 @@ fn Run(b: B, c: C) {
 }
 
 fn main() {
-    // Automatically register all types and functions with the `#[Singleton]` or `#[Transient]` attribute.
+    // Automatically register all types and functions with the `#[Singleton]`, `#[Transient]` or `#[SingleOwner]` attribute.
     let mut cx = Context::auto_register();
 
     // Get an instance of `()` from the `Context`, which will call the `Run` function.

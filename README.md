@@ -42,7 +42,7 @@ fn Run(b: B, c: C) {
 }
 
 fn main() {
-    // Automatically register all types and functions with the `#[Singleton]` or `#[Transient]` attribute.
+    // Automatically register all types and functions with the `#[Singleton]`, `#[Transient]` or `#[SingleOwner]` attribute.
     let mut cx = Context::auto_register();
 
     // Get an instance of `()` from the `Context`, which will call the `Run` function.
@@ -53,7 +53,7 @@ fn main() {
 
 ## Features
 
-- Two lifetimes: `singleton` and `transient`.
+- Three scopes: [`Singleton`](https://docs.rs/rudi/latest/rudi/enum.Scope.html#variant.Singleton), [`Transient`](https://docs.rs/rudi/latest/rudi/enum.Scope.html#variant.Transient) and [`SingleOwner`](https://docs.rs/rudi/latest/rudi/enum.Scope.html#variant.SingleOwner) ([example](./examples/all-scope/)).
 - Async functions and async constructors.
 - Attribute macros can be used on `struct`, `enum`, `impl block` and `function`.
 - Manual and automatic registration (thanks to [inventory](https://github.com/dtolnay/inventory)).
@@ -61,7 +61,7 @@ fn main() {
 - Distinguishing different instances with types and names.
 - Generics (but must be monomorphized and manually registered) ([example](./examples/hello-world-with-generic/)).
 - Conditional registration ([example](./examples/condition/)).
-- References (but only `singleton` lifetime) ([example](./examples/reference/)).
+- References (only `Singleton` and `SingleOwner` scope) ([example](./examples/reference/)).
 
 ## More complex example
 

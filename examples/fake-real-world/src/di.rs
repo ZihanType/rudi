@@ -12,7 +12,14 @@ pub const fn migrator_name() -> &'static str {
 }
 
 #[Singleton(name = LOG_NAME)]
-fn InitLog() {}
+fn InitLog() {
+    println!("Init log");
+}
+
+#[Transient(name = migrator_name())]
+async fn Migrator(_database_connection: DatabaseConnection) {
+    println!("Migrator");
+}
 
 #[Singleton]
 async fn NewRedis(config: RedisConfig) -> RedisClient {
@@ -23,9 +30,6 @@ async fn NewRedis(config: RedisConfig) -> RedisClient {
 async fn NewDatabase(config: DatabaseConfig) -> DatabaseConnection {
     DatabaseConnection::open(&config.url).await
 }
-
-#[Transient(name = migrator_name())]
-async fn Migrator(_database_connection: DatabaseConnection) {}
 
 #[Transient]
 async fn NewMiddleware(

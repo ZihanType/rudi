@@ -1,10 +1,10 @@
 
 
-Both [`#[Singleton]`](crate::Singleton) and [`#[Transient]`](crate::Transient) are attribute macros used to define a [`Provider`], the difference between them is that a `Provider` defined by `#[Singleton]` has a constructor method that is executed only once, while a `Provider` defined by `#[Transient]` has its constructor method can be executed multiple times.
+[`#[Singleton]`](crate::Singleton), [`#[Transient]`](crate::Transient) and [`#[SingleOwner]`](crate::SingleOwner) are attribute macros used to define a [`Provider`], for the difference between the `Provider`s they defined, see [`Scope`].
 
-These two macros can be used on `struct`, `enum`, `impl block`, and `fn`.
+These three macros can be used on `struct`, `enum`, `impl block`, and `fn`.
 
-- When used on `struct`, `enum` and `impl block`, a [`DefaultProvider`] implementation is generated for the struct, and the associated type [`DefaultProvider::Type`] is the struct itself.
+- When used on `struct`, `enum` and `impl block`, a [`DefaultProvider`] implementation is generated for the `struct` or `enum`, and the associated type [`DefaultProvider::Type`] is the `struct` or `enum` itself.
 
 - When used on `fn`, a struct with the same name as the function is created, and then a [`DefaultProvider`] implementation is generated for the struct, with the associated type [`DefaultProvider::Type`] being the return type of the function. As mentioned above, it is recommended to use `CamelCase` when defining functions. Of course, you can still use `snake_case`.
 
@@ -63,45 +63,51 @@ fn main() {
 
 ## Attribute arguments
 
-### `#[Singleton]` / `#[Transient]`: used on `struct`, `enum`, `impl block` and `fn`
+### `#[Singleton]` / `#[Transient]` / `#[SingleOwner]`: used on `struct`, `enum`, `impl block` and `fn`
 
 #### Common arguments that can be used on `struct`, `enum`, `impl block`, and `fn`
 
 - name
   - type: any expression that implements `Into<Cow<'static, str>>`.
-  - example: `#[Singleton(name = "abc")]` / `#[Transient(name = a::b::NAME)]` / `#[Transient(name = nth(42))]`
+  - example: `#[Singleton(name = "abc")]` / `#[Transient(name = a::b::NAME)]` / `#[SingleOwner(name = nth(42))]`
   - optional: true
   - default: **""**
   - description: Specifies the name of the defined `Provider`.
   - refer:
     - [`SingletonProvider::name`]
     - [`TransientProvider::name`]
+    - [`SingleOwnerProvider::name`]
     - [`SingletonAsyncProvider::name`]
     - [`TransientAsyncProvider::name`]
+    - [`SingleOwnerAsyncProvider::name`]
 
 - eager_create
   - type: bool
-  - example: `#[Singleton(eager_create)]` / `#[Singleton(eager_create = true)]` / `#[Singleton(eager_create = false)]`
+  - example: `#[Singleton(eager_create)]` / `#[Transient(eager_create = true)]` / `#[SingleOwner(eager_create = false)]`
   - optional: true
   - default: **false**
   - description: Specifies whether the defined `Provider` is eager to create.
   - refer:
     - [`SingletonProvider::eager_create`]
     - [`TransientProvider::eager_create`]
+    - [`SingleOwnerProvider::eager_create`]
     - [`SingletonAsyncProvider::eager_create`]
     - [`TransientAsyncProvider::eager_create`]
+    - [`SingleOwnerAsyncProvider::eager_create`]
 
 - condition
   - type: a closure or an expression path of type `fn(&Context) -> bool`.
-  - example: `#[Singleton(condition = |_cx| true)]` / `#[Singleton(condition = path::to::expr)]`
+  - example: `#[Singleton(condition = |_cx| true)]` / `#[SingleOwner(condition = path::to::expr)]`
   - optional: true
   - default: **None**
   - description: Specifies whether or not to insert the defined `Provider` into the `Context` based on the condition.
   - refer:
     - [`SingletonProvider::condition`]
     - [`TransientProvider::condition`]
+    - [`SingleOwnerProvider::condition`]
     - [`SingletonAsyncProvider::condition`]
     - [`TransientAsyncProvider::condition`]
+    - [`SingleOwnerAsyncProvider::condition`]
 
 - binds
   - type: Array of paths to functions of type `fn(T) -> R`, where `T` is current struct type or current function return type and `R` can be any type.
@@ -112,12 +118,14 @@ fn main() {
   - refer:
     - [`SingletonProvider::bind`]
     - [`TransientProvider::bind`]
+    - [`SingleOwnerProvider::bind`]
     - [`SingletonAsyncProvider::bind`]
     - [`TransientAsyncProvider::bind`]
+    - [`SingleOwnerAsyncProvider::bind`]
 
 - auto_register
   - type: bool
-  - example: `#[Singleton(auto_register)]` / `#[Singleton(auto_register = true)]` / `#[Singleton(auto_register = false)]`
+  - example: `#[Singleton(auto_register)]` / `#[Transient(auto_register = true)]` / `#[SingleOwner(auto_register = false)]`
   - optional: true
   - default: **true**
   - description: Specifies whether a defined `Provider` should be auto-registered to [`AutoRegisterModule`](crate::AutoRegisterModule). When the `auto-register` feature is enabled (which is enabled by default), this argument can be used if auto-registration is not desired, or if auto-registration is not possible due to the presence of generics.
@@ -145,8 +153,6 @@ fn main() {
 Use `#[di]` to specify which variant of the enum will be constructed.
 
 ### `#[di]`: used on `field` of struct, `field` of variant of enum and `argument` of function
-
-#### Common arguments that can be used in `#[Singleton]` and `#[Transient]`
 
 - name
   - conflict: `vec`
@@ -222,8 +228,6 @@ Use `#[di]` to specify which variant of the enum will be constructed.
     - [`Context::resolve_by_type`]
     - [`Context::resolve_by_type_async`]
 
-#### An argument that can only be used in `#[Singleton]`
-
 - ref
   - require:
     - exist `option` argument: The current `field` or `argument`, which must be of type [`Option<&T>`].
@@ -246,57 +250,57 @@ Use `#[di]` to specify which variant of the enum will be constructed.
   - default: **None**
   - description:
 
-    Get a reference to `Singleton` from `Context` instead of having an ownership value.
+    Get a reference to `Singleton` or `SingleOwner` from `Context` .
 
     1. Not exist `option`, `vec` and `default` argument, will call the following method
 
         ```rust ignore
         // async
-        cx.just_create_singleton_with_name_async::<T>(name).await;
-        let var = cx.get_singleton_with_name(name);
+        cx.just_create_single_with_name_async::<T>(name).await;
+        let var = cx.get_single_with_name(name);
 
         // sync
-        cx.just_create_singleton_with_name::<T>(name);
-        let var = cx.get_singleton_with_name(name);
+        cx.just_create_single_with_name::<T>(name);
+        let var = cx.get_single_with_name(name);
         ```
 
     2. Exist `option` argument, will call the following method
 
         ```rust ignore
         // async
-        cx.try_create_singleton_with_name_async::<T>(name).await;
-        let var = cx.get_singleton_option_with_name(name);
+        cx.try_just_create_single_with_name_async::<T>(name).await;
+        let var = cx.get_single_option_with_name(name);
 
         // sync
-        cx.try_create_singleton_with_name::<T>(name);
-        let var = cx.get_singleton_option_with_name(name);
+        cx.try_just_create_single_with_name::<T>(name);
+        let var = cx.get_single_option_with_name(name);
         ```
 
     3. Exist `vec` argument, will call the following method
 
         ```rust ignore
         // async
-        cx.try_create_singletons_by_type_async::<T>().await;
-        let var = cx.get_singletons_by_type();
+        cx.try_just_create_singles_by_type_async::<T>().await;
+        let var = cx.get_singles_by_type();
 
         // sync
-        cx.try_create_singletons_by_type::<T>();
-        let var = cx.get_singletons_by_type();
+        cx.try_just_create_singles_by_type::<T>();
+        let var = cx.get_singles_by_type();
         ```
 
     4. Exist `default` argument, will call the following method
 
         ```rust ignore
         // async
-        cx.try_create_singleton_with_name_async::<T>(name).await;
-        let var = match cx.get_singleton_option_with_name(name) {
+        cx.try_just_create_single_with_name_async::<T>(name).await;
+        let var = match cx.get_single_option_with_name(name) {
             Some(value) => value,
             None => default,
         };
 
         // sync
-        cx.try_create_singleton_with_name::<T>(name);
-        let var = match cx.get_singleton_option_with_name(name) {
+        cx.try_just_create_single_with_name::<T>(name);
+        let var = match cx.get_single_option_with_name(name) {
             Some(value) => value,
             None => default,
         };
@@ -305,15 +309,15 @@ Use `#[di]` to specify which variant of the enum will be constructed.
     5. If specified using `#[di(ref = R)]`, then all of the above `T`s will be replaced with the specified type `R`.
 
   - refer:
-    - [`Context::just_create_singleton_with_name_async`]
-    - [`Context::just_create_singleton_with_name`]
-    - [`Context::try_create_singleton_with_name_async`]
-    - [`Context::try_create_singleton_with_name`]
-    - [`Context::try_create_singletons_by_type_async`]
-    - [`Context::try_create_singletons_by_type`]
-    - [`Context::get_singleton_with_name`]
-    - [`Context::get_singleton_option_with_name`]
-    - [`Context::get_singletons_by_type`]
+    - [`Context::just_create_single_with_name_async`]
+    - [`Context::just_create_single_with_name`]
+    - [`Context::try_just_create_single_with_name_async`]
+    - [`Context::try_just_create_single_with_name`]
+    - [`Context::try_just_create_singles_by_type_async`]
+    - [`Context::try_just_create_singles_by_type`]
+    - [`Context::get_single_with_name`]
+    - [`Context::get_single_option_with_name`]
+    - [`Context::get_singles_by_type`]
 
 ## Struct, enum and function attributes example
 
@@ -349,7 +353,7 @@ fn Four() -> i16 {
 // condition
 
 fn _5_condition(cx: &Context) -> bool {
-    !cx.contains_singleton_with_name::<i32>("5")
+    !cx.contains_single_with_name::<i32>("5")
 }
 
 #[Singleton(name = "5", condition = _5_condition)]
@@ -430,8 +434,8 @@ async fn main() {
     assert_eq!(cx.resolve::<i8>(), 1);
     assert_eq!(cx.resolve_with_name::<i8>("2"), 2);
 
-    assert!(!cx.contains_singleton_with_name::<i16>("3"));
-    assert!(cx.contains_singleton_with_name::<i16>("4"));
+    assert!(!cx.contains_single_with_name::<i16>("3"));
+    assert!(cx.contains_single_with_name::<i16>("4"));
 
     assert!(cx.contains_provider_with_name::<i32>("5"));
     assert!(!cx.contains_provider_with_name::<i32>("6"));

@@ -163,10 +163,10 @@ fn generate_default_provider_impl(
     };
 
     let ArgumentResolveStmts {
-        mut_ref_cx_stmts,
+        ref_mut_cx_stmts,
         ref_cx_stmts,
         args,
-    } = commons::generate_argument_resolve_methods(&mut impl_item_fn.sig.inputs, color, scope)?;
+    } = commons::generate_argument_resolve_methods(&mut impl_item_fn.sig.inputs, color)?;
 
     let create_provider = commons::generate_create_provider(scope, color);
 
@@ -179,7 +179,7 @@ fn generate_default_provider_impl(
             quote! {
                 #[allow(unused_variables)]
                 |cx| ::std::boxed::Box::pin(async {
-                    #(#mut_ref_cx_stmts)*
+                    #(#ref_mut_cx_stmts)*
                     #(#ref_cx_stmts)*
                     Self::#fn_ident(#(#args,)*).await
                 })
@@ -189,7 +189,7 @@ fn generate_default_provider_impl(
             quote! {
                 #[allow(unused_variables)]
                 |cx| {
-                    #(#mut_ref_cx_stmts)*
+                    #(#ref_mut_cx_stmts)*
                     #(#ref_cx_stmts)*
                     Self::#fn_ident(#(#args,)*)
                 }

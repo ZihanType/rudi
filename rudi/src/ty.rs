@@ -1,5 +1,6 @@
 use std::{
     any::{self, TypeId},
+    cmp::Ordering,
     hash::{Hash, Hasher},
 };
 
@@ -30,13 +31,13 @@ impl PartialEq for Type {
 impl Eq for Type {}
 
 impl PartialOrd for Type {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for Type {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.id.cmp(&other.id)
     }
 }

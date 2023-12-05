@@ -57,8 +57,8 @@ fn Run(#[di(name = "controller")] controller: Controller, num: i32, success: boo
 
 fn main() {
     let mut cx = Context::options()
-        .instance(42)
-        .instance(true)
+        .singleton(42)
+        .singleton(true)
         .auto_register();
 
     // cx.resolve::<()>();

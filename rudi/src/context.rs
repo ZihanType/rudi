@@ -1,12 +1,11 @@
 use std::{any::TypeId, borrow::Cow, collections::HashMap, rc::Rc};
 
 use crate::{
-    BoxFuture, Constructor, Definition, DynProvider, DynSingletonInstance, EagerCreateFunction,
-    Key, Provider, ProviderRegistry, ResolveModule, Scope, SingletonInstance, SingletonRegistry,
-    Type,
+    BoxFuture, Constructor, Definition, DynProvider, DynSingle, EagerCreateFunction, Key, Provider,
+    ProviderRegistry, ResolveModule, Scope, Single, SingleRegistry, Type,
 };
 
-/// A context is a container for all the providers and singletons.
+/// A context is a container for all the providers and instances.
 ///
 /// It is the main entry point for the dependency injection.
 /// It is also used to create new instances.
@@ -109,11 +108,11 @@ use crate::{
 /// ```
 pub struct Context {
     allow_override: bool,
-    allow_only_singleton_eager_create: bool,
+    allow_only_single_eager_create: bool,
 
     eager_create: bool,
 
-    singleton_registry: SingletonRegistry,
+    single_registry: SingleRegistry,
     provider_registry: ProviderRegistry,
 
     loaded_modules: Vec<Type>,
@@ -127,9 +126,9 @@ impl Default for Context {
     fn default() -> Self {
         Self {
             allow_override: true,
-            allow_only_singleton_eager_create: true,
+            allow_only_single_eager_create: true,
             eager_create: Default::default(),
-            singleton_registry: Default::default(),
+            single_registry: Default::default(),
             provider_registry: Default::default(),
             loaded_modules: Default::default(),
             conditional_providers: Default::default(),
@@ -250,7 +249,7 @@ impl Context {
     /// # fn main() {
     /// let cx = Context::options().eager_create(true).auto_register();
     ///
-    /// assert!(cx.contains_singleton::<A>());
+    /// assert!(cx.contains_single::<A>());
     /// # }
     /// ```
     pub fn options() -> ContextOptions {
@@ -262,9 +261,9 @@ impl Context {
         self.allow_override
     }
 
-    /// Returns whether the context should only eagerly create singleton instances.
-    pub fn allow_only_singleton_eager_create(&self) -> bool {
-        self.allow_only_singleton_eager_create
+    /// Returns whether the context should only eagerly create [`Singleton`](crate::Scope::Singleton) and [`SingleOwner`](crate::Scope::SingleOwner) instances.
+    pub fn allow_only_single_eager_create(&self) -> bool {
+        self.allow_only_single_eager_create
     }
 
     /// Returns whether the context should eagerly create instances.
@@ -272,9 +271,9 @@ impl Context {
         self.eager_create
     }
 
-    /// Returns a reference to the singleton registry.
-    pub fn singleton_registry(&self) -> &HashMap<Key, DynSingletonInstance> {
-        self.singleton_registry.inner()
+    /// Returns a reference to the single registry.
+    pub fn single_registry(&self) -> &HashMap<Key, DynSingle> {
+        self.single_registry.inner()
     }
 
     /// Returns a reference to the provider registry.
@@ -347,7 +346,7 @@ impl Context {
     ///
     /// This method will convert the given module into a collection of providers like
     /// the [`Context::load_modules`] method, and then remove all providers in the context
-    /// that are equal to the providers in the collection and their possible singletons.
+    /// that are equal to the providers in the collection and their possible instances.
     ///
     /// # Example
     ///
@@ -395,7 +394,7 @@ impl Context {
     /// the [`eager_create`](crate::ResolveModule::eager_create) value of the module to which the provider belongs,
     /// and the [`eager_create`](crate::Context::eager_create) value of the `Context`.
     /// Then, the `allow_eager_create` is obtained by evaluating
-    /// the `Context`'s [`allow_only_singleton_eager_create`](crate::Context::allow_only_singleton_eager_create)
+    /// the `Context`'s [`allow_only_single_eager_create`](crate::Context::allow_only_single_eager_create)
     /// and the provider's [`scope`](crate::Scope).
     /// If the result of the logical AND operation of `need_eager_create` and `allow_eager_create` is `true`,
     /// the provider's constructor will be pushed into a queue. When this method is called,
@@ -426,14 +425,14 @@ impl Context {
     /// cx.load_modules(modules![AutoRegisterModule]);
     ///
     /// assert!(!cx.contains_provider::<A>());
-    /// assert!(!cx.contains_singleton::<B>());
+    /// assert!(!cx.contains_single::<B>());
     ///
     /// cx.flush();
     ///
     /// // evaluate condition
     /// assert!(cx.contains_provider::<A>());
     /// // construct instance
-    /// assert!(cx.contains_singleton::<B>());
+    /// assert!(cx.contains_single::<B>());
     /// # }
     /// ```
     ///
@@ -520,13 +519,14 @@ impl Context {
         self.create_eager_instances_async().await;
     }
 
-    /// Returns an instance based on the given type and default name `""`.
+    /// Returns a [`Singleton`](crate::Scope::Singleton) or [`Transient`](crate::Scope::Transient) instance based on the given type and default name `""`.
     ///
     /// # Panics
     ///
     /// - Panics if no provider is registered for the given type and default name `""`.
     /// - Panics if there is a provider whose constructor is async.
     /// - Panics if there is a provider that panics on construction.
+    /// - Panics if the provider is not a [`Singleton`](crate::Scope::Singleton) or [`Transient`](crate::Scope::Transient).
     ///
     /// # Example
     ///
@@ -548,13 +548,14 @@ impl Context {
         self.resolve_with_name("")
     }
 
-    /// Returns an instance based on the given type and name.
+    /// Returns a [`Singleton`](crate::Scope::Singleton) or [`Transient`](crate::Scope::Transient) instance based on the given type and name.
     ///
     /// # Panics
     ///
     /// - Panics if no provider is registered for the given type and name.
     /// - Panics if there is a provider whose constructor is async.
     /// - Panics if there is a provider that panics on construction.
+    /// - Panics if the provider is not a [`Singleton`](crate::Scope::Singleton) or [`Transient`](crate::Scope::Transient).
     ///
     /// # Example
     ///
@@ -573,14 +574,22 @@ impl Context {
     /// ```
     #[track_caller]
     pub fn resolve_with_name<T: 'static>(&mut self, name: impl Into<Cow<'static, str>>) -> T {
-        match self.inner_resolve(name.into(), Behaviour::CreateThenReturn) {
-            Resolved::Ok(instance) => instance,
+        match self.inner_resolve(name.into(), Behaviour::CreateThenReturnSingletonOrTransient) {
+            Resolved::SingletonOrTransient(instance) => instance,
             Resolved::NotFoundProvider(key) => no_provider_panic(key),
-            Resolved::NotSingleton(_) | Resolved::NoReturn => unreachable!(),
+            Resolved::NotSingletonOrTransient(definition) => {
+                not_singleton_or_transient_panic(definition)
+            }
+            Resolved::NotSingletonOrSingleOwner(_) | Resolved::NoReturn => unreachable!(),
         }
     }
 
-    /// Returns an optional instance based on the given type and default name `""`.
+    /// Returns an optional [`Singleton`](crate::Scope::Singleton) or [`Transient`](crate::Scope::Transient) instance based on the given type and default name `""`.
+    ///
+    /// # Note
+    ///
+    /// If no provider is registered for the given type and default name `""`, or the provider is not a [`Singleton`](crate::Scope::Singleton) or [`Transient`](crate::Scope::Transient),
+    /// this method will return `None`, otherwise it will return `Some`.
     ///
     /// # Panics
     ///
@@ -606,7 +615,12 @@ impl Context {
         self.resolve_option_with_name("")
     }
 
-    /// Returns an optional instance based on the given type and name.
+    /// Returns an optional [`Singleton`](crate::Scope::Singleton) or [`Transient`](crate::Scope::Transient) instance based on the given type and name.
+    ///
+    /// # Note
+    ///
+    /// If no provider is registered for the given type and name, or the provider is not a [`Singleton`](crate::Scope::Singleton) or [`Transient`](crate::Scope::Transient),
+    /// this method will return `None`, otherwise it will return `Some`.
     ///
     /// # Panics
     ///
@@ -632,11 +646,19 @@ impl Context {
         &mut self,
         name: impl Into<Cow<'static, str>>,
     ) -> Option<T> {
-        self.inner_resolve(name.into(), Behaviour::CreateThenReturn)
-            .ok()
+        match self.inner_resolve(name.into(), Behaviour::CreateThenReturnSingletonOrTransient) {
+            Resolved::SingletonOrTransient(instance) => Some(instance),
+            Resolved::NotFoundProvider(_) | Resolved::NotSingletonOrTransient(_) => None,
+            Resolved::NotSingletonOrSingleOwner(_) | Resolved::NoReturn => unreachable!(),
+        }
     }
 
-    /// Returns a collection of instances of the given type.
+    /// Returns a collection of [`Singleton`](crate::Scope::Singleton) and [`Transient`](crate::Scope::Transient) instances of the given type.
+    ///
+    /// # Note
+    ///
+    /// This method will return a collection of [`Singleton`](crate::Scope::Singleton) and [`Transient`](crate::Scope::Transient),
+    /// if some providers are [`SingleOwner`](crate::Scope::SingleOwner), they will not be contained in the collection.
     ///
     /// # Panics
     ///
@@ -667,28 +689,32 @@ impl Context {
     pub fn resolve_by_type<T: 'static>(&mut self) -> Vec<T> {
         self.names::<T>()
             .into_iter()
-            .filter_map(|name| self.inner_resolve(name, Behaviour::CreateThenReturn).ok())
+            .filter_map(|name| self.resolve_option_with_name(name))
             .collect()
     }
 
     #[doc(hidden)]
     #[track_caller]
     pub fn just_create<T: 'static>(&mut self, name: Cow<'static, str>) {
-        match self.inner_resolve::<T>(name, Behaviour::JustCreate) {
+        match self.inner_resolve::<T>(name, Behaviour::JustCreateAllScopeForEagerCreate) {
             Resolved::NoReturn => {}
             Resolved::NotFoundProvider(key) => no_provider_panic(key),
-            Resolved::Ok(_) | Resolved::NotSingleton(_) => unreachable!(),
+            Resolved::SingletonOrTransient(_)
+            | Resolved::NotSingletonOrTransient(_)
+            | Resolved::NotSingletonOrSingleOwner(_) => {
+                unreachable!()
+            }
         }
     }
 
-    /// Creates a singleton instance based on the given type and default name `""` but does not return it.
+    /// Creates a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner) instance based on the given type and default name `""` but does not return it.
     ///
     /// # Panics
     ///
     /// - Panics if no provider is registered for the given type and default name `""`.
     /// - Panics if there is a provider whose constructor is async.
     /// - Panics if there is a provider that panics on construction.
-    /// - Panics if the provider is not a singleton.
+    /// - Panics if the provider is not a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner).
     ///
     /// # Example
     ///
@@ -701,24 +727,24 @@ impl Context {
     ///
     /// # fn main() {
     /// let mut cx = Context::auto_register();
-    /// assert!(!cx.contains_singleton::<A>());
-    /// cx.just_create_singleton::<A>();
-    /// assert!(cx.contains_singleton::<A>());
+    /// assert!(!cx.contains_single::<A>());
+    /// cx.just_create_single::<A>();
+    /// assert!(cx.contains_single::<A>());
     /// # }
     /// ```
     #[track_caller]
-    pub fn just_create_singleton<T: 'static>(&mut self) {
-        self.just_create_singleton_with_name::<T>("");
+    pub fn just_create_single<T: 'static>(&mut self) {
+        self.just_create_single_with_name::<T>("");
     }
 
-    /// Creates a singleton instance based on the given type and name but does not return it.
+    /// Creates a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner) instance based on the given type and name but does not return it.
     ///
     /// # Panics
     ///
     /// - Panics if no provider is registered for the given type and name.
     /// - Panics if there is a provider whose constructor is async.
     /// - Panics if there is a provider that panics on construction.
-    /// - Panics if the provider is not a singleton.
+    /// - Panics if the provider is not a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner).
     ///
     /// # Example
     ///
@@ -731,28 +757,31 @@ impl Context {
     ///
     /// # fn main() {
     /// let mut cx = Context::auto_register();
-    /// assert!(!cx.contains_singleton_with_name::<A>("a"));
-    /// cx.just_create_singleton_with_name::<A>("a");
-    /// assert!(cx.contains_singleton_with_name::<A>("a"));
+    /// assert!(!cx.contains_single_with_name::<A>("a"));
+    /// cx.just_create_single_with_name::<A>("a");
+    /// assert!(cx.contains_single_with_name::<A>("a"));
     /// # }
     /// ```
     #[track_caller]
-    pub fn just_create_singleton_with_name<T: 'static>(
-        &mut self,
-        name: impl Into<Cow<'static, str>>,
-    ) {
-        match self.inner_resolve::<T>(name.into(), Behaviour::JustCreateSingleton) {
+    pub fn just_create_single_with_name<T: 'static>(&mut self, name: impl Into<Cow<'static, str>>) {
+        match self.inner_resolve::<T>(name.into(), Behaviour::JustCreateSingletonOrSingleOwner) {
             Resolved::NoReturn => {}
             Resolved::NotFoundProvider(key) => no_provider_panic(key),
-            Resolved::NotSingleton(definition) => not_singleton_panic(definition),
-            Resolved::Ok(_) => unreachable!(),
+            Resolved::NotSingletonOrSingleOwner(definition) => {
+                not_singleton_or_single_owner_panic(definition)
+            }
+            Resolved::SingletonOrTransient(_) | Resolved::NotSingletonOrTransient(_) => {
+                unreachable!()
+            }
         }
     }
 
-    /// Try to create a singleton instance based on the given type and default name `""` but does not return it.
+    /// Try to create a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner) instance based on the given type and default name `""` but does not return it.
     ///
-    /// If no provider is registered for the given type and default name `""`, or the provider is not a singleton,
-    /// this method will do nothing.
+    /// # Note
+    ///
+    /// If no provider is registered for the given type and default name `""`, or the provider is not a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner),
+    /// this method will return `false`, otherwise it will return `true`.
     ///
     /// # Panics
     ///
@@ -774,25 +803,27 @@ impl Context {
     /// # fn main() {
     /// let mut cx = Context::auto_register();
     ///
-    /// assert!(!cx.contains_singleton::<A>());
-    /// assert!(!cx.contains_singleton::<B>());
+    /// assert!(!cx.contains_single::<A>());
+    /// assert!(!cx.contains_single::<B>());
     ///
-    /// cx.try_create_singleton::<A>();
-    /// cx.try_create_singleton::<B>();
+    /// assert!(cx.try_just_create_single::<A>());
+    /// assert!(!cx.try_just_create_single::<B>());
     ///
-    /// assert!(cx.contains_singleton::<A>());
-    /// assert!(!cx.contains_singleton::<B>());
+    /// assert!(cx.contains_single::<A>());
+    /// assert!(!cx.contains_single::<B>());
     /// # }
     /// ```
     #[track_caller]
-    pub fn try_create_singleton<T: 'static>(&mut self) {
-        self.try_create_singleton_with_name::<T>("");
+    pub fn try_just_create_single<T: 'static>(&mut self) -> bool {
+        self.try_just_create_single_with_name::<T>("")
     }
 
-    /// Try to create a singleton instance based on the given type and name but does not return it.
+    /// Try to create a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner) instance based on the given type and name but does not return it.
     ///
-    /// If no provider is registered for the given type and default name `""`, or the provider is not a singleton,
-    /// this method will do nothing.
+    /// # Note
+    ///
+    /// If no provider is registered for the given type and default name `""`, or the provider is not a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner),
+    /// this method will return `false`, otherwise it will return `true`.
     ///
     /// # Panics
     ///
@@ -814,30 +845,36 @@ impl Context {
     /// # fn main() {
     /// let mut cx = Context::auto_register();
     ///
-    /// assert!(!cx.contains_singleton_with_name::<A>("a"));
-    /// assert!(!cx.contains_singleton_with_name::<B>("b"));
+    /// assert!(!cx.contains_single_with_name::<A>("a"));
+    /// assert!(!cx.contains_single_with_name::<B>("b"));
     ///
-    /// cx.try_create_singleton_with_name::<A>("a");
-    /// cx.try_create_singleton_with_name::<B>("b");
+    /// assert!(cx.try_just_create_single_with_name::<A>("a"));
+    /// assert!(!cx.try_just_create_single_with_name::<B>("b"));
     ///
-    /// assert!(cx.contains_singleton_with_name::<A>("a"));
-    /// assert!(!cx.contains_singleton_with_name::<B>("b"));
+    /// assert!(cx.contains_single_with_name::<A>("a"));
+    /// assert!(!cx.contains_single_with_name::<B>("b"));
     /// # }
     /// ```
     #[track_caller]
-    pub fn try_create_singleton_with_name<T: 'static>(
+    pub fn try_just_create_single_with_name<T: 'static>(
         &mut self,
         name: impl Into<Cow<'static, str>>,
-    ) {
-        match self.inner_resolve::<T>(name.into(), Behaviour::JustCreateSingleton) {
-            Resolved::NoReturn | Resolved::NotFoundProvider(_) | Resolved::NotSingleton(_) => {}
-            Resolved::Ok(_) => unreachable!(),
+    ) -> bool {
+        match self.inner_resolve::<T>(name.into(), Behaviour::JustCreateSingletonOrSingleOwner) {
+            Resolved::NoReturn => true,
+            Resolved::NotFoundProvider(_) | Resolved::NotSingletonOrSingleOwner(_) => false,
+            Resolved::SingletonOrTransient(_) | Resolved::NotSingletonOrTransient(_) => {
+                unreachable!()
+            }
         }
     }
 
-    /// Try to create singleton instances based on the given type but does not return them.
+    /// Try to create [`Singleton`](crate::Scope::Singleton) and [`SingleOwner`](crate::Scope::SingleOwner) instances based on the given type but does not return them.
     ///
-    /// If some providers are not singletons, this method will not create them.
+    /// # Note
+    ///
+    /// This method will return a collection of booleans, if a provider is a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner),
+    /// the corresponding boolean value will be `true`, otherwise it will be `false`.
     ///
     /// # Panics
     ///
@@ -849,28 +886,35 @@ impl Context {
     /// ```rust
     /// use rudi::{Context, Singleton, Transient};
     ///
-    /// #[Singleton]
+    /// #[Singleton(name = "one")]
     /// fn One() -> i32 {
     ///     1
     /// }
     ///
-    /// #[Transient]
+    /// #[Transient(name = "two")]
     /// fn Two() -> i32 {
     ///     2
     /// }
     ///
     /// fn main() {
     ///     let mut cx = Context::auto_register();
-    ///     assert!(!cx.contains_singleton::<i32>());
-    ///     cx.try_create_singletons_by_type::<i32>();
-    ///     assert_eq!(cx.get_singleton::<i32>(), &1);
+    ///
+    ///     assert!(!cx.contains_single::<i32>());
+    ///
+    ///     let results = cx.try_just_create_singles_by_type::<i32>();
+    ///
+    ///     assert!(results.contains(&true));
+    ///     assert!(results.contains(&false));
+    ///
+    ///     assert_eq!(cx.get_singles_by_type::<i32>(), vec![&1]);
     /// }
     /// ```
     #[track_caller]
-    pub fn try_create_singletons_by_type<T: 'static>(&mut self) {
+    pub fn try_just_create_singles_by_type<T: 'static>(&mut self) -> Vec<bool> {
         self.names::<T>()
             .into_iter()
-            .for_each(|name| self.try_create_singleton_with_name::<T>(name))
+            .map(|name| self.try_just_create_single_with_name::<T>(name))
+            .collect()
     }
 
     /// Async version of [`Context::resolve`].
@@ -879,6 +923,7 @@ impl Context {
     ///
     /// - Panics if no provider is registered for the given type and default name `""`.
     /// - Panics if there is a provider that panics on construction.
+    /// - Panics if the provider is not a [`Singleton`](crate::Scope::Singleton) or [`Transient`](crate::Scope::Transient).
     ///
     /// # Example
     ///
@@ -910,6 +955,7 @@ impl Context {
     ///
     /// - Panics if no provider is registered for the given type and name.
     /// - Panics if there is a provider that panics on construction.
+    /// - Panics if the provider is not a [`Singleton`](crate::Scope::Singleton) or [`Transient`](crate::Scope::Transient).
     ///
     /// # Example
     ///
@@ -936,12 +982,15 @@ impl Context {
         name: impl Into<Cow<'static, str>>,
     ) -> T {
         match self
-            .inner_resolve_async(name.into(), Behaviour::CreateThenReturn)
+            .inner_resolve_async(name.into(), Behaviour::CreateThenReturnSingletonOrTransient)
             .await
         {
-            Resolved::Ok(instance) => instance,
+            Resolved::SingletonOrTransient(instance) => instance,
             Resolved::NotFoundProvider(key) => no_provider_panic(key),
-            Resolved::NotSingleton(_) | Resolved::NoReturn => unreachable!(),
+            Resolved::NotSingletonOrTransient(definition) => {
+                not_singleton_or_transient_panic(definition)
+            }
+            Resolved::NotSingletonOrSingleOwner(_) | Resolved::NoReturn => unreachable!(),
         }
     }
 
@@ -1005,9 +1054,14 @@ impl Context {
         &mut self,
         name: impl Into<Cow<'static, str>>,
     ) -> Option<T> {
-        self.inner_resolve_async(name.into(), Behaviour::CreateThenReturn)
+        match self
+            .inner_resolve_async(name.into(), Behaviour::CreateThenReturnSingletonOrTransient)
             .await
-            .ok()
+        {
+            Resolved::SingletonOrTransient(instance) => Some(instance),
+            Resolved::NotFoundProvider(_) | Resolved::NotSingletonOrTransient(_) => None,
+            Resolved::NotSingletonOrSingleOwner(_) | Resolved::NoReturn => unreachable!(),
+        }
     }
 
     /// Async version of [`Context::resolve_by_type`].
@@ -1049,11 +1103,7 @@ impl Context {
         let mut instances = Vec::with_capacity(names.len());
 
         for name in names {
-            if let Some(instance) = self
-                .inner_resolve_async(name, Behaviour::CreateThenReturn)
-                .await
-                .ok()
-            {
+            if let Some(instance) = self.resolve_option_with_name_async(name).await {
                 instances.push(instance);
             }
         }
@@ -1064,22 +1114,26 @@ impl Context {
     #[doc(hidden)]
     pub async fn just_create_async<T: 'static>(&mut self, name: Cow<'static, str>) {
         match self
-            .inner_resolve_async::<T>(name, Behaviour::JustCreate)
+            .inner_resolve_async::<T>(name, Behaviour::JustCreateAllScopeForEagerCreate)
             .await
         {
             Resolved::NoReturn => {}
             Resolved::NotFoundProvider(key) => no_provider_panic(key),
-            Resolved::Ok(_) | Resolved::NotSingleton(_) => unreachable!(),
+            Resolved::SingletonOrTransient(_)
+            | Resolved::NotSingletonOrTransient(_)
+            | Resolved::NotSingletonOrSingleOwner(_) => {
+                unreachable!()
+            }
         }
     }
 
-    /// Async version of [`Context::just_create_singleton`].
+    /// Async version of [`Context::just_create_single`].
     ///
     /// # Panics
     ///
     /// - Panics if no provider is registered for the given type and default name `""`.
     /// - Panics if there is a provider that panics on construction.
-    /// - Panics if the provider is not a singleton.
+    /// - Panics if the provider is not a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner).
     ///
     /// # Example
     ///
@@ -1093,22 +1147,22 @@ impl Context {
     /// #[tokio::main]
     /// async fn main() {
     ///     let mut cx = Context::auto_register();
-    ///     assert!(!cx.contains_singleton::<A>());
-    ///     cx.just_create_singleton_async::<A>().await;
-    ///     assert!(cx.contains_singleton::<A>());
+    ///     assert!(!cx.contains_single::<A>());
+    ///     cx.just_create_single_async::<A>().await;
+    ///     assert!(cx.contains_single::<A>());
     /// }
     /// ```
-    pub async fn just_create_singleton_async<T: 'static>(&mut self) {
-        self.just_create_singleton_with_name_async::<T>("").await;
+    pub async fn just_create_single_async<T: 'static>(&mut self) {
+        self.just_create_single_with_name_async::<T>("").await;
     }
 
-    /// Async version of [`Context::just_create_singleton_with_name`].
+    /// Async version of [`Context::just_create_single_with_name`].
     ///
     /// # Panics
     ///
     /// - Panics if no provider is registered for the given type and name.
     /// - Panics if there is a provider that panics on construction.
-    /// - Panics if the provider is not a singleton.
+    /// - Panics if the provider is not a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner).
     ///
     /// # Example
     ///
@@ -1122,27 +1176,31 @@ impl Context {
     /// #[tokio::main]
     /// async fn main() {
     ///     let mut cx = Context::auto_register();
-    ///     assert!(!cx.contains_singleton_with_name::<A>("a"));
-    ///     cx.just_create_singleton_with_name_async::<A>("a").await;
-    ///     assert!(cx.contains_singleton_with_name::<A>("a"));
+    ///     assert!(!cx.contains_single_with_name::<A>("a"));
+    ///     cx.just_create_single_with_name_async::<A>("a").await;
+    ///     assert!(cx.contains_single_with_name::<A>("a"));
     /// }
     /// ```
-    pub async fn just_create_singleton_with_name_async<T: 'static>(
+    pub async fn just_create_single_with_name_async<T: 'static>(
         &mut self,
         name: impl Into<Cow<'static, str>>,
     ) {
         match self
-            .inner_resolve_async::<T>(name.into(), Behaviour::JustCreateSingleton)
+            .inner_resolve_async::<T>(name.into(), Behaviour::JustCreateSingletonOrSingleOwner)
             .await
         {
             Resolved::NoReturn => {}
             Resolved::NotFoundProvider(key) => no_provider_panic(key),
-            Resolved::NotSingleton(definition) => not_singleton_panic(definition),
-            Resolved::Ok(_) => unreachable!(),
+            Resolved::NotSingletonOrSingleOwner(definition) => {
+                not_singleton_or_single_owner_panic(definition)
+            }
+            Resolved::SingletonOrTransient(_) | Resolved::NotSingletonOrTransient(_) => {
+                unreachable!()
+            }
         }
     }
 
-    /// Async version of [`Context::try_create_singleton`].
+    /// Async version of [`Context::try_just_create_single`].
     ///
     /// # Panics
     ///
@@ -1164,21 +1222,21 @@ impl Context {
     /// async fn main() {
     ///     let mut cx = Context::auto_register();
     ///
-    ///     assert!(!cx.contains_singleton::<A>());
-    ///     assert!(!cx.contains_singleton::<B>());
+    ///     assert!(!cx.contains_single::<A>());
+    ///     assert!(!cx.contains_single::<B>());
     ///
-    ///     cx.try_create_singleton_async::<A>().await;
-    ///     cx.try_create_singleton_async::<B>().await;
+    ///     assert!(cx.try_just_create_single_async::<A>().await);
+    ///     assert!(!cx.try_just_create_single_async::<B>().await);
     ///
-    ///     assert!(cx.contains_singleton::<A>());
-    ///     assert!(!cx.contains_singleton::<B>());
+    ///     assert!(cx.contains_single::<A>());
+    ///     assert!(!cx.contains_single::<B>());
     /// }
     /// ```
-    pub async fn try_create_singleton_async<T: 'static>(&mut self) {
-        self.try_create_singleton_with_name_async::<T>("").await;
+    pub async fn try_just_create_single_async<T: 'static>(&mut self) -> bool {
+        self.try_just_create_single_with_name_async::<T>("").await
     }
 
-    /// Async version of [`Context::try_create_singleton_with_name`].
+    /// Async version of [`Context::try_just_create_single_with_name`].
     ///
     /// # Panics
     ///
@@ -1200,30 +1258,33 @@ impl Context {
     /// async fn main() {
     ///     let mut cx = Context::auto_register();
     ///
-    ///     assert!(!cx.contains_singleton_with_name::<A>("a"));
-    ///     assert!(!cx.contains_singleton_with_name::<B>("b"));
+    ///     assert!(!cx.contains_single_with_name::<A>("a"));
+    ///     assert!(!cx.contains_single_with_name::<B>("b"));
     ///
-    ///     cx.try_create_singleton_with_name_async::<A>("a").await;
-    ///     cx.try_create_singleton_with_name_async::<B>("b").await;
+    ///     assert!(cx.try_just_create_single_with_name_async::<A>("a").await);
+    ///     assert!(!cx.try_just_create_single_with_name_async::<B>("b").await);
     ///
-    ///     assert!(cx.contains_singleton_with_name::<A>("a"));
-    ///     assert!(!cx.contains_singleton_with_name::<B>("b"));
+    ///     assert!(cx.contains_single_with_name::<A>("a"));
+    ///     assert!(!cx.contains_single_with_name::<B>("b"));
     /// }
     /// ```
-    pub async fn try_create_singleton_with_name_async<T: 'static>(
+    pub async fn try_just_create_single_with_name_async<T: 'static>(
         &mut self,
         name: impl Into<Cow<'static, str>>,
-    ) {
+    ) -> bool {
         match self
-            .inner_resolve_async::<T>(name.into(), Behaviour::JustCreateSingleton)
+            .inner_resolve_async::<T>(name.into(), Behaviour::JustCreateSingletonOrSingleOwner)
             .await
         {
-            Resolved::NoReturn | Resolved::NotFoundProvider(_) | Resolved::NotSingleton(_) => {}
-            Resolved::Ok(_) => unreachable!(),
+            Resolved::NoReturn => true,
+            Resolved::NotFoundProvider(_) | Resolved::NotSingletonOrSingleOwner(_) => false,
+            Resolved::SingletonOrTransient(_) | Resolved::NotSingletonOrTransient(_) => {
+                unreachable!()
+            }
         }
     }
 
-    /// Async version of [`Context::try_create_singletons_by_type`].
+    /// Async version of [`Context::try_just_create_singles_by_type`].
     ///
     /// # Panics
     ///
@@ -1234,12 +1295,12 @@ impl Context {
     /// ```rust
     /// use rudi::{Context, Singleton, Transient};
     ///
-    /// #[Singleton]
+    /// #[Singleton(name = "one")]
     /// async fn One() -> i32 {
     ///     1
     /// }
     ///
-    /// #[Transient]
+    /// #[Transient(name = "two")]
     /// async fn Two() -> i32 {
     ///     2
     /// }
@@ -1247,15 +1308,27 @@ impl Context {
     /// #[tokio::main]
     /// async fn main() {
     ///     let mut cx = Context::auto_register();
-    ///     assert!(!cx.contains_singleton::<i32>());
-    ///     cx.try_create_singletons_by_type_async::<i32>().await;
-    ///     assert_eq!(cx.get_singleton::<i32>(), &1);
+    ///
+    ///     assert!(!cx.contains_single::<i32>());
+    ///
+    ///     let results = cx.try_just_create_singles_by_type_async::<i32>().await;
+    ///
+    ///     assert!(results.contains(&true));
+    ///     assert!(results.contains(&false));
+    ///
+    ///     assert_eq!(cx.get_singles_by_type::<i32>(), vec![&1]);
     /// }
     /// ```
-    pub async fn try_create_singletons_by_type_async<T: 'static>(&mut self) {
-        for name in self.names::<T>() {
-            self.try_create_singleton_with_name_async::<T>(name).await;
+    pub async fn try_just_create_singles_by_type_async<T: 'static>(&mut self) -> Vec<bool> {
+        let names = self.names::<T>();
+        let mut results = Vec::with_capacity(names.len());
+
+        for name in names {
+            let result = self.try_just_create_single_with_name_async::<T>(name).await;
+            results.push(result);
         }
+
+        results
     }
 
     /// Returns true if the context contains a provider for the specified type and default name `""`.
@@ -1376,7 +1449,7 @@ impl Context {
             .collect()
     }
 
-    /// Returns true if the context contains a singleton for the specified type and default name `""`.
+    /// Returns true if the context contains a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner) instance for the specified type and default name `""`.
     ///
     /// # Example
     ///
@@ -1389,14 +1462,14 @@ impl Context {
     ///
     /// # fn main() {
     /// let cx = Context::auto_register();
-    /// assert!(cx.contains_singleton::<A>());
+    /// assert!(cx.contains_single::<A>());
     /// # }
     /// ```
-    pub fn contains_singleton<T: 'static>(&self) -> bool {
-        self.contains_singleton_with_name::<T>("")
+    pub fn contains_single<T: 'static>(&self) -> bool {
+        self.contains_single_with_name::<T>("")
     }
 
-    /// Returns true if the context contains a singleton for the specified type and name.
+    /// Returns true if the context contains a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner) instance for the specified type and name.
     ///
     /// # Example
     ///
@@ -1409,22 +1482,22 @@ impl Context {
     ///
     /// # fn main() {
     /// let cx = Context::auto_register();
-    /// assert!(cx.contains_singleton_with_name::<A>("a"));
+    /// assert!(cx.contains_single_with_name::<A>("a"));
     /// # }
     /// ```
-    pub fn contains_singleton_with_name<T: 'static>(
+    pub fn contains_single_with_name<T: 'static>(
         &self,
         name: impl Into<Cow<'static, str>>,
     ) -> bool {
         let key = Key::new::<T>(name.into());
-        self.singleton_registry.contains(&key)
+        self.single_registry.contains(&key)
     }
 
-    /// Returns a reference to a singleton based on the given type and default name `""`.
+    /// Returns a reference to a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner) instance based on the given type and default name `""`.
     ///
     /// # Panics
     ///
-    /// - Panics if no singleton is registered for the given type and default name `""`.
+    /// - Panics if no single instance is registered for the given type and default name `""`.
     ///
     /// # Example
     ///
@@ -1437,20 +1510,20 @@ impl Context {
     ///
     /// # fn main() {
     /// let cx = Context::auto_register();
-    /// let a = cx.get_singleton::<A>();
+    /// let a = cx.get_single::<A>();
     /// assert_eq!(format!("{:?}", a), "A");
     /// # }
     /// ```
     #[track_caller]
-    pub fn get_singleton<T: 'static>(&self) -> &T {
-        self.get_singleton_with_name("")
+    pub fn get_single<T: 'static>(&self) -> &T {
+        self.get_single_with_name("")
     }
 
-    /// Returns a reference to a singleton based on the given type and name.
+    /// Returns a reference to a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner) instance based on the given type and name.
     ///
     /// # Panics
     ///
-    /// - Panics if no singleton is registered for the given type and name.
+    /// - Panics if no single instance is registered for the given type and name.
     ///
     /// # Example
     ///
@@ -1463,19 +1536,19 @@ impl Context {
     ///
     /// # fn main() {
     /// let cx = Context::auto_register();
-    /// let a = cx.get_singleton_with_name::<A>("a");
+    /// let a = cx.get_single_with_name::<A>("a");
     /// assert_eq!(format!("{:?}", a), "A");
     /// # }
     /// ```
     #[track_caller]
-    pub fn get_singleton_with_name<T: 'static>(&self, name: impl Into<Cow<'static, str>>) -> &T {
+    pub fn get_single_with_name<T: 'static>(&self, name: impl Into<Cow<'static, str>>) -> &T {
         let key = Key::new::<T>(name.into());
-        self.singleton_registry
+        self.single_registry
             .get_ref(&key)
-            .unwrap_or_else(|| panic!("no singleton registered for: {:?}", key))
+            .unwrap_or_else(|| panic!("no instance registered for: {:?}", key))
     }
 
-    /// Returns an optional reference to a singleton based on the given type and default name `""`.
+    /// Returns an optional reference to a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner) instance based on the given type and default name `""`.
     ///
     /// # Example
     ///
@@ -1488,14 +1561,14 @@ impl Context {
     ///
     /// # fn main() {
     /// let cx = Context::auto_register();
-    /// assert!(cx.get_singleton_option::<A>().is_some());
+    /// assert!(cx.get_single_option::<A>().is_some());
     /// # }
     /// ```
-    pub fn get_singleton_option<T: 'static>(&self) -> Option<&T> {
-        self.get_singleton_option_with_name("")
+    pub fn get_single_option<T: 'static>(&self) -> Option<&T> {
+        self.get_single_option_with_name("")
     }
 
-    /// Returns an optional reference to a singleton based on the given type and name.
+    /// Returns an optional reference to a [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner) instance based on the given type and name.
     ///
     /// # Example
     ///
@@ -1508,18 +1581,18 @@ impl Context {
     ///
     /// # fn main() {
     /// let cx = Context::auto_register();
-    /// assert!(cx.get_singleton_option_with_name::<A>("a").is_some());
+    /// assert!(cx.get_single_option_with_name::<A>("a").is_some());
     /// # }
     /// ```
-    pub fn get_singleton_option_with_name<T: 'static>(
+    pub fn get_single_option_with_name<T: 'static>(
         &self,
         name: impl Into<Cow<'static, str>>,
     ) -> Option<&T> {
         let key = Key::new::<T>(name.into());
-        self.singleton_registry.get_ref(&key)
+        self.single_registry.get_ref(&key)
     }
 
-    /// Returns a collection of references to singletons based on the given type.
+    /// Returns a collection of references to [`Singleton`](crate::Scope::Singleton) and [`SingleOwner`](crate::Scope::SingleOwner) instances based on the given type.
     ///
     /// # Example
     ///
@@ -1538,20 +1611,17 @@ impl Context {
     ///
     /// fn main() {
     ///     let cx = Context::auto_register();
-    ///     assert_eq!(
-    ///         cx.get_singletons_by_type::<i32>().into_iter().sum::<i32>(),
-    ///         3
-    ///     );
+    ///     assert_eq!(cx.get_singles_by_type::<i32>().into_iter().sum::<i32>(), 3);
     /// }
     /// ```
-    pub fn get_singletons_by_type<T: 'static>(&self) -> Vec<&T> {
+    pub fn get_singles_by_type<T: 'static>(&self) -> Vec<&T> {
         let type_id = TypeId::of::<T>();
 
-        self.singleton_registry()
+        self.single_registry()
             .iter()
             .filter(|(key, _)| key.ty.id == type_id)
-            .filter_map(|(_, singleton)| singleton.as_singleton())
-            .map(|singleton| singleton.get_ref())
+            .filter_map(|(_, instance)| instance.as_single())
+            .map(|instance| instance.get_ref())
             .collect()
     }
 }
@@ -1562,11 +1632,14 @@ impl Context {
         let definition = provider.definition();
         let need_eager_create = self.eager_create || eager_create || provider.eager_create();
 
-        let allow_all_scope = !self.allow_only_singleton_eager_create;
-        let allow_only_singleton_and_it_is_singleton =
-            self.allow_only_singleton_eager_create && matches!(definition.scope, Scope::Singleton);
+        let allow_all_scope = !self.allow_only_single_eager_create;
 
-        let allow_eager_create = allow_all_scope || allow_only_singleton_and_it_is_singleton;
+        let allow_only_single_and_it_is_single = matches!(
+            (self.allow_only_single_eager_create, definition.scope),
+            (true, Scope::Singleton) | (true, Scope::SingleOwner)
+        );
+
+        let allow_eager_create = allow_all_scope || allow_only_single_and_it_is_single;
 
         if need_eager_create && allow_eager_create {
             self.eager_create_functions
@@ -1600,7 +1673,7 @@ impl Context {
         providers.into_iter().for_each(|provider| {
             let key = provider.key();
             self.provider_registry.remove(key);
-            self.singleton_registry.remove(key);
+            self.single_registry.remove(key);
         });
     }
 
@@ -1679,25 +1752,31 @@ please use instead:
     ) -> Result<Resolved<T>, Holder<'_, T>> {
         let key = Key::new::<T>(name);
 
-        if self.singleton_registry.contains(&key) {
-            return Ok(match behaviour {
-                Behaviour::CreateThenReturn => {
-                    Resolved::Ok(self.singleton_registry.get_owned::<T>(&key).unwrap())
-                }
-                Behaviour::JustCreate | Behaviour::JustCreateSingleton => Resolved::NoReturn,
-            });
-        }
-
         let Some(provider) = self.provider_registry.get::<T>(&key) else {
             return Ok(Resolved::NotFoundProvider(key));
         };
 
         let definition = provider.definition();
 
-        match (behaviour, definition.scope) {
-            (_, Scope::Singleton) => {}
-            (Behaviour::JustCreateSingleton, /* not singleton */ _) => {
-                return Ok(Resolved::NotSingleton(definition.clone()))
+        if self.single_registry.contains(&key) {
+            return Ok(match behaviour {
+                Behaviour::CreateThenReturnSingletonOrTransient => {
+                    match self.single_registry.get_owned::<T>(&key) {
+                        Some(instance) => Resolved::SingletonOrTransient(instance),
+                        None => Resolved::NotSingletonOrTransient(definition.clone()),
+                    }
+                }
+                Behaviour::JustCreateAllScopeForEagerCreate
+                | Behaviour::JustCreateSingletonOrSingleOwner => Resolved::NoReturn,
+            });
+        }
+
+        match (definition.scope, behaviour) {
+            (Scope::Transient, Behaviour::JustCreateSingletonOrSingleOwner) => {
+                return Ok(Resolved::NotSingletonOrSingleOwner(definition.clone()))
+            }
+            (Scope::SingleOwner, Behaviour::CreateThenReturnSingletonOrTransient) => {
+                return Ok(Resolved::NotSingletonOrTransient(definition.clone()))
             }
             _ => {}
         }
@@ -1717,30 +1796,42 @@ please use instead:
         &mut self,
         key: Key,
         behaviour: Behaviour,
+        scope: Scope,
         instance: T,
         clone_instance: Option<fn(&T) -> T>,
     ) -> Resolved<T> {
-        if let Some(clone_instance) = clone_instance {
-            match behaviour {
-                Behaviour::CreateThenReturn => {
-                    self.singleton_registry.insert(
-                        key,
-                        SingletonInstance::new(clone_instance(&instance), clone_instance).into(),
-                    );
-                }
-                Behaviour::JustCreate | Behaviour::JustCreateSingleton => {
-                    self.singleton_registry
-                        .insert(key, SingletonInstance::new(instance, clone_instance).into());
+        match (scope, behaviour) {
+            // Singleton
+            (Scope::Singleton, Behaviour::CreateThenReturnSingletonOrTransient) => {
+                self.single_registry.insert(
+                    key,
+                    Single::new((clone_instance.unwrap())(&instance), clone_instance).into(),
+                );
 
-                    return Resolved::NoReturn;
-                }
-            };
-        }
+                Resolved::SingletonOrTransient(instance)
+            }
+            (Scope::Singleton, Behaviour::JustCreateAllScopeForEagerCreate)
+            | (Scope::Singleton, Behaviour::JustCreateSingletonOrSingleOwner) => {
+                self.single_registry
+                    .insert(key, Single::new(instance, clone_instance).into());
 
-        match behaviour {
-            Behaviour::CreateThenReturn => Resolved::Ok(instance),
-            Behaviour::JustCreate => Resolved::NoReturn,
-            Behaviour::JustCreateSingleton => unreachable!(),
+                Resolved::NoReturn
+            }
+            // Transient
+            (Scope::Transient, Behaviour::CreateThenReturnSingletonOrTransient) => {
+                Resolved::SingletonOrTransient(instance)
+            }
+            (Scope::Transient, Behaviour::JustCreateAllScopeForEagerCreate) => Resolved::NoReturn,
+            (Scope::Transient, Behaviour::JustCreateSingletonOrSingleOwner) => unreachable!(),
+            // SingleOwner
+            (Scope::SingleOwner, Behaviour::CreateThenReturnSingletonOrTransient) => unreachable!(),
+            (Scope::SingleOwner, Behaviour::JustCreateAllScopeForEagerCreate)
+            | (Scope::SingleOwner, Behaviour::JustCreateSingletonOrSingleOwner) => {
+                self.single_registry
+                    .insert(key, Single::new(instance, None).into());
+
+                Resolved::NoReturn
+            }
         }
     }
 
@@ -1760,6 +1851,8 @@ please use instead:
             Err(e) => e,
         };
 
+        let scope = definition.scope;
+
         let instance = match constructor {
             Constructor::Async(_) => {
                 panic!(
@@ -1767,7 +1860,7 @@ please use instead:
 
 please check all the references to the above type, there are 3 scenarios that will be referenced:
 1. use `Context::resolve_xxx::<Type>(cx)` to get instances of the type, change to `Context::resolve_xxx_async::<Type>(cx).await`.
-2. use `yyy: Type` as a field of a struct, or a field of a variant of a enum, use `#[Singleton(async)]` or `#[Transient(async)]` on the struct or enum.
+2. use `yyy: Type` as a field of a struct, or a field of a variant of a enum, use `#[Singleton(async)]`, `#[Transient(async)]` or `#[SingleOwner(async)]` on the struct or enum.
 3. use `zzz: Type` as a argument of a function, add the `async` keyword to the function.
 ",
                     definition
@@ -1776,7 +1869,7 @@ please check all the references to the above type, there are 3 scenarios that wi
             Constructor::Sync(constructor) => self.resolve_instance(key.clone(), constructor),
         };
 
-        self.after_resolve(key, behaviour, instance, clone_instance)
+        self.after_resolve(key, behaviour, scope, instance, clone_instance)
     }
 
     async fn inner_resolve_async<T: 'static>(
@@ -1788,11 +1881,13 @@ please check all the references to the above type, there are 3 scenarios that wi
             key,
             constructor,
             clone_instance,
-            ..
+            definition,
         } = match self.before_resolve(name, behaviour) {
             Ok(o) => return o,
             Err(e) => e,
         };
+
+        let scope = definition.scope;
 
         let instance = {
             let key = key.clone();
@@ -1805,7 +1900,7 @@ please check all the references to the above type, there are 3 scenarios that wi
             }
         };
 
-        self.after_resolve(key, behaviour, instance, clone_instance)
+        self.after_resolve(key, behaviour, scope, instance, clone_instance)
     }
 
     #[track_caller]
@@ -1845,16 +1940,20 @@ please check all the references to the above type, there are 3 scenarios that wi
 
 #[derive(Clone, Copy)]
 enum Behaviour {
-    CreateThenReturn,
-    JustCreate,
-    JustCreateSingleton,
+    CreateThenReturnSingletonOrTransient,
+    JustCreateAllScopeForEagerCreate,
+    JustCreateSingletonOrSingleOwner,
 }
 
 enum Resolved<T> {
-    Ok(T),
     NotFoundProvider(Key),
-    NotSingleton(Definition),
+
+    SingletonOrTransient(T),
+    NotSingletonOrTransient(Definition),
+
     NoReturn,
+
+    NotSingletonOrSingleOwner(Definition),
 }
 
 struct Holder<'a, T> {
@@ -1864,23 +1963,25 @@ struct Holder<'a, T> {
     definition: &'a Definition,
 }
 
-impl<T> Resolved<T> {
-    fn ok(self) -> Option<T> {
-        match self {
-            Resolved::Ok(instance) => Some(instance),
-            _ => None,
-        }
-    }
-}
-
 #[inline(always)]
 fn no_provider_panic(key: Key) -> ! {
     panic!("no provider registered for: {:?}", key)
 }
 
 #[inline(always)]
-fn not_singleton_panic(definition: Definition) -> ! {
-    panic!("registered provider is not singleton for: {:?}", definition)
+fn not_singleton_or_single_owner_panic(definition: Definition) -> ! {
+    panic!(
+        "registered provider is not `Singleton` or `SingleOwner` for: {:?}",
+        definition
+    )
+}
+
+#[inline(always)]
+fn not_singleton_or_transient_panic(definition: Definition) -> ! {
+    panic!(
+        "registered provider is not `Singleton` or `Transient` for: {:?}",
+        definition
+    )
 }
 
 fn flatten<T, F>(mut unresolved: Vec<T>, get_sublist: F) -> Option<Vec<T>>
@@ -1960,11 +2061,11 @@ where
 /// # fn main() {
 /// let _cx: Context = ContextOptions::default()
 ///     .allow_override(true)
-///     .allow_only_singleton_eager_create(true)
+///     .allow_only_single_eager_create(true)
 ///     .eager_create(false)
-///     .instance(42)
-///     .instance_with_name("Hello", "str_instance_1")
-///     .instance_with_name("World", "str_instance_2")
+///     .singleton(42)
+///     .singleton_with_name("Hello", "str_1")
+///     .singleton_with_name("World", "str_2")
 ///     .create(modules![AutoRegisterModule]);
 /// # }
 /// ```
@@ -1972,20 +2073,20 @@ where
 /// [`AutoRegisterModule`]: crate::AutoRegisterModule
 pub struct ContextOptions {
     allow_override: bool,
-    allow_only_singleton_eager_create: bool,
+    allow_only_single_eager_create: bool,
     eager_create: bool,
     providers: Vec<DynProvider>,
-    singletons: Vec<DynSingletonInstance>,
+    singles: Vec<DynSingle>,
 }
 
 impl Default for ContextOptions {
     fn default() -> Self {
         Self {
             allow_override: true,
-            allow_only_singleton_eager_create: true,
+            allow_only_single_eager_create: true,
             eager_create: Default::default(),
             providers: Default::default(),
-            singletons: Default::default(),
+            singles: Default::default(),
         }
     }
 }
@@ -2011,9 +2112,9 @@ impl ContextOptions {
         self
     }
 
-    /// Sets the option for whether the context should only eagerly create singleton instances.
+    /// Sets the option for whether the context should only eagerly create [`Singleton`](crate::Scope::Singleton) and [`SingleOwner`](crate::Scope::SingleOwner) instances.
     ///
-    /// This option, when true, will only eagerly create instances for singleton providers.
+    /// This option, when true, will only eagerly create instances for [`Singleton`](crate::Scope::Singleton) and [`SingleOwner`](crate::Scope::SingleOwner) providers.
     ///
     /// # Example
     ///
@@ -2022,15 +2123,12 @@ impl ContextOptions {
     ///
     /// # fn main() {
     /// let _cx: Context = ContextOptions::default()
-    ///     .allow_only_singleton_eager_create(true)
+    ///     .allow_only_single_eager_create(false)
     ///     .auto_register();
     /// # }
     /// ```
-    pub fn allow_only_singleton_eager_create(
-        mut self,
-        allow_only_singleton_eager_create: bool,
-    ) -> Self {
-        self.allow_only_singleton_eager_create = allow_only_singleton_eager_create;
+    pub fn allow_only_single_eager_create(mut self, allow_only_single_eager_create: bool) -> Self {
+        self.allow_only_single_eager_create = allow_only_single_eager_create;
         self
     }
 
@@ -2054,62 +2152,110 @@ impl ContextOptions {
         self
     }
 
-    /// Appends a standalone instance to the context with default name `""`.
-    ///
-    /// This method is used to add certain constants to the context.
-    ///
-    /// # Panics
-    ///
-    /// - Panics if the new capacity exceeds `isize::MAX` bytes.
+    /// Appends a standalone [`Singleton`](crate::Scope::Singleton) instance to the context with default name `""`.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use rudi::{Context, ContextOptions};
+    /// use rudi::{modules, Context, ContextOptions};
     ///
     /// # fn main() {
-    /// let mut cx: Context = ContextOptions::default().instance(42).auto_register();
-    /// assert_eq!(cx.resolve::<i32>(), 42);
+    /// let cx: Context = ContextOptions::default().singleton(42).create(modules![]);
+    /// assert_eq!(cx.get_single::<i32>(), &42);
     /// # }
     /// ```
-    pub fn instance<T>(self, instance: T) -> Self
+    pub fn singleton<T>(self, instance: T) -> Self
     where
         T: 'static + Clone,
     {
-        self.instance_with_name(instance, "")
+        self.singleton_with_name(instance, "")
     }
 
-    /// Appends a standalone instance to the context with name.
-    ///
-    /// This method is used to add certain constants to the context.
-    ///
-    /// # Panics
-    ///
-    /// - Panics if the new capacity exceeds `isize::MAX` bytes.
+    /// Appends a standalone [`Singleton`](crate::Scope::Singleton) instance to the context with name.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use rudi::{Context, ContextOptions};
+    /// use rudi::{modules, Context, ContextOptions};
     ///
     /// # fn main() {
-    /// let mut cx: Context = ContextOptions::default()
-    ///     .instance_with_name(1, "i32_instance_1")
-    ///     .instance_with_name(2, "i32_instance_2")
-    ///     .auto_register();
-    /// assert_eq!(cx.resolve_by_type::<i32>().into_iter().sum::<i32>(), 3);
+    /// let cx: Context = ContextOptions::default()
+    ///     .singleton_with_name(1, "one")
+    ///     .singleton_with_name(2, "two")
+    ///     .create(modules![]);
+    ///
+    /// assert_eq!(cx.get_single_with_name::<i32>("one"), &1);
+    /// assert_eq!(cx.get_single_with_name::<i32>("two"), &2);
     /// # }
     /// ```
-    pub fn instance_with_name<T, N>(mut self, instance: T, name: N) -> Self
+    pub fn singleton_with_name<T, N>(mut self, instance: T, name: N) -> Self
     where
         T: 'static + Clone,
         N: Into<Cow<'static, str>>,
     {
-        let provider = Provider::<T>::never_construct(name.into()).into();
-        let singleton = SingletonInstance::new(instance, Clone::clone).into();
+        let provider = Provider::<T>::never_construct(name.into(), Scope::Singleton).into();
+        let single = Single::new(instance, Some(Clone::clone)).into();
 
         self.providers.push(provider);
-        self.singletons.push(singleton);
+        self.singles.push(single);
+
+        self
+    }
+
+    /// Appends a standalone [`SingleOwner`](crate::Scope::SingleOwner) instance to the context with default name `""`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{modules, Context, ContextOptions};
+    ///
+    /// #[derive(PartialEq, Eq, Debug)]
+    /// struct NotClone(i32);
+    ///
+    /// # fn main() {
+    /// let cx: Context = ContextOptions::default()
+    ///     .single_owner(NotClone(42))
+    ///     .create(modules![]);
+    /// assert_eq!(cx.get_single::<NotClone>(), &NotClone(42));
+    /// # }
+    /// ```
+    pub fn single_owner<T>(self, instance: T) -> Self
+    where
+        T: 'static,
+    {
+        self.single_owner_with_name(instance, "")
+    }
+
+    /// Appends a standalone [`SingleOwner`](crate::Scope::SingleOwner) instance to the context with name.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::{modules, Context, ContextOptions};
+    ///
+    /// #[derive(PartialEq, Eq, Debug)]
+    /// struct NotClone(i32);
+    ///
+    /// # fn main() {
+    /// let cx: Context = ContextOptions::default()
+    ///     .single_owner_with_name(NotClone(1), "one")
+    ///     .single_owner_with_name(NotClone(2), "two")
+    ///     .create(modules![]);
+    ///
+    /// assert_eq!(cx.get_single_with_name::<NotClone>("one"), &NotClone(1));
+    /// assert_eq!(cx.get_single_with_name::<NotClone>("two"), &NotClone(2));
+    /// # }
+    /// ```
+    pub fn single_owner_with_name<T, N>(mut self, instance: T, name: N) -> Self
+    where
+        T: 'static,
+        N: Into<Cow<'static, str>>,
+    {
+        let provider = Provider::<T>::never_construct(name.into(), Scope::SingleOwner).into();
+        let single = Single::new(instance, None).into();
+
+        self.providers.push(provider);
+        self.singles.push(single);
 
         self
     }
@@ -2120,15 +2266,15 @@ impl ContextOptions {
     {
         let ContextOptions {
             allow_override,
-            allow_only_singleton_eager_create,
+            allow_only_single_eager_create,
             eager_create,
             providers,
-            singletons,
+            singles,
         } = self;
 
         let mut cx = Context {
             allow_override,
-            allow_only_singleton_eager_create,
+            allow_only_single_eager_create,
             eager_create,
             ..Default::default()
         };
@@ -2136,11 +2282,11 @@ impl ContextOptions {
         if !providers.is_empty() {
             providers
                 .into_iter()
-                .zip(singletons)
-                .for_each(|(provider, singleton)| {
+                .zip(singles)
+                .for_each(|(provider, single)| {
                     let key = provider.key().clone();
                     cx.provider_registry.insert(provider, allow_override);
-                    cx.singleton_registry.insert(key, singleton);
+                    cx.single_registry.insert(key, single);
                 });
         }
 

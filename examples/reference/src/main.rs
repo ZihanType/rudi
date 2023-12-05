@@ -1,86 +1,44 @@
-use std::cell::RefCell;
+use rudi::{Context, SingleOwner, Singleton, Transient};
 
-use rudi::{Context, Singleton};
+#[SingleOwner] // SingleOwner scope
+struct NotCloneable;
 
-// reference count
-thread_local! {
-    static COUNT: RefCell<usize> = RefCell::new(0);
-}
+#[Singleton] // Singleton scope
+struct Cloneable;
 
-fn inc_count() {
-    COUNT.with_borrow_mut(|a| {
-        *a += 1;
-    });
-}
-
-fn get_count() -> usize {
-    COUNT.with_borrow(|a| *a)
-}
-
-// fake serialize trait
-trait FakeSerialize: Default {}
-
-impl<T: Default> FakeSerialize for T {}
-
-// app config
-#[derive(Debug)]
-struct AppConfig;
-
-impl Clone for AppConfig {
+// Singleton must implement Clone
+impl Clone for Cloneable {
     fn clone(&self) -> Self {
-        inc_count();
-        Self
+        unimplemented!("actually this method will not be called")
     }
 }
 
-#[Singleton]
-impl AppConfig {
-    // load config from file
-    fn load_file() -> Self {
-        Self
-    }
-}
-
-// get other config by reference
-impl AppConfig {
-    fn get<T: FakeSerialize>(&self) -> T {
-        T::default()
-    }
-}
-
-#[derive(Default, Clone)]
 struct DbConfig;
 
-#[Singleton]
+#[Transient]
 impl DbConfig {
-    // simple example
-    fn new(#[di(ref)] cfg: &AppConfig) -> Self {
-        cfg.get()
+    // from reference
+    fn from_single_owner_reference(#[di(ref)] _: &NotCloneable) -> Self {
+        Self
     }
 }
 
-#[derive(Default, Clone)]
 struct RedisConfig;
 
-#[Singleton]
+#[Transient]
 impl RedisConfig {
-    // example with option
-    fn new(#[di(option, ref)] cfg: Option<&AppConfig>) -> Self {
-        match cfg {
-            Some(cfg) => cfg.get(),
-            None => Self,
-        }
+    // from option reference
+    fn from_singleton_reference(#[di(option, ref)] _: Option<&Cloneable>) -> Self {
+        Self
     }
 }
 
 #[Singleton]
-fn Run(_db_config: DbConfig, _redis_config: RedisConfig) {
+fn Run(_: DbConfig, _: RedisConfig) {
     println!("run!");
 }
 
 fn main() {
     let mut cx = Context::auto_register();
-    assert_eq!(get_count(), 0);
-    cx.resolve::<()>();
-    assert_eq!(get_count(), 0);
+    cx.resolve()
 }

@@ -23,7 +23,7 @@ fn transfer<T: Service + 'static>(t: T) -> Rc<dyn Service> {
 }
 
 fn condition(cx: &Context, value: &str) -> bool {
-    cx.get_singleton::<Environment>()
+    cx.get_single::<Environment>()
         .map
         .get("env")
         .map(|a| a == value)

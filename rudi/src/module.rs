@@ -5,7 +5,9 @@ use crate::{DynProvider, Type};
 /// # Example
 ///
 /// ```rust
-/// use rudi::{modules, providers, singleton, transient, Context, Module};
+/// use rudi::{
+///     modules, providers, singleton, transient, Context, DynProvider, Module, ResolveModule,
+/// };
 ///
 /// struct Module1;
 ///
@@ -14,7 +16,7 @@ use crate::{DynProvider, Type};
 ///         true
 ///     }
 ///
-///     fn providers() -> Vec<rudi::DynProvider> {
+///     fn providers() -> Vec<DynProvider> {
 ///         providers![singleton(|_| "Hello").name("1")]
 ///     }
 /// }
@@ -22,11 +24,11 @@ use crate::{DynProvider, Type};
 /// struct Module2;
 ///
 /// impl Module for Module2 {
-///     fn submodules() -> Option<Vec<rudi::ResolveModule>> {
+///     fn submodules() -> Option<Vec<ResolveModule>> {
 ///         Some(modules![Module1])
 ///     }
 ///
-///     fn providers() -> Vec<rudi::DynProvider> {
+///     fn providers() -> Vec<DynProvider> {
 ///         providers![transient(|_| "World").name("2")]
 ///     }
 /// }

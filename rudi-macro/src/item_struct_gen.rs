@@ -36,10 +36,10 @@ pub(crate) fn generate(
     let color = if async_ { Color::Async } else { Color::Sync };
 
     let FieldResolveStmts {
-        mut_ref_cx_stmts,
+        ref_mut_cx_stmts,
         ref_cx_stmts,
         fields,
-    } = commons::generate_field_resolve_methods(&mut item_struct.fields, color, scope)?;
+    } = commons::generate_field_resolve_stmts(&mut item_struct.fields, color)?;
 
     let create_provider = commons::generate_create_provider(scope, color);
 
@@ -79,7 +79,7 @@ pub(crate) fn generate(
             quote! {
                 #[allow(unused_variables)]
                 |cx| ::std::boxed::Box::pin(async {
-                    #(#mut_ref_cx_stmts)*
+                    #(#ref_mut_cx_stmts)*
                     #(#ref_cx_stmts)*
                     #instance
                 })
@@ -89,7 +89,7 @@ pub(crate) fn generate(
             quote! {
                 #[allow(unused_variables)]
                 |cx| {
-                    #(#mut_ref_cx_stmts)*
+                    #(#ref_mut_cx_stmts)*
                     #(#ref_cx_stmts)*
                     #instance
                 }

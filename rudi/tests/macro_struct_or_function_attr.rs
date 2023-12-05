@@ -29,7 +29,7 @@ fn Four() -> i16 {
 // condition
 
 fn _5_condition(cx: &Context) -> bool {
-    !cx.contains_singleton_with_name::<i32>("5")
+    !cx.contains_single_with_name::<i32>("5")
 }
 
 #[Singleton(name = "5", condition = _5_condition)]
@@ -110,8 +110,8 @@ async fn struct_or_function_attr() {
     assert_eq!(cx.resolve::<i8>(), 1);
     assert_eq!(cx.resolve_with_name::<i8>("2"), 2);
 
-    assert!(!cx.contains_singleton_with_name::<i16>("3"));
-    assert!(cx.contains_singleton_with_name::<i16>("4"));
+    assert!(!cx.contains_single_with_name::<i16>("3"));
+    assert!(cx.contains_single_with_name::<i16>("4"));
 
     assert!(cx.contains_provider_with_name::<i32>("5"));
     assert!(!cx.contains_provider_with_name::<i32>("6"));

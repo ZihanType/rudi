@@ -51,10 +51,10 @@ pub(crate) fn generate(
     };
 
     let ArgumentResolveStmts {
-        mut_ref_cx_stmts,
+        ref_mut_cx_stmts,
         ref_cx_stmts,
         args,
-    } = commons::generate_argument_resolve_methods(&mut item_fn.sig.inputs, color, scope)?;
+    } = commons::generate_argument_resolve_methods(&mut item_fn.sig.inputs, color)?;
 
     let create_provider = commons::generate_create_provider(scope, color);
 
@@ -111,7 +111,7 @@ pub(crate) fn generate(
             quote! {
                 #[allow(unused_variables)]
                 |cx| ::std::boxed::Box::pin(async {
-                    #(#mut_ref_cx_stmts)*
+                    #(#ref_mut_cx_stmts)*
                     #(#ref_cx_stmts)*
                     #ident #turbofish (#(#args,)*).await
                 })
@@ -121,7 +121,7 @@ pub(crate) fn generate(
             quote! {
                 #[allow(unused_variables)]
                 |cx| {
-                    #(#mut_ref_cx_stmts)*
+                    #(#ref_mut_cx_stmts)*
                     #(#ref_cx_stmts)*
                     #ident #turbofish (#(#args,)*)
                 }

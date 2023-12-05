@@ -25,6 +25,12 @@ pub(crate) fn generate_create_provider(scope: Scope, color: Color) -> TokenStrea
         (Scope::Transient, Color::Sync) => quote! {
             transient
         },
+        (Scope::SingleOwner, Color::Async) => quote! {
+            single_owner_async
+        },
+        (Scope::SingleOwner, Color::Sync) => quote! {
+            single_owner
+        },
     }
 }
 
@@ -166,8 +172,8 @@ enum ResolveOneValue {
         resolve: Stmt,
     },
     Ref {
-        create_singleton: Stmt,
-        get_singleton: Stmt,
+        create_single: Stmt,
+        get_single: Stmt,
     },
 }
 
@@ -176,25 +182,13 @@ struct ResolveOne {
     variable: Ident,
 }
 
-fn generate_only_one_field_or_argument_resolve_method(
+fn generate_only_one_field_or_argument_resolve_stmt(
     attrs: &mut Vec<Attribute>,
     color: Color,
     index: usize,
     field_or_argument_ty: &Type,
-    scope: Scope,
 ) -> syn::Result<ResolveOne> {
     let attr = FieldOrArgumentAttribute::from_attrs(attrs)?;
-
-    match (&attr.ref_, scope) {
-        (_, Scope::Singleton) => {}
-        (Some((span, _)), /* not singleton */ _) => {
-            return Err(syn::Error::new(
-                *span,
-                "only support `ref` argument in `#[Singleton]` item",
-            ))
-        }
-        _ => {}
-    }
 
     let SimpleFieldOrArgumentAttribute {
         name,
@@ -220,23 +214,23 @@ fn generate_only_one_field_or_argument_resolve_method(
                     quote!(#ty)
                 };
 
-                let create_singleton = match color {
+                let create_single = match color {
                     Color::Async => parse_quote! {
-                        cx.try_create_singleton_with_name_async::<#ty>(#name).await;
+                        cx.try_just_create_single_with_name_async::<#ty>(#name).await;
                     },
                     Color::Sync => parse_quote! {
-                        cx.try_create_singleton_with_name::<#ty>(#name);
+                        cx.try_just_create_single_with_name::<#ty>(#name);
                     },
                 };
 
-                let get_singleton = parse_quote! {
-                    let #ident = cx.get_singleton_option_with_name(#name);
+                let get_single = parse_quote! {
+                    let #ident = cx.get_single_option_with_name(#name);
                 };
 
                 Ok(ResolveOne {
                     stmt: ResolveOneValue::Ref {
-                        create_singleton,
-                        get_singleton,
+                        create_single,
+                        get_single,
                     },
                     variable: ident,
                 })
@@ -269,17 +263,17 @@ fn generate_only_one_field_or_argument_resolve_method(
                     quote!(#ty)
                 };
 
-                let create_singleton = match color {
+                let create_single = match color {
                     Color::Async => parse_quote! {
-                        cx.try_create_singleton_with_name_async::<#ty>(#name).await;
+                        cx.try_just_create_single_with_name_async::<#ty>(#name).await;
                     },
                     Color::Sync => parse_quote! {
-                        cx.try_create_singleton_with_name::<#ty>(#name);
+                        cx.try_just_create_single_with_name::<#ty>(#name);
                     },
                 };
 
-                let get_singleton = parse_quote! {
-                    let #ident = match cx.get_singleton_option_with_name(#name) {
+                let get_single = parse_quote! {
+                    let #ident = match cx.get_single_option_with_name(#name) {
                         Some(value) => value,
                         None => #default,
                     };
@@ -287,8 +281,8 @@ fn generate_only_one_field_or_argument_resolve_method(
 
                 Ok(ResolveOne {
                     stmt: ResolveOneValue::Ref {
-                        create_singleton,
-                        get_singleton,
+                        create_single,
+                        get_single,
                     },
                     variable: ident,
                 })
@@ -327,23 +321,23 @@ fn generate_only_one_field_or_argument_resolve_method(
                     quote!(#ty)
                 };
 
-                let create_singleton = match color {
+                let create_single = match color {
                     Color::Async => parse_quote! {
-                        cx.try_create_singletons_by_type_async::<#ty>().await;
+                        cx.try_just_create_singles_by_type_async::<#ty>().await;
                     },
                     Color::Sync => parse_quote! {
-                        cx.try_create_singletons_by_type::<#ty>();
+                        cx.try_just_create_singles_by_type::<#ty>();
                     },
                 };
 
-                let get_singleton = parse_quote! {
-                    let #ident = cx.get_singletons_by_type();
+                let get_single = parse_quote! {
+                    let #ident = cx.get_singles_by_type();
                 };
 
                 Ok(ResolveOne {
                     stmt: ResolveOneValue::Ref {
-                        create_singleton,
-                        get_singleton,
+                        create_single,
+                        get_single,
                     },
                     variable: ident,
                 })
@@ -375,23 +369,23 @@ fn generate_only_one_field_or_argument_resolve_method(
                 quote!(#ty)
             };
 
-            let create_singleton = match color {
+            let create_single = match color {
                 Color::Async => parse_quote! {
-                    cx.just_create_singleton_with_name_async::<#ty>(#name).await;
+                    cx.just_create_single_with_name_async::<#ty>(#name).await;
                 },
                 Color::Sync => parse_quote! {
-                    cx.just_create_singleton_with_name::<#ty>(#name);
+                    cx.just_create_single_with_name::<#ty>(#name);
                 },
             };
 
-            let get_singleton = parse_quote! {
-                let #ident = cx.get_singleton_with_name(#name);
+            let get_single = parse_quote! {
+                let #ident = cx.get_single_with_name(#name);
             };
 
             Ok(ResolveOne {
                 stmt: ResolveOneValue::Ref {
-                    create_singleton,
-                    get_singleton,
+                    create_single,
+                    get_single,
                 },
                 variable: ident,
             })
@@ -415,7 +409,7 @@ fn generate_only_one_field_or_argument_resolve_method(
 }
 
 pub(crate) struct ArgumentResolveStmts {
-    pub(crate) mut_ref_cx_stmts: Vec<Stmt>,
+    pub(crate) ref_mut_cx_stmts: Vec<Stmt>,
     pub(crate) ref_cx_stmts: Vec<Stmt>,
     pub(crate) args: Vec<Ident>,
 }
@@ -423,11 +417,10 @@ pub(crate) struct ArgumentResolveStmts {
 pub(crate) fn generate_argument_resolve_methods(
     inputs: &mut Punctuated<FnArg, Token![,]>,
     color: Color,
-    scope: Scope,
 ) -> syn::Result<ArgumentResolveStmts> {
     let capacity = inputs.len();
 
-    let mut mut_ref_cx_stmts = Vec::with_capacity(capacity);
+    let mut ref_mut_cx_stmts = Vec::with_capacity(capacity);
     let mut ref_cx_stmts = Vec::with_capacity(capacity);
     let mut args = Vec::with_capacity(capacity);
 
@@ -438,18 +431,16 @@ pub(crate) fn generate_argument_resolve_methods(
             }
             FnArg::Typed(PatType { attrs, ty, .. }) => {
                 let ResolveOne { stmt, variable } =
-                    generate_only_one_field_or_argument_resolve_method(
-                        attrs, color, index, ty, scope,
-                    )?;
+                    generate_only_one_field_or_argument_resolve_stmt(attrs, color, index, ty)?;
 
                 match stmt {
-                    ResolveOneValue::Owned { resolve } => mut_ref_cx_stmts.push(resolve),
+                    ResolveOneValue::Owned { resolve } => ref_mut_cx_stmts.push(resolve),
                     ResolveOneValue::Ref {
-                        create_singleton,
-                        get_singleton,
+                        create_single,
+                        get_single,
                     } => {
-                        mut_ref_cx_stmts.push(create_singleton);
-                        ref_cx_stmts.push(get_singleton);
+                        ref_mut_cx_stmts.push(create_single);
+                        ref_cx_stmts.push(get_single);
                     }
                 }
 
@@ -459,7 +450,7 @@ pub(crate) fn generate_argument_resolve_methods(
     }
 
     Ok(ArgumentResolveStmts {
-        mut_ref_cx_stmts,
+        ref_mut_cx_stmts,
         ref_cx_stmts,
         args,
     })
@@ -510,7 +501,7 @@ pub(crate) fn check_auto_register_with_generics(
 }
 
 pub(crate) struct FieldResolveStmts {
-    pub(crate) mut_ref_cx_stmts: Vec<Stmt>,
+    pub(crate) ref_mut_cx_stmts: Vec<Stmt>,
     pub(crate) ref_cx_stmts: Vec<Stmt>,
     pub(crate) fields: ResolvedFields,
 }
@@ -524,21 +515,20 @@ pub(crate) enum ResolvedFields {
     Unnamed(Vec<Ident>),
 }
 
-pub(crate) fn generate_field_resolve_methods(
+pub(crate) fn generate_field_resolve_stmts(
     fields: &mut Fields,
     color: Color,
-    scope: Scope,
 ) -> syn::Result<FieldResolveStmts> {
     match fields {
         Fields::Unit => Ok(FieldResolveStmts {
-            mut_ref_cx_stmts: Vec::new(),
+            ref_mut_cx_stmts: Vec::new(),
             ref_cx_stmts: Vec::new(),
             fields: ResolvedFields::Unit,
         }),
         Fields::Named(FieldsNamed { named, .. }) => {
             let capacity = named.len();
 
-            let mut mut_ref_cx_stmts = Vec::with_capacity(capacity);
+            let mut ref_mut_cx_stmts = Vec::with_capacity(capacity);
             let mut ref_cx_stmts = Vec::with_capacity(capacity);
             let mut field_values = Vec::with_capacity(capacity);
 
@@ -557,18 +547,16 @@ pub(crate) fn generate_field_resolve_methods(
                 let ResolveOne {
                     stmt,
                     variable: field_value,
-                } = generate_only_one_field_or_argument_resolve_method(
-                    attrs, color, index, ty, scope,
-                )?;
+                } = generate_only_one_field_or_argument_resolve_stmt(attrs, color, index, ty)?;
 
                 match stmt {
-                    ResolveOneValue::Owned { resolve } => mut_ref_cx_stmts.push(resolve),
+                    ResolveOneValue::Owned { resolve } => ref_mut_cx_stmts.push(resolve),
                     ResolveOneValue::Ref {
-                        create_singleton,
-                        get_singleton,
+                        create_single,
+                        get_single,
                     } => {
-                        mut_ref_cx_stmts.push(create_singleton);
-                        ref_cx_stmts.push(get_singleton);
+                        ref_mut_cx_stmts.push(create_single);
+                        ref_cx_stmts.push(get_single);
                     }
                 }
 
@@ -577,7 +565,7 @@ pub(crate) fn generate_field_resolve_methods(
             }
 
             Ok(FieldResolveStmts {
-                mut_ref_cx_stmts,
+                ref_mut_cx_stmts,
                 ref_cx_stmts,
                 fields: ResolvedFields::Named {
                     field_names,
@@ -588,7 +576,7 @@ pub(crate) fn generate_field_resolve_methods(
         Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
             let capacity = unnamed.len();
 
-            let mut mut_ref_cx_stmts = Vec::with_capacity(capacity);
+            let mut ref_mut_cx_stmts = Vec::with_capacity(capacity);
             let mut ref_cx_stmts = Vec::with_capacity(capacity);
             let mut field_values = Vec::with_capacity(capacity);
 
@@ -596,18 +584,16 @@ pub(crate) fn generate_field_resolve_methods(
                 let ResolveOne {
                     stmt,
                     variable: field_value,
-                } = generate_only_one_field_or_argument_resolve_method(
-                    attrs, color, index, ty, scope,
-                )?;
+                } = generate_only_one_field_or_argument_resolve_stmt(attrs, color, index, ty)?;
 
                 match stmt {
-                    ResolveOneValue::Owned { resolve } => mut_ref_cx_stmts.push(resolve),
+                    ResolveOneValue::Owned { resolve } => ref_mut_cx_stmts.push(resolve),
                     ResolveOneValue::Ref {
-                        create_singleton,
-                        get_singleton,
+                        create_single,
+                        get_single,
                     } => {
-                        mut_ref_cx_stmts.push(create_singleton);
-                        ref_cx_stmts.push(get_singleton);
+                        ref_mut_cx_stmts.push(create_single);
+                        ref_cx_stmts.push(get_single);
                     }
                 }
 
@@ -615,7 +601,7 @@ pub(crate) fn generate_field_resolve_methods(
             }
 
             Ok(FieldResolveStmts {
-                mut_ref_cx_stmts,
+                ref_mut_cx_stmts,
                 ref_cx_stmts,
                 fields: ResolvedFields::Unnamed(field_values),
             })

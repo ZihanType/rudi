@@ -15,7 +15,7 @@ mod macros;
 mod module;
 mod provider;
 mod registry;
-mod singleton;
+mod single;
 mod ty;
 
 #[cfg_attr(docsrs, doc(cfg(feature = "auto-register")))]
@@ -30,6 +30,11 @@ pub(crate) use registry::*;
 pub use rudi_core::*;
 #[cfg_attr(docsrs, doc(cfg(feature = "rudi-macro")))]
 #[cfg(feature = "rudi-macro")]
+/// Define a single owner provider.
+#[doc = include_str!("docs/attribute_macro.md")]
+pub use rudi_macro::SingleOwner;
+#[cfg_attr(docsrs, doc(cfg(feature = "rudi-macro")))]
+#[cfg(feature = "rudi-macro")]
 /// Define a singleton provider.
 #[doc = include_str!("docs/attribute_macro.md")]
 pub use rudi_macro::Singleton;
@@ -38,5 +43,5 @@ pub use rudi_macro::Singleton;
 /// Define a transient provider.
 #[doc = include_str!("docs/attribute_macro.md")]
 pub use rudi_macro::Transient;
-pub use singleton::*;
+pub use single::*;
 pub use ty::*;

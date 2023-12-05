@@ -65,8 +65,8 @@ impl Module for MyModule {
 
 fn main() {
     let mut cx = Context::options()
-        .instance(42)
-        .instance(true)
+        .singleton(42)
+        .singleton(true)
         .create(modules![MyModule]);
 
     // cx.resolve::<()>();

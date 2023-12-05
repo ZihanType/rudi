@@ -27,34 +27,20 @@ fn resolve_singleton() {
 }
 
 #[test]
-fn resolve_singleton_with_dyn_trait1() {
+fn resolve_transient() {
     struct MyModule;
     impl Module for MyModule {
         fn providers() -> Vec<rudi::DynProvider> {
-            providers![
-                singleton(|_| Component1)
-                    .name("1")
-                    .bind(Component1::into_trait1),
-                singleton(|_| Component2)
-                    .name("2")
-                    .bind(Component2::into_trait1)
-            ]
+            providers![transient(|_| Rc::new(ComponentA))]
         }
     }
 
-    let cx = Context::create(modules![MyModule]);
+    let mut cx = Context::create(modules![MyModule]);
 
-    let providers = cx.get_providers_by_type::<Rc<dyn Trait1>>();
+    let a = cx.resolve::<Rc<ComponentA>>();
+    let b = cx.resolve::<Rc<ComponentA>>();
 
-    assert!(providers.len() == 2);
-
-    assert!(providers.iter().any(|provider| {
-        provider.definition().origin.as_ref().unwrap().id == TypeId::of::<Component1>()
-    }));
-
-    assert!(providers.iter().any(|provider| {
-        provider.definition().origin.as_ref().unwrap().id == TypeId::of::<Component2>()
-    }));
+    assert!(!std::ptr::eq(&*a, &*b));
 }
 
 #[test]
@@ -108,24 +94,38 @@ fn resolve_transient_by_name() {
 }
 
 #[test]
-fn resolve_transient() {
+fn resolve_trait_object() {
     struct MyModule;
     impl Module for MyModule {
         fn providers() -> Vec<rudi::DynProvider> {
-            providers![transient(|_| Rc::new(ComponentA))]
+            providers![
+                singleton(|_| Component1)
+                    .name("1")
+                    .bind(Component1::into_trait1),
+                singleton(|_| Component2)
+                    .name("2")
+                    .bind(Component2::into_trait1)
+            ]
         }
     }
 
-    let mut cx = Context::create(modules![MyModule]);
+    let cx = Context::create(modules![MyModule]);
 
-    let a = cx.resolve::<Rc<ComponentA>>();
-    let b = cx.resolve::<Rc<ComponentA>>();
+    let providers = cx.get_providers_by_type::<Rc<dyn Trait1>>();
 
-    assert!(!std::ptr::eq(&*a, &*b));
+    assert!(providers.len() == 2);
+
+    assert!(providers.iter().any(|provider| {
+        provider.definition().origin.as_ref().unwrap().id == TypeId::of::<Component1>()
+    }));
+
+    assert!(providers.iter().any(|provider| {
+        provider.definition().origin.as_ref().unwrap().id == TypeId::of::<Component2>()
+    }));
 }
 
 #[test]
-fn resolve_default_and_named() {
+fn resolve_default_name_and_custom_name() {
     struct MyModule;
     impl Module for MyModule {
         fn providers() -> Vec<rudi::DynProvider> {
@@ -213,34 +213,20 @@ async fn resolve_singleton_async() {
 }
 
 #[tokio::test]
-async fn resolve_singleton_with_dyn_trait1_async() {
+async fn resolve_transient_async() {
     struct MyModule;
     impl Module for MyModule {
         fn providers() -> Vec<rudi::DynProvider> {
-            providers![
-                singleton_async(|_| async { Component1 }.boxed())
-                    .name("1")
-                    .bind(Component1::into_trait1),
-                singleton_async(|_| async { Component2 }.boxed())
-                    .name("2")
-                    .bind(Component2::into_trait1)
-            ]
+            providers![transient_async(|_| async { Rc::new(ComponentA) }.boxed())]
         }
     }
 
-    let cx = Context::create(modules![MyModule]);
+    let mut cx = Context::create(modules![MyModule]);
 
-    let providers = cx.get_providers_by_type::<Rc<dyn Trait1>>();
+    let a = cx.resolve_async::<Rc<ComponentA>>().await;
+    let b = cx.resolve_async::<Rc<ComponentA>>().await;
 
-    assert!(providers.len() == 2);
-
-    assert!(providers.iter().any(|provider| {
-        provider.definition().origin.as_ref().unwrap().id == TypeId::of::<Component1>()
-    }));
-
-    assert!(providers.iter().any(|provider| {
-        provider.definition().origin.as_ref().unwrap().id == TypeId::of::<Component2>()
-    }));
+    assert!(!std::ptr::eq(&*a, &*b));
 }
 
 #[tokio::test]
@@ -292,24 +278,38 @@ async fn resolve_transient_by_name_async() {
 }
 
 #[tokio::test]
-async fn resolve_transient_async() {
+async fn resolve_trait_object_async() {
     struct MyModule;
     impl Module for MyModule {
         fn providers() -> Vec<rudi::DynProvider> {
-            providers![transient_async(|_| async { Rc::new(ComponentA) }.boxed())]
+            providers![
+                singleton_async(|_| async { Component1 }.boxed())
+                    .name("1")
+                    .bind(Component1::into_trait1),
+                singleton_async(|_| async { Component2 }.boxed())
+                    .name("2")
+                    .bind(Component2::into_trait1)
+            ]
         }
     }
 
-    let mut cx = Context::create(modules![MyModule]);
+    let cx = Context::create(modules![MyModule]);
 
-    let a = cx.resolve_async::<Rc<ComponentA>>().await;
-    let b = cx.resolve_async::<Rc<ComponentA>>().await;
+    let providers = cx.get_providers_by_type::<Rc<dyn Trait1>>();
 
-    assert!(!std::ptr::eq(&*a, &*b));
+    assert!(providers.len() == 2);
+
+    assert!(providers.iter().any(|provider| {
+        provider.definition().origin.as_ref().unwrap().id == TypeId::of::<Component1>()
+    }));
+
+    assert!(providers.iter().any(|provider| {
+        provider.definition().origin.as_ref().unwrap().id == TypeId::of::<Component2>()
+    }));
 }
 
 #[tokio::test]
-async fn resolve_default_and_named_async() {
+async fn resolve_default_name_and_custom_name_async() {
     struct MyModule;
     impl Module for MyModule {
         fn providers() -> Vec<rudi::DynProvider> {

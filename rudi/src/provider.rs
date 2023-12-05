@@ -5,7 +5,7 @@ use crate::{BoxFuture, Color, Context, Definition, FutureExt, Key, Scope};
 /// A trait for giving a type a default [`Provider`].
 ///
 /// Define this trait so that the purpose is not to be implemented manually,
-/// but to use the [`#[Singleton]`](crate::Singleton) or [`#[Transient]`](crate::Transient) attribute macros to generate the implementation.
+/// but to use the [`#[Singleton]`](crate::Singleton), [`#[Transient]`](crate::Transient) or [`#[SingleOwner]`](crate::SingleOwner) attribute macros to generate the implementation.
 ///
 /// # Example
 ///
@@ -63,13 +63,16 @@ pub enum EagerCreateFunction {
 /// there is no pub method to direct create this struct,
 /// Please use the following functions or attribute macros to create the various `Provider` types that implement `Into<Provider>`:
 /// - functions
-///   - [`singleton`](crate::singleton())
+///   - [`singleton`](crate::singleton)
 ///   - [`transient`](crate::transient)
+///   - [`single_owner`](crate::single_owner)
 ///   - [`singleton_async`](crate::singleton_async)
 ///   - [`transient_async`](crate::transient_async)
+///   - [`single_owner_async`](crate::single_owner_async)
 /// - attribute macros
 ///   - [`Singleton`](crate::Singleton)
 ///   - [`Transient`](crate::Transient)
+///   - [`SingleOwner`](crate::SingleOwner)
 pub struct Provider<T> {
     definition: Definition,
     eager_create: bool,
@@ -114,6 +117,7 @@ impl<T> Provider<T> {
 impl<T: 'static> Provider<T> {
     pub(crate) fn with_name(
         name: Cow<'static, str>,
+        scope: Scope,
         eager_create: bool,
         condition: Option<fn(&Context) -> bool>,
         constructor: Constructor<T>,
@@ -122,10 +126,7 @@ impl<T: 'static> Provider<T> {
     ) -> Self {
         let definition = Definition::new::<T>(
             name,
-            match clone_instance {
-                Some(_) => Scope::Singleton,
-                None => Scope::Transient,
-            },
+            scope,
             match constructor {
                 Constructor::Async(_) => Color::Async,
                 Constructor::Sync(_) => Color::Sync,
@@ -164,12 +165,10 @@ impl<T: 'static> Provider<T> {
             binding_definitions: None,
         }
     }
-}
 
-impl<T: 'static + Clone> Provider<T> {
-    pub(crate) fn never_construct(name: Cow<'static, str>) -> Self {
+    pub(crate) fn never_construct(name: Cow<'static, str>, scope: Scope) -> Self {
         Provider {
-            definition: Definition::new::<T>(name, Scope::Singleton, Color::Sync, false),
+            definition: Definition::new::<T>(name, scope, Color::Sync, false),
             eager_create: false,
             condition: None,
             constructor: Constructor::Sync(Rc::new(|_| unreachable!())),
@@ -355,6 +354,7 @@ macro_rules! define_provider_common {
 macro_rules! define_provider_sync {
     (
         $provider:ident,
+        $scope:expr,
         $function:ident,
         $clone_instance:expr,
         $(+ $bound:ident)*
@@ -463,6 +463,7 @@ macro_rules! define_provider_sync {
 
                 let mut provider = Provider::with_name(
                     name,
+                    $scope,
                     eager_create,
                     condition,
                     constructor,
@@ -497,6 +498,7 @@ macro_rules! define_provider_sync {
 macro_rules! define_provider_async {
     (
         $provider:ident,
+        $scope:expr,
         $function:ident,
         $clone_instance:expr,
         $(+ $bound:ident)*
@@ -607,6 +609,7 @@ macro_rules! define_provider_async {
 
                 let mut provider = Provider::with_name(
                     name,
+                    $scope,
                     eager_create,
                     condition,
                     constructor,
@@ -640,11 +643,25 @@ macro_rules! define_provider_async {
 
 define_provider_common!(SingletonProvider, singleton, Some(Clone::clone), + Clone);
 define_provider_common!(TransientProvider, transient, None,);
+define_provider_common!(SingleOwnerProvider, single_owner, None,);
 define_provider_common!(SingletonAsyncProvider, singleton_async, Some(Clone::clone), + Clone);
 define_provider_common!(TransientAsyncProvider, transient_async, None,);
+define_provider_common!(SingleOwnerAsyncProvider, single_owner_async, None,);
 
-define_provider_sync!(SingletonProvider, singleton, Some(Clone::clone), + Clone);
-define_provider_sync!(TransientProvider, transient, None,);
+define_provider_sync!(SingletonProvider, Scope::Singleton, singleton, Some(Clone::clone), + Clone);
+define_provider_sync!(TransientProvider, Scope::Transient, transient, None,);
+define_provider_sync!(SingleOwnerProvider, Scope::SingleOwner, single_owner, None,);
 
-define_provider_async!(SingletonAsyncProvider, singleton_async, Some(Clone::clone), + Clone);
-define_provider_async!(TransientAsyncProvider, transient_async, None,);
+define_provider_async!(SingletonAsyncProvider, Scope::Singleton, singleton_async, Some(Clone::clone), + Clone);
+define_provider_async!(
+    TransientAsyncProvider,
+    Scope::Transient,
+    transient_async,
+    None,
+);
+define_provider_async!(
+    SingleOwnerAsyncProvider,
+    Scope::SingleOwner,
+    single_owner_async,
+    None,
+);

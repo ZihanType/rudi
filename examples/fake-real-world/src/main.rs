@@ -9,8 +9,8 @@ use third_components::Middleware;
 #[allow(unused_variables)]
 #[Singleton]
 async fn Run(
-    #[di(name = di::LOG_NAME)] (): (),
-    #[di(name = di::migrator_name())] (): (),
+    #[di(name = di::LOG_NAME)] _: (),
+    #[di(name = di::migrator_name())] _: (),
     controller: Controller,
     middleware: Middleware,
 ) {
@@ -20,6 +20,5 @@ async fn Run(
 #[tokio::main]
 async fn main() {
     let mut cx = Context::auto_register();
-
     cx.resolve_async().await
 }

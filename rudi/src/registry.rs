@@ -1,38 +1,38 @@
 use std::collections::HashMap;
 
-use crate::{DynProvider, DynSingletonInstance, Key, Provider};
+use crate::{DynProvider, DynSingle, Key, Provider};
 
 #[derive(Default)]
-pub(crate) struct SingletonRegistry {
-    registry: HashMap<Key, DynSingletonInstance>,
+pub(crate) struct SingleRegistry {
+    registry: HashMap<Key, DynSingle>,
 }
 
-impl SingletonRegistry {
-    pub(crate) fn inner(&self) -> &HashMap<Key, DynSingletonInstance> {
+impl SingleRegistry {
+    pub(crate) fn inner(&self) -> &HashMap<Key, DynSingle> {
         &self.registry
     }
 
-    pub(crate) fn insert(&mut self, key: Key, instance: DynSingletonInstance) {
+    pub(crate) fn insert(&mut self, key: Key, single: DynSingle) {
         // There is no need to check the value of `allow_override` here,
-        // because when inserting a provider and a singleton with the same key into the context,
-        // the provider must be inserted first, followed by the singleton,
+        // because when inserting a provider and a single with the same key into the context,
+        // the provider must be inserted first, followed by the single,
         // and the checking of `allow_override` has already been done when the provider is inserted.
-        self.registry.insert(key, instance);
+        self.registry.insert(key, single);
     }
 
     pub(crate) fn get_owned<T: 'static>(&self, key: &Key) -> Option<T> {
-        Some(self.registry.get(key)?.as_singleton::<T>()?.get_owned())
+        self.registry.get(key)?.as_single::<T>()?.get_owned()
     }
 
     pub(crate) fn get_ref<T: 'static>(&self, key: &Key) -> Option<&T> {
-        Some(self.registry.get(key)?.as_singleton::<T>()?.get_ref())
+        Some(self.registry.get(key)?.as_single::<T>()?.get_ref())
     }
 
     pub(crate) fn contains(&self, key: &Key) -> bool {
         self.registry.contains_key(key)
     }
 
-    pub(crate) fn remove(&mut self, key: &Key) -> Option<DynSingletonInstance> {
+    pub(crate) fn remove(&mut self, key: &Key) -> Option<DynSingle> {
         self.registry.remove(key)
     }
 }
