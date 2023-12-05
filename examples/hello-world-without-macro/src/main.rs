@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use rudi::{modules, providers, singleton, Context, Module};
+use rudi::{modules, providers, singleton, Context, DynProvider, Module};
 
 trait Service {
     fn hello(&self) -> &str;
@@ -53,7 +53,7 @@ fn run(controller: Controller, num: i32, success: bool, _: Hello) {
 struct MyModule;
 
 impl Module for MyModule {
-    fn providers() -> Vec<rudi::DynProvider> {
+    fn providers() -> Vec<DynProvider> {
         providers![
             singleton(|_| ServiceImpl)
                 .name("hello")

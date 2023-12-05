@@ -3,8 +3,8 @@ mod components;
 use std::rc::Rc;
 
 use rudi::{
-    components, modules, providers, singleton, singleton_async, Context, FutureExt, Module,
-    Singleton,
+    components, modules, providers, singleton, singleton_async, Context, DynProvider, FutureExt,
+    Module, ResolveModule, Singleton,
 };
 
 use crate::components::{ComponentA, ComponentB};
@@ -14,7 +14,7 @@ fn resolve_with_several_modules() {
     struct MyModule1;
 
     impl Module for MyModule1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton(|_| Rc::new(ComponentA))]
         }
     }
@@ -25,7 +25,7 @@ fn resolve_with_several_modules() {
 
     struct MyModule2;
     impl Module for MyModule2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![Holder]
         }
     }
@@ -41,7 +41,7 @@ fn single_module() {
     struct MyModule;
 
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![ComponentA]
         }
     }
@@ -55,7 +55,7 @@ fn multiple_module() {
     struct MyModule1;
 
     impl Module for MyModule1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![ComponentA]
         }
     }
@@ -63,7 +63,7 @@ fn multiple_module() {
     struct MyModule2;
 
     impl Module for MyModule2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![ComponentB]
         }
     }
@@ -77,7 +77,7 @@ fn nested_module() {
     struct MyModule1;
 
     impl Module for MyModule1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![ComponentA]
         }
     }
@@ -85,11 +85,11 @@ fn nested_module() {
     struct MyModule2;
 
     impl Module for MyModule2 {
-        fn submodules() -> Option<Vec<rudi::ResolveModule>> {
+        fn submodules() -> Option<Vec<ResolveModule>> {
             Some(modules![MyModule1])
         }
 
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![ComponentB]
         }
     }
@@ -103,7 +103,7 @@ fn duplicate_nested_module() {
     struct DataModule;
 
     impl Module for DataModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![ComponentA]
         }
     }
@@ -111,7 +111,7 @@ fn duplicate_nested_module() {
     struct DomainModule;
 
     impl Module for DomainModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![ComponentB]
         }
     }
@@ -119,11 +119,11 @@ fn duplicate_nested_module() {
     struct FeatureModule1;
 
     impl Module for FeatureModule1 {
-        fn submodules() -> Option<Vec<rudi::ResolveModule>> {
+        fn submodules() -> Option<Vec<ResolveModule>> {
             Some(modules![DomainModule, DataModule])
         }
 
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![]
         }
     }
@@ -131,11 +131,11 @@ fn duplicate_nested_module() {
     struct FeatureModule2;
 
     impl Module for FeatureModule2 {
-        fn submodules() -> Option<Vec<rudi::ResolveModule>> {
+        fn submodules() -> Option<Vec<ResolveModule>> {
             Some(modules![DomainModule, DataModule])
         }
 
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![]
         }
     }
@@ -149,7 +149,7 @@ async fn resolve_with_several_modules_async() {
     struct MyModule1;
 
     impl Module for MyModule1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton_async(|_| async { Rc::new(ComponentA) }.boxed())]
         }
     }
@@ -160,7 +160,7 @@ async fn resolve_with_several_modules_async() {
 
     struct MyModule2;
     impl Module for MyModule2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![Holder]
         }
     }
@@ -176,7 +176,7 @@ async fn single_module_async() {
     struct MyModule;
 
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton_async(|_| async { ComponentA }.boxed())]
         }
     }
@@ -190,7 +190,7 @@ async fn multiple_module_async() {
     struct MyModule1;
 
     impl Module for MyModule1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton_async(|_| async { ComponentA }.boxed())]
         }
     }
@@ -198,7 +198,7 @@ async fn multiple_module_async() {
     struct MyModule2;
 
     impl Module for MyModule2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton_async(|cx| async {
                 ComponentB {
                     a: cx.resolve_async().await,
@@ -217,7 +217,7 @@ async fn nested_module_async() {
     struct MyModule1;
 
     impl Module for MyModule1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton_async(|_| async { ComponentA }.boxed())]
         }
     }
@@ -225,11 +225,11 @@ async fn nested_module_async() {
     struct MyModule2;
 
     impl Module for MyModule2 {
-        fn submodules() -> Option<Vec<rudi::ResolveModule>> {
+        fn submodules() -> Option<Vec<ResolveModule>> {
             Some(modules![MyModule1])
         }
 
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton_async(|cx| async {
                 ComponentB {
                     a: cx.resolve_async().await,
@@ -248,7 +248,7 @@ async fn duplicate_nested_module_async() {
     struct DataModule;
 
     impl Module for DataModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton_async(|_| async { ComponentA }.boxed())]
         }
     }
@@ -256,7 +256,7 @@ async fn duplicate_nested_module_async() {
     struct DomainModule;
 
     impl Module for DomainModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton_async(|cx| async {
                 ComponentB {
                     a: cx.resolve_async().await,
@@ -269,11 +269,11 @@ async fn duplicate_nested_module_async() {
     struct FeatureModule1;
 
     impl Module for FeatureModule1 {
-        fn submodules() -> Option<Vec<rudi::ResolveModule>> {
+        fn submodules() -> Option<Vec<ResolveModule>> {
             Some(modules![DomainModule, DataModule])
         }
 
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![]
         }
     }
@@ -281,11 +281,11 @@ async fn duplicate_nested_module_async() {
     struct FeatureModule2;
 
     impl Module for FeatureModule2 {
-        fn submodules() -> Option<Vec<rudi::ResolveModule>> {
+        fn submodules() -> Option<Vec<ResolveModule>> {
             Some(modules![DomainModule, DataModule])
         }
 
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![]
         }
     }

@@ -4,18 +4,18 @@
 /// # Example
 ///
 /// ```rust
-/// use rudi::{modules, Module};
+/// use rudi::{modules, DynProvider, Module, ResolveModule};
 ///
 /// struct MyModule;
 ///
 /// impl Module for MyModule {
-///     fn providers() -> Vec<rudi::DynProvider> {
+///     fn providers() -> Vec<DynProvider> {
 ///         Vec::new()
 ///     }
 /// }
 ///
 /// # fn main() {
-/// let _: Vec<rudi::ResolveModule> = modules![MyModule];
+/// let _: Vec<ResolveModule> = modules![MyModule];
 /// # }
 /// ```
 ///
@@ -39,10 +39,10 @@ macro_rules! modules {
 /// # Example
 ///
 /// ```rust
-/// use rudi::{providers, singleton};
+/// use rudi::{providers, singleton, DynProvider};
 ///
 /// # fn main() {
-/// let _: Vec<rudi::DynProvider> = providers![singleton(|_| "Hello")];
+/// let _: Vec<DynProvider> = providers![singleton(|_| "Hello")];
 /// # }
 /// ```
 ///
@@ -65,13 +65,13 @@ macro_rules! providers {
 /// # Example
 ///
 /// ```rust
-/// use rudi::{components, Transient};
+/// use rudi::{components, DynProvider, Transient};
 ///
 /// #[Transient]
 /// struct A;
 ///
 /// # fn main() {
-/// let _: Vec<rudi::DynProvider> = components![A];
+/// let _: Vec<DynProvider> = components![A];
 /// # }
 /// ```
 ///

@@ -1,11 +1,11 @@
 use std::any::{self, TypeId};
 
-use rudi::{Module, ResolveModule};
+use rudi::{DynProvider, Module, ResolveModule};
 
 struct MyModule;
 
 impl Module for MyModule {
-    fn providers() -> Vec<rudi::DynProvider> {
+    fn providers() -> Vec<DynProvider> {
         vec![]
     }
 }

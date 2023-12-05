@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use rudi::{components, modules, Context, Module, Singleton};
+use rudi::{components, modules, Context, DynProvider, Module, Singleton};
 
 thread_local! {
     static COUNT: RefCell<u32> = RefCell::new(0);
@@ -46,7 +46,7 @@ fn test() {
     struct MyModule1;
 
     impl Module for MyModule1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![NewA]
         }
     }
@@ -54,7 +54,7 @@ fn test() {
     struct MyModule2;
 
     impl Module for MyModule2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![NewB]
         }
     }

@@ -17,7 +17,7 @@ use crate::{
 ///
 /// Creating context with customized modules:
 /// ```rust
-/// use rudi::{components, modules, Context, Module, Transient};
+/// use rudi::{components, modules, Context, DynProvider, Module, Transient};
 ///
 /// #[Transient]
 /// struct A;
@@ -25,7 +25,7 @@ use crate::{
 /// struct Module1;
 ///
 /// impl Module for Module1 {
-///     fn providers() -> Vec<rudi::DynProvider> {
+///     fn providers() -> Vec<DynProvider> {
 ///         components![A]
 ///     }
 /// }
@@ -37,7 +37,7 @@ use crate::{
 /// struct Module2;
 ///
 /// impl Module for Module2 {
-///     fn providers() -> Vec<rudi::DynProvider> {
+///     fn providers() -> Vec<DynProvider> {
 ///         components![B]
 ///     }
 /// }
@@ -150,7 +150,7 @@ impl Context {
     /// # Example
     ///
     /// ```rust
-    /// use rudi::{components, modules, Context, Module, Transient};
+    /// use rudi::{components, modules, Context, DynProvider, Module, Transient};
     ///
     /// #[Transient]
     /// struct A;
@@ -158,7 +158,7 @@ impl Context {
     /// struct MyModule;
     ///
     /// impl Module for MyModule {
-    ///     fn providers() -> Vec<rudi::DynProvider> {
+    ///     fn providers() -> Vec<DynProvider> {
     ///         components![A]
     ///     }
     /// }
@@ -2026,12 +2026,12 @@ where
 /// Creating a context with a module:
 ///
 /// ```rust
-/// use rudi::{modules, Context, ContextOptions, Module};
+/// use rudi::{modules, Context, ContextOptions, DynProvider, Module};
 ///
 /// struct MyModule;
 ///
 /// impl Module for MyModule {
-///     fn providers() -> Vec<rudi::DynProvider> {
+///     fn providers() -> Vec<DynProvider> {
 ///         vec![]
 ///     }
 /// }
@@ -2306,7 +2306,7 @@ impl ContextOptions {
     /// # Example
     ///
     /// ```rust
-    /// use rudi::{components, modules, Context, ContextOptions, Module, Transient};
+    /// use rudi::{components, modules, Context, ContextOptions, DynProvider, Module, Transient};
     ///
     /// #[Transient]
     /// struct A;
@@ -2314,7 +2314,7 @@ impl ContextOptions {
     /// struct MyModule;
     ///
     /// impl Module for MyModule {
-    ///     fn providers() -> Vec<rudi::DynProvider> {
+    ///     fn providers() -> Vec<DynProvider> {
     ///         components![A]
     ///     }
     /// }

@@ -1,4 +1,4 @@
-use rudi::{components, modules, Context, Module, Transient};
+use rudi::{components, modules, Context, DynProvider, Module, Transient};
 
 #[test]
 fn allow_override_in_same_module() {
@@ -7,7 +7,7 @@ fn allow_override_in_same_module() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A, A]
         }
     }
@@ -23,14 +23,14 @@ fn allow_override_in_defferent_module() {
 
     struct MyModule1;
     impl Module for MyModule1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
 
     struct MyModule2;
     impl Module for MyModule2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -47,7 +47,7 @@ fn disallow_override_in_same_module() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A, A]
         }
     }
@@ -66,14 +66,14 @@ fn disallow_override_in_defferent_module() {
 
     struct MyModule1;
     impl Module for MyModule1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
 
     struct MyModule2;
     impl Module for MyModule2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }

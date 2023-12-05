@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use rudi::{components, modules, Context, Module, Singleton};
+use rudi::{components, modules, Context, DynProvider, Module, Singleton};
 
 trait Service {
     fn hello(&self) -> &str;
@@ -58,7 +58,7 @@ fn Run(#[di(name = "controller")] controller: Controller, num: i32, success: boo
 struct MyModule;
 
 impl Module for MyModule {
-    fn providers() -> Vec<rudi::DynProvider> {
+    fn providers() -> Vec<DynProvider> {
         components![ServiceImpl, Controller, Hello, Run]
     }
 }

@@ -2,7 +2,9 @@ mod components;
 
 use std::{any::TypeId, rc::Rc};
 
-use rudi::{modules, providers, singleton, singleton_async, Context, FutureExt, Module};
+use rudi::{
+    modules, providers, singleton, singleton_async, Context, DynProvider, FutureExt, Module,
+};
 
 use crate::components::{Component1, Component2, Trait1};
 
@@ -10,14 +12,14 @@ use crate::components::{Component1, Component2, Trait1};
 fn allow_override_by_type() {
     struct Module1;
     impl Module for Module1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton(|_| Component2).bind(Component2::into_trait1)]
         }
     }
 
     struct Module2;
     impl Module for Module2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton(|_| Component1).bind(Component1::into_trait1)]
         }
     }
@@ -40,7 +42,7 @@ fn allow_override_by_type() {
 fn allow_override_by_name() {
     struct Module1;
     impl Module for Module1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton(|_| Component2)
                 .name("hello")
                 .bind(Component2::into_trait1)]
@@ -49,7 +51,7 @@ fn allow_override_by_name() {
 
     struct Module2;
     impl Module for Module2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton(|_| Component1)
                 .name("hello")
                 .bind(Component1::into_trait1)]
@@ -73,7 +75,7 @@ fn allow_override_by_name() {
 async fn allow_override_by_type_async() {
     struct Module1;
     impl Module for Module1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![
                 singleton_async(|_| async { Component2 }.boxed()).bind(Component2::into_trait1)
             ]
@@ -82,7 +84,7 @@ async fn allow_override_by_type_async() {
 
     struct Module2;
     impl Module for Module2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![
                 singleton_async(|_| async { Component1 }.boxed()).bind(Component1::into_trait1)
             ]
@@ -107,7 +109,7 @@ async fn allow_override_by_type_async() {
 async fn allow_override_by_name_async() {
     struct Module1;
     impl Module for Module1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton_async(|_| async { Component2 }.boxed())
                 .name("hello")
                 .bind(Component2::into_trait1)]
@@ -116,7 +118,7 @@ async fn allow_override_by_name_async() {
 
     struct Module2;
     impl Module for Module2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton_async(|_| async { Component1 }.boxed())
                 .name("hello")
                 .bind(Component1::into_trait1)]

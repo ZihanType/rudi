@@ -4,7 +4,7 @@ use std::{any::TypeId, rc::Rc};
 
 use rudi::{
     components, modules, providers, singleton, singleton_async, transient, transient_async,
-    Context, FutureExt, Module, Transient,
+    Context, DynProvider, FutureExt, Module, Transient,
 };
 
 use crate::components::{Component1, Component2, ComponentA, Trait1};
@@ -13,7 +13,7 @@ use crate::components::{Component1, Component2, ComponentA, Trait1};
 fn resolve_singleton() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton(|_| Rc::new(ComponentA))]
         }
     }
@@ -30,7 +30,7 @@ fn resolve_singleton() {
 fn resolve_transient() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![transient(|_| Rc::new(ComponentA))]
         }
     }
@@ -47,7 +47,7 @@ fn resolve_transient() {
 fn resolve_singleton_by_name() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             let a = Rc::new(ComponentA);
             providers![
                 singleton({
@@ -72,7 +72,7 @@ fn resolve_singleton_by_name() {
 fn resolve_transient_by_name() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             let a = Rc::new(ComponentA);
             providers![
                 transient({
@@ -97,7 +97,7 @@ fn resolve_transient_by_name() {
 fn resolve_trait_object() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![
                 singleton(|_| Component1)
                     .name("1")
@@ -128,7 +128,7 @@ fn resolve_trait_object() {
 fn resolve_default_name_and_custom_name() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![
                 singleton(|_| Component1).bind(Component1::into_trait1),
                 singleton(|_| Component2)
@@ -168,7 +168,7 @@ fn resolve_async_instance_in_sync_context() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -182,7 +182,7 @@ fn resolve_async_instance_in_sync_context() {
 fn resolve_instances_by_type() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![
                 transient(|_| ComponentA).name("A"),
                 transient(|_| ComponentA).name("B"),
@@ -199,7 +199,7 @@ fn resolve_instances_by_type() {
 async fn resolve_singleton_async() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton_async(|_| async { Rc::new(ComponentA) }.boxed())]
         }
     }
@@ -216,7 +216,7 @@ async fn resolve_singleton_async() {
 async fn resolve_transient_async() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![transient_async(|_| async { Rc::new(ComponentA) }.boxed())]
         }
     }
@@ -237,7 +237,7 @@ async fn resolve_singleton_by_name_async() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![
                 singleton_async(move |_| async { A.with(|a| a.clone()) }.boxed()).name("A"),
                 singleton_async(move |_| async { A.with(|a| a.clone()) }.boxed()).name("B"),
@@ -261,7 +261,7 @@ async fn resolve_transient_by_name_async() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![
                 transient_async(move |_| async { A.with(|a| a.clone()) }.boxed()).name("A"),
                 transient_async(move |_| async { A.with(|a| a.clone()) }.boxed()).name("B"),
@@ -281,7 +281,7 @@ async fn resolve_transient_by_name_async() {
 async fn resolve_trait_object_async() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![
                 singleton_async(|_| async { Component1 }.boxed())
                     .name("1")
@@ -312,7 +312,7 @@ async fn resolve_trait_object_async() {
 async fn resolve_default_name_and_custom_name_async() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![
                 singleton_async(|_| async { Component1 }.boxed()).bind(Component1::into_trait1),
                 singleton_async(|_| async { Component2 }.boxed())
@@ -351,7 +351,7 @@ async fn resolve_sync_instance_in_async_context() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -365,7 +365,7 @@ async fn resolve_sync_instance_in_async_context() {
 async fn resolve_instances_by_type_async() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![
                 transient_async(|_| async { ComponentA }.boxed()).name("A"),
                 transient_async(|_| async { ComponentA }.boxed()).name("B"),

@@ -364,13 +364,13 @@ macro_rules! define_provider_sync {
         /// # Example
         ///
         /// ```rust
-        #[doc = concat!("use rudi::", stringify!($function), ";")]
+        #[doc = concat!("use rudi::{", stringify!($function), ", ", stringify!($provider), "};")]
         ///
         /// #[derive(Clone)]
         /// struct A(i32);
         ///
         /// fn main() {
-        #[doc = concat!("    let _: rudi::", stringify!($provider), "<A> = ", stringify!($function), "(|cx| A(cx.resolve()));")]
+        #[doc = concat!("    let _: ", stringify!($provider), "<A> = ", stringify!($function), "(|cx| A(cx.resolve()));")]
         /// }
         /// ```
         pub fn $function<T, C>(constructor: C) -> $provider<T>
@@ -402,7 +402,7 @@ macro_rules! define_provider_sync {
             /// ```rust
             /// use std::{fmt::Debug, rc::Rc, sync::Arc};
             ///
-            #[doc = concat!("use rudi::", stringify!($function), ";")]
+            #[doc = concat!("use rudi::{", stringify!($function), ", Provider, ", stringify!($provider), "};")]
             ///
             /// #[derive(Clone, Debug)]
             /// struct A(i32);
@@ -412,13 +412,13 @@ macro_rules! define_provider_sync {
             /// }
             ///
             /// fn main() {
-            #[doc = concat!("    let p: rudi::", stringify!($provider), "<A> = ", stringify!($function), "(|cx| A(cx.resolve()))")]
+            #[doc = concat!("    let p: ", stringify!($provider), "<A> = ", stringify!($function), "(|cx| A(cx.resolve()))")]
             ///         .bind(Rc::new)
             ///         .bind(Arc::new)
             ///         .bind(Box::new)
             ///         .bind(into_debug);
             ///
-            ///     let p: rudi::Provider<A> = p.into();
+            ///     let p: Provider<A> = p.into();
             ///
             ///     assert_eq!(p.binding_definitions().unwrap().len(), 4);
             /// }
@@ -508,13 +508,13 @@ macro_rules! define_provider_async {
         /// # Example
         ///
         /// ```rust
-        #[doc = concat!("use rudi::{", stringify!($function), ", FutureExt};")]
+        #[doc = concat!("use rudi::{", stringify!($function), ", FutureExt, ", stringify!($provider), "};")]
         ///
         /// #[derive(Clone)]
         /// struct A(i32);
         ///
         /// fn main() {
-        #[doc = concat!("    let _: rudi::", stringify!($provider), "<A> =")]
+        #[doc = concat!("    let _: ", stringify!($provider), "<A> =")]
         #[doc = concat!("        ", stringify!($function), "(|cx| async { A(cx.resolve_async().await) }.boxed());")]
         /// }
         /// ```
@@ -547,7 +547,7 @@ macro_rules! define_provider_async {
             /// ```rust
             /// use std::{fmt::Debug, rc::Rc, sync::Arc};
             ///
-            #[doc = concat!("use rudi::{", stringify!($function), ", FutureExt};")]
+            #[doc = concat!("use rudi::{", stringify!($function), ", FutureExt, Provider, ", stringify!($provider), "};")]
             ///
             /// #[derive(Clone, Debug)]
             /// struct A(i32);
@@ -557,14 +557,14 @@ macro_rules! define_provider_async {
             /// }
             ///
             /// fn main() {
-            #[doc = concat!("    let p: rudi::", stringify!($provider), "<A> =")]
+            #[doc = concat!("    let p: ", stringify!($provider), "<A> =")]
             #[doc = concat!("        ", stringify!($function), "(|cx| async { A(cx.resolve_async().await) }.boxed())")]
             ///             .bind(Rc::new)
             ///             .bind(Arc::new)
             ///             .bind(Box::new)
             ///             .bind(into_debug);
             ///
-            ///     let p: rudi::Provider<A> = p.into();
+            ///     let p: Provider<A> = p.into();
             ///
             ///     assert_eq!(p.binding_definitions().unwrap().len(), 4);
             /// }

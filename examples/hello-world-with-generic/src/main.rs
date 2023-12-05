@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use rudi::{components, modules, Context, Module, Singleton};
+use rudi::{components, modules, Context, DynProvider, Module, Singleton};
 
 trait Service {
     fn hello(&self) -> &str;
@@ -48,7 +48,7 @@ impl<T> Module for MyModule<T>
 where
     T: Service + Clone + 'static,
 {
-    fn providers() -> Vec<rudi::DynProvider> {
+    fn providers() -> Vec<DynProvider> {
         components![ServiceImpl, Controller<T>, Run<T>]
     }
 }

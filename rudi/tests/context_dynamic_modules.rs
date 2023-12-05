@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use rudi::{
     components, modules, providers, singleton, singleton_async, transient, transient_async,
-    Context, FutureExt, Module, Scope, Singleton, Transient,
+    Context, DynProvider, FutureExt, Module, Scope, Singleton, Transient,
 };
 
 use crate::components::{Component1, Holder, Trait1};
@@ -13,7 +13,7 @@ use crate::components::{Component1, Holder, Trait1};
 fn empty_module() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![]
         }
     }
@@ -43,7 +43,7 @@ fn unload_singleton() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -65,7 +65,7 @@ fn unload_singleton() {
 fn unload_singleton_with_bind() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton(|_| Component1).bind(Component1::into_trait1)]
         }
     }
@@ -99,14 +99,14 @@ fn unload_module() {
 
     struct Module1;
     impl Module for Module1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
 
     struct Module2;
     impl Module for Module2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![B]
         }
     }
@@ -135,14 +135,14 @@ fn unload_module_with_transient() {
 
     struct Module1;
     impl Module for Module1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
 
     struct Module2;
     impl Module for Module2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![B]
         }
     }
@@ -165,14 +165,14 @@ fn unload_module_with_transient() {
 fn unload_module_with_override() {
     struct MyModule1;
     impl Module for MyModule1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![transient(|_| Holder { id: 42 })]
         }
     }
 
     struct MyModule2;
     impl Module for MyModule2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![transient(|_| Holder { id: 24 })]
         }
     }
@@ -192,7 +192,7 @@ fn unload_module_with_override() {
 fn reload_module() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton(|_| Holder { id: 42 })]
         }
     }
@@ -217,7 +217,7 @@ async fn unload_singleton_async() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -239,7 +239,7 @@ async fn unload_singleton_async() {
 async fn unload_singleton_with_bind_async() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![
                 singleton_async(|_| async { Component1 }.boxed()).bind(Component1::into_trait1)
             ]
@@ -275,14 +275,14 @@ async fn unload_module_async() {
 
     struct Module1;
     impl Module for Module1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
 
     struct Module2;
     impl Module for Module2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![B]
         }
     }
@@ -311,14 +311,14 @@ async fn unload_module_with_transient_async() {
 
     struct Module1;
     impl Module for Module1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
 
     struct Module2;
     impl Module for Module2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![B]
         }
     }
@@ -341,14 +341,14 @@ async fn unload_module_with_transient_async() {
 async fn unload_module_with_override_async() {
     struct MyModule1;
     impl Module for MyModule1 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![transient_async(|_| async { Holder { id: 42 } }.boxed())]
         }
     }
 
     struct MyModule2;
     impl Module for MyModule2 {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![transient_async(|_| async { Holder { id: 24 } }.boxed())]
         }
     }
@@ -368,7 +368,7 @@ async fn unload_module_with_override_async() {
 async fn reload_module_async() {
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             providers![singleton_async(|_| async { Holder { id: 42 } }.boxed())]
         }
     }

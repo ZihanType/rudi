@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use rudi::{components, modules, Context, Module, Transient};
+use rudi::{components, modules, Context, DynProvider, Module, Transient};
 
 #[test]
 fn generic_provider() {
@@ -10,7 +10,7 @@ fn generic_provider() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A<i32>]
         }
     }
@@ -27,7 +27,7 @@ fn generic_module() {
 
     struct MyModule<T>(PhantomData<T>);
     impl<T: Default + 'static> Module for MyModule<T> {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A<T>]
         }
     }
@@ -44,7 +44,7 @@ fn generic_provider_async() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![B<i32>]
         }
     }
@@ -61,7 +61,7 @@ fn generic_module_async() {
 
     struct MyModule<T>(PhantomData<T>);
     impl<T: Default + 'static> Module for MyModule<T> {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![B<T>]
         }
     }

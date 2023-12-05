@@ -2,7 +2,9 @@ mod components;
 
 use std::cell::RefCell;
 
-use rudi::{components, modules, Context, DefaultProvider, Module, Singleton, Transient};
+use rudi::{
+    components, modules, Context, DefaultProvider, DynProvider, Module, Singleton, Transient,
+};
 
 #[test]
 fn eager_create_context() {
@@ -13,7 +15,7 @@ fn eager_create_context() {
     struct MyModule;
 
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -49,7 +51,7 @@ fn eager_create_provider() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -89,7 +91,7 @@ fn eager_create_module() {
             true
         }
 
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -130,7 +132,7 @@ fn eager_create_module_twice() {
     struct MyModule;
 
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -189,7 +191,7 @@ fn eager_create_two_modules() {
             true
         }
 
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -201,7 +203,7 @@ fn eager_create_two_modules() {
             true
         }
 
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![B]
         }
     }
@@ -229,7 +231,7 @@ fn create_eager_instances_async_in_sync_context() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -276,7 +278,7 @@ fn only_singleton_or_all_scope_eager_create() {
     struct MyModule;
 
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A, B]
         }
     }
@@ -301,7 +303,7 @@ async fn eager_create_context_async() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -338,7 +340,7 @@ async fn eager_create_provider_async() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -378,7 +380,7 @@ async fn eager_create_module_async() {
             true
         }
 
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -419,7 +421,7 @@ async fn eager_create_module_twice_async() {
     struct MyModule;
 
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -478,7 +480,7 @@ async fn eager_create_two_modules_async() {
             true
         }
 
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -490,7 +492,7 @@ async fn eager_create_two_modules_async() {
             true
         }
 
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![B]
         }
     }
@@ -517,7 +519,7 @@ async fn create_eager_instances_sync_in_async_context() {
 
     struct MyModule;
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A]
         }
     }
@@ -565,7 +567,7 @@ async fn only_singleton_or_all_scope_eager_create_async() {
     struct MyModule;
 
     impl Module for MyModule {
-        fn providers() -> Vec<rudi::DynProvider> {
+        fn providers() -> Vec<DynProvider> {
             components![A, B]
         }
     }
