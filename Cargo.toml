@@ -16,7 +16,7 @@ readme = "README.md"
 # self
 rudi = { version = "0.6.0", path = "./rudi", default-features = false }
 rudi-macro = { version = "0.6.0", path = "./rudi-macro", default-features = false }
-rudi-core = { version = "0.6.0", path = "./rudi-core", default-features = false }
+rudi-core = { version = "0.1.0", path = "./rudi-core", default-features = false }
 
 # dependencies
 proc-macro2 = { version = "1", default-features = false }
