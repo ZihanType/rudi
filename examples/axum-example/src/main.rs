@@ -7,7 +7,7 @@ use axum::{
     Router,
 };
 use rudi::{Context, Singleton};
-use tokio::sync::Mutex;
+use tokio::{net::TcpListener, sync::Mutex};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[async_trait]
@@ -74,10 +74,8 @@ async fn Run(svc: Arc<dyn Service>) {
         .route("/delete/:name", delete(del))
         .with_state(svc);
 
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
 
 #[tokio::main]
