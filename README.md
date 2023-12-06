@@ -3,6 +3,8 @@
 [![Crates.io version](https://img.shields.io/crates/v/rudi.svg?style=flat-square)](https://crates.io/crates/rudi)
 [![docs.rs docs](https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square)](https://docs.rs/rudi)
 
+English | [简体中文](./README-zh_cn.md)
+
 Rudi - an out-of-the-box dependency injection framework for Rust.
 
 ```rust
