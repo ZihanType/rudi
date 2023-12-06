@@ -1,6 +1,8 @@
 [package]
 name = "rudi-core"
 version = "0.1.0"
+description = "Rudi core types"
+keywords = ["dependency-injection", "ioc", "di", "dependency"]
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
