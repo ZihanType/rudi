@@ -277,7 +277,6 @@ where
     T: 'static,
     F: Fn(T) -> U + 'static + Clone,
 {
-    #[allow(clippy::needless_pass_by_ref_mut)] // false positive
     fn helper<'a, F, T, U>(
         cx: &'a mut Context,
         name: Cow<'static, str>,
