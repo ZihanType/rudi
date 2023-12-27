@@ -479,7 +479,7 @@ impl ItemKind {
 }
 
 #[cfg(feature = "auto-register")]
-pub(crate) fn check_auto_register_with_generics(
+pub(crate) fn check_generics_when_enable_auto_register(
     auto_register: bool,
     generics: &syn::Generics,
     item_kind: ItemKind,

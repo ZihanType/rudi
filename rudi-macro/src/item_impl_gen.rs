@@ -113,11 +113,12 @@ fn generate_default_provider_impl(
         condition,
         binds,
         async_: _,
+        #[cfg(feature = "auto-register")]
         auto_register,
     } = attr;
 
     #[cfg(feature = "auto-register")]
-    commons::check_auto_register_with_generics(
+    commons::check_generics_when_enable_auto_register(
         *auto_register,
         struct_generics,
         commons::ItemKind::StructOrEnum,
@@ -197,13 +198,14 @@ fn generate_default_provider_impl(
         }
     };
 
+    #[cfg(not(feature = "auto-register"))]
+    let auto_register = quote! {};
+
+    #[cfg(feature = "auto-register")]
     let auto_register = if *auto_register {
-        #[cfg(feature = "auto-register")]
         quote! {
             #rudi_path::register_provider!(<#struct_type_with_generics as #rudi_path::DefaultProvider>::provider());
         }
-        #[cfg(not(feature = "auto-register"))]
-        quote! {}
     } else {
         quote! {}
     };

@@ -26,11 +26,12 @@ pub(crate) fn generate(
         condition,
         binds,
         async_,
+        #[cfg(feature = "auto-register")]
         auto_register,
     } = attr.simplify();
 
     #[cfg(feature = "auto-register")]
-    commons::check_auto_register_with_generics(
+    commons::check_generics_when_enable_auto_register(
         auto_register,
         &item_enum.generics,
         commons::ItemKind::Enum,
@@ -152,13 +153,14 @@ pub(crate) fn generate(
         }
     };
 
+    #[cfg(not(feature = "auto-register"))]
+    let auto_register = quote! {};
+
+    #[cfg(feature = "auto-register")]
     let auto_register = if auto_register {
-        #[cfg(feature = "auto-register")]
         quote! {
             #rudi_path::register_provider!(<#enum_ident as #rudi_path::DefaultProvider>::provider());
         }
-        #[cfg(not(feature = "auto-register"))]
-        quote! {}
     } else {
         quote! {}
     };

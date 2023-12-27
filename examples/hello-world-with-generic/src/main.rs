@@ -17,7 +17,7 @@ impl Service for ServiceImpl {
 }
 
 #[derive(Clone)]
-#[Singleton(auto_register = false)]
+#[Singleton]
 struct Controller<T>
 where
     T: Clone + 'static,
@@ -34,7 +34,7 @@ where
     }
 }
 
-#[Singleton(auto_register = false)]
+#[Singleton]
 fn Run<T>(controller: Controller<T>)
 where
     T: Service + Clone + 'static,

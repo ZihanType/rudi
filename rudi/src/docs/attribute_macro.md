@@ -124,6 +124,7 @@ fn main() {
     - [`SingleOwnerAsyncProvider::bind`]
 
 - auto_register
+  - **available only when the `auto-register` feature flag is enabled**
   - type: bool
   - example: `#[Singleton(auto_register)]` / `#[Transient(auto_register = true)]` / `#[SingleOwner(auto_register = false)]`
   - optional: true

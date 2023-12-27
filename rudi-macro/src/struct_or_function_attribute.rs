@@ -9,6 +9,7 @@ pub(crate) struct StructOrFunctionAttribute {
     condition: Option<(Span, Expr)>,
     binds: Option<(Span, Vec<ExprPath>)>,
     pub(crate) async_: Option<(Span, bool)>,
+    #[cfg(feature = "auto-register")]
     auto_register: Option<(Span, bool)>,
 }
 
@@ -61,6 +62,7 @@ impl StructOrFunctionAttribute {
 
         boolean_arg!(eager_create, eager_create);
         boolean_arg!(async, async_);
+        #[cfg(feature = "auto-register")]
         boolean_arg!(auto_register, auto_register);
 
         if meta_path.is_ident("condition") {
@@ -104,7 +106,18 @@ impl StructOrFunctionAttribute {
             return Ok(());
         }
 
-        Err(meta.error("the argument must be one of: `name`, `eager_create`, `condition`, `binds`, `async`, `auto_register`"))
+        const MESSAGE: &str =
+            "the argument must be one of: `name`, `eager_create`, `condition`, `binds`, `async`";
+
+        #[cfg(not(feature = "auto-register"))]
+        let err_msg = String::from(MESSAGE);
+        #[cfg(feature = "auto-register")]
+        let mut err_msg = String::from(MESSAGE);
+
+        #[cfg(feature = "auto-register")]
+        err_msg.push_str(", `auto_register`");
+
+        Err(meta.error(err_msg))
     }
 
     pub(crate) fn simplify(&self) -> SimpleStructOrFunctionAttribute {
@@ -114,6 +127,7 @@ impl StructOrFunctionAttribute {
             condition,
             binds,
             async_,
+            #[cfg(feature = "auto-register")]
             auto_register,
         } = self;
 
@@ -156,6 +170,7 @@ impl StructOrFunctionAttribute {
                 })
                 .unwrap_or_else(|| quote! {}),
             async_: async_.map(|(_, async_)| async_).unwrap_or(false),
+            #[cfg(feature = "auto-register")]
             auto_register: auto_register
                 .map(|(_, auto_register)| auto_register)
                 .unwrap_or(true),
@@ -169,5 +184,6 @@ pub(crate) struct SimpleStructOrFunctionAttribute {
     pub(crate) condition: TokenStream,
     pub(crate) binds: TokenStream,
     pub(crate) async_: bool,
+    #[cfg(feature = "auto-register")]
     pub(crate) auto_register: bool,
 }
