@@ -27,24 +27,25 @@ pub use rudi_core::*;
 pub use single::*;
 pub use ty::*;
 
-macro_rules! export_attribute_macro {
+macro_rules! export_attribute_macros {
     (
         $(
-            #[$doc:meta]
+            #[$summary:meta]
             $name:ident;
         )*
     ) => {
         $(
             #[cfg_attr(docsrs, doc(cfg(feature = "rudi-macro")))]
             #[cfg(feature = "rudi-macro")]
-            #[$doc]
+            #[$summary]
+            #[doc = ""]
             #[doc = include_str!("./docs/attribute_macro.md")]
             pub use rudi_macro::$name;
         )*
     };
 }
 
-export_attribute_macro! {
+export_attribute_macros! {
     /// Define a singleton provider.
     Singleton;
     /// Define a transient provider.

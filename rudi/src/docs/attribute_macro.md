@@ -1,5 +1,3 @@
-
-
 [`#[Singleton]`](crate::Singleton), [`#[Transient]`](crate::Transient) and [`#[SingleOwner]`](crate::SingleOwner) are attribute macros used to define a [`Provider`], for the difference between the `Provider`s they defined, see [`Scope`].
 
 These three macros can be used on `struct`, `enum`, `impl block`, and `fn`.
