@@ -106,13 +106,10 @@ impl StructOrFunctionAttribute {
             return Ok(());
         }
 
-        const MESSAGE: &str =
-            "the argument must be one of: `name`, `eager_create`, `condition`, `binds`, `async`";
-
-        #[cfg(not(feature = "auto-register"))]
-        let err_msg = String::from(MESSAGE);
-        #[cfg(feature = "auto-register")]
-        let mut err_msg = String::from(MESSAGE);
+        #[allow(unused_mut)]
+        let mut err_msg = String::from(
+            "the argument must be one of: `name`, `eager_create`, `condition`, `binds`, `async`",
+        );
 
         #[cfg(feature = "auto-register")]
         err_msg.push_str(", `auto_register`");
