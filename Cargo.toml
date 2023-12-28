@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["rudi", "rudi-macro", "rudi-core", "examples/*"]
+members = ["rudi", "rudi-core", "rudi-macro", "examples/*"]
 
 [workspace.package]
 version = "0.7.0"
@@ -11,16 +11,6 @@ homepage = "https://github.com/ZihanType/rudi"
 repository = "https://github.com/ZihanType/rudi"
 include = ["src/**/*", "Cargo.toml"]
 readme = "README.md"
-
-[workspace.lints.rust]
-unsafe_code = "forbid"
-private_interfaces = "deny"
-private_bounds = "deny"
-unreachable_pub = "deny"
-missing_docs = "warn"
-
-[workspace.lints.rustdoc]
-broken_intra_doc_links = "warn"
 
 [workspace.dependencies]
 # self
@@ -51,3 +41,13 @@ tracing-subscriber = { version = "0.3", default-features = false, features = [
     "env-filter",
 ] }
 leptos = { version = "0.5", default-features = false }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+private_interfaces = "deny"
+private_bounds = "deny"
+unreachable_pub = "deny"
+missing_docs = "warn"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "warn"

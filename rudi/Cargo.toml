@@ -13,9 +13,6 @@ readme.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lints]
-workspace = true
-
 [dependencies]
 rudi-core = { workspace = true }
 rudi-macro = { workspace = true, optional = true }
@@ -28,6 +25,9 @@ tokio = { workspace = true }
 [features]
 default = ["rudi-macro", "auto-register"]
 auto-register = ["dep:inventory", "rudi-macro?/auto-register"]
+
+[lints]
+workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
