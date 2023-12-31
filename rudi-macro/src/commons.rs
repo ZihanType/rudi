@@ -7,9 +7,7 @@ use syn::{
     Path, PathArguments, PathSegment, Stmt, Token, Type, TypePath, TypeReference,
 };
 
-use crate::field_or_argument_attribute::{
-    FieldOrArgumentAttribute, SimpleFieldOrArgumentAttribute,
-};
+use crate::field_or_argument_attribute::FieldOrArgumentAttr;
 
 pub(crate) fn generate_create_provider(scope: Scope, color: Color) -> TokenStream {
     match (scope, color) {
@@ -188,15 +186,13 @@ fn generate_only_one_field_or_argument_resolve_stmt(
     index: usize,
     field_or_argument_ty: &Type,
 ) -> syn::Result<ResolveOne> {
-    let attr = FieldOrArgumentAttribute::from_attrs(attrs)?;
-
-    let SimpleFieldOrArgumentAttribute {
+    let FieldOrArgumentAttr {
         name,
         option,
         default,
         vec,
         ref_,
-    } = attr.simplify();
+    } = FieldOrArgumentAttr::parse_attrs(attrs)?.unwrap_or_default();
 
     let ident = if ref_.is_some() {
         format_ident!("ref_{}", index)

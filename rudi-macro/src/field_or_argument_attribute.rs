@@ -1,5 +1,4 @@
-use proc_macro2::{Span, TokenStream};
-use quote::quote;
+use proc_macro2::Span;
 use syn::{meta::ParseNestedMeta, parse_quote, spanned::Spanned, Attribute, Expr, Token, Type};
 
 // #[di(
@@ -11,15 +10,15 @@ use syn::{meta::ParseNestedMeta, parse_quote, spanned::Spanned, Attribute, Expr,
 // )]
 
 #[derive(Default)]
-pub(crate) struct FieldOrArgumentAttribute {
+struct FieldOrArgumentAttrOptions {
     name: Option<(Span, Expr)>,
     option: Option<Span>,
     default: Option<(Span, Expr)>,
     vec: Option<Span>,
-    pub(crate) ref_: Option<(Span, Option<Type>)>,
+    ref_: Option<(Span, Option<Type>)>,
 }
 
-impl FieldOrArgumentAttribute {
+impl FieldOrArgumentAttrOptions {
     fn parse_meta(&mut self, meta: ParseNestedMeta) -> syn::Result<()> {
         let meta_path = &meta.path;
         let meta_path_span = meta_path.span();
@@ -90,17 +89,74 @@ impl FieldOrArgumentAttribute {
     }
 
     fn parse_attr(&mut self, attr: &Attribute) -> syn::Result<()> {
-        attr.parse_nested_meta(|meta| self.parse_meta(meta))?;
+        attr.parse_nested_meta(|meta| self.parse_meta(meta))
+    }
+}
 
-        let FieldOrArgumentAttribute {
+pub(crate) struct FieldOrArgumentAttr {
+    pub(crate) name: Expr,
+    pub(crate) option: bool,
+    pub(crate) default: Option<Expr>,
+    pub(crate) vec: bool,
+    pub(crate) ref_: Option<Option<Type>>,
+}
+
+impl Default for FieldOrArgumentAttr {
+    fn default() -> Self {
+        Self {
+            name: parse_quote!(""),
+            option: false,
+            default: None,
+            vec: false,
+            ref_: None,
+        }
+    }
+}
+
+impl FieldOrArgumentAttr {
+    pub(crate) fn parse_attrs(attrs: &mut Vec<Attribute>) -> syn::Result<Option<Self>> {
+        let mut options = FieldOrArgumentAttrOptions::default();
+        let mut errors = Vec::new();
+        let mut has_di = false;
+
+        attrs.retain(|attr| {
+            if !attr.path().is_ident("di") {
+                return true;
+            }
+
+            has_di = true;
+
+            if let Err(e) = options.parse_attr(attr) {
+                errors.push(e)
+            }
+
+            false
+        });
+
+        if !has_di {
+            return Ok(None);
+        }
+
+        if let Some(e) = errors.into_iter().reduce(|mut a, b| {
+            a.combine(b);
+            a
+        }) {
+            return Err(e);
+        }
+
+        Ok(Some(Self::try_from_options(options)?))
+    }
+
+    fn try_from_options(options: FieldOrArgumentAttrOptions) -> syn::Result<Self> {
+        let FieldOrArgumentAttrOptions {
             name,
             option,
             default,
             vec,
-            ref_: _ref_,
-        } = &self;
+            ref_,
+        } = options;
 
-        if let (Some((name, _)), Some(vec)) = (name, vec) {
+        if let (Some((name, _)), Some(vec)) = (&name, &vec) {
             macro_rules! err {
                 ($span:expr) => {
                     syn::Error::new(
@@ -116,7 +172,7 @@ impl FieldOrArgumentAttribute {
             return Err(e);
         }
 
-        match (option, default, vec) {
+        match (&option, &default, &vec) {
             (Some(option), Some((default, _)), Some(vec)) => {
                 macro_rules! err {
                     ($span:expr) => {
@@ -181,60 +237,14 @@ impl FieldOrArgumentAttribute {
             _ => {}
         }
 
-        Ok(())
-    }
-
-    pub(crate) fn from_attrs(attrs: &mut Vec<Attribute>) -> syn::Result<FieldOrArgumentAttribute> {
-        let mut field_or_argument_attr = FieldOrArgumentAttribute::default();
-        let mut errors = Vec::new();
-
-        attrs.retain(|attr| {
-            if !attr.path().is_ident("di") {
-                return true;
-            }
-
-            if let Err(e) = field_or_argument_attr.parse_attr(attr) {
-                errors.push(e)
-            }
-
-            false
-        });
-
-        if let Some(e) = errors.into_iter().reduce(|mut a, b| {
-            a.combine(b);
-            a
-        }) {
-            return Err(e);
-        }
-
-        Ok(field_or_argument_attr)
-    }
-
-    pub(crate) fn simplify(self) -> SimpleFieldOrArgumentAttribute {
-        let FieldOrArgumentAttribute {
-            name,
-            option,
-            default,
-            vec,
-            ref_,
-        } = self;
-
-        SimpleFieldOrArgumentAttribute {
+        Ok(Self {
             name: name
-                .map(|(_, expr)| quote!(#expr))
-                .unwrap_or_else(|| quote!("")),
+                .map(|(_, expr)| expr)
+                .unwrap_or_else(|| parse_quote!("")),
             option: option.is_some(),
             default: default.map(|(_, expr)| expr),
             vec: vec.is_some(),
             ref_: ref_.map(|(_, ty)| ty),
-        }
+        })
     }
-}
-
-pub(crate) struct SimpleFieldOrArgumentAttribute {
-    pub(crate) name: TokenStream,
-    pub(crate) option: bool,
-    pub(crate) default: Option<Expr>,
-    pub(crate) vec: bool,
-    pub(crate) ref_: Option<Option<Type>>,
 }
