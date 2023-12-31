@@ -21,6 +21,7 @@ struct B(A);
 // 将 `fn(cx) -> B { B::new(cx.resolve::<A>()) }` 注册为 `B` 的构造函数
 #[Transient]
 impl B {
+    #[di]
     fn new(a: A) -> B {
         B(a)
     }
@@ -102,6 +103,7 @@ impl Bar {
 // 这将会注册 `async fn(cx) -> Rc<dyn Debug> { Bar::into_debug(cx.resolve_async().await) }` 为 `Rc<dyn Debug>` 的构造函数。
 #[Transient(binds = [Self::into_debug])]
 impl Bar {
+    #[di]
     async fn new(#[di(name = "foo")] f: Foo) -> Bar {
         Bar(f)
     }

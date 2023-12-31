@@ -10,6 +10,7 @@ async fn resolve_in_async_context() {
 
     #[Singleton]
     impl B {
+        #[di]
         fn new() -> B {
             B
         }
@@ -45,6 +46,7 @@ async fn create_eager_instance_in_async_context() {
 
     #[Singleton]
     impl B {
+        #[di]
         fn new() -> B {
             B
         }

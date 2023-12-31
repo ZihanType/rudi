@@ -18,6 +18,7 @@ struct DbConfig;
 #[Transient]
 impl DbConfig {
     // from reference
+    #[di]
     fn from_single_owner_reference(#[di(ref)] _: &NotCloneable) -> Self {
         Self
     }
@@ -28,6 +29,7 @@ struct RedisConfig;
 #[Transient]
 impl RedisConfig {
     // from option reference
+    #[di]
     fn from_singleton_reference(#[di(option, ref)] _: Option<&Cloneable>) -> Self {
         Self
     }

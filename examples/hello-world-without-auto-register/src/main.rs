@@ -40,6 +40,7 @@ struct Hello;
 
 #[Singleton]
 impl Hello {
+    #[di]
     fn new() -> Hello {
         println!("Hello::new");
         Hello

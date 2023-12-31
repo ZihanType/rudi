@@ -1,5 +1,7 @@
+mod attr_spans_value;
 mod commons;
 mod field_or_argument_attribute;
+mod impl_fn_or_enum_variant_attr;
 mod item_enum_gen;
 mod item_fn_gen;
 mod item_impl_gen;

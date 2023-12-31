@@ -18,6 +18,7 @@ struct A;
 
 #[Singleton]
 impl A {
+    #[di]
     fn new() -> Self {
         Self
     }

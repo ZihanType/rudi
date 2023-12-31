@@ -6,7 +6,9 @@ use syn::{
 };
 
 use crate::{
+    attr_spans_value::AttrSpansValue,
     commons::{self, ArgumentResolveStmts},
+    impl_fn_or_enum_variant_attr::ImplFnOrEnumVariantAttr,
     rudi_path_attribute,
     struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };
@@ -17,6 +19,7 @@ use crate::{
 
 // #[Singleton]
 // impl A {
+//     #[di]
 //     fn new(#[di(name = "hello")] a:i32) -> Self {
 //         Self { a }
 //     }
@@ -55,40 +58,65 @@ pub(crate) fn generate(
 
     let simple = attr.simplify();
 
-    let mut errors = Vec::new();
-    let mut impl_item_fn = None;
+    let mut parse_errors = Vec::new();
+    let mut duplicate_errors = Vec::new();
+    let mut no_matched_fn_errors = Vec::new();
 
-    items.iter_mut().for_each(|impl_item| {
-        let ImplItem::Fn(f) = impl_item else {
-            return;
-        };
+    let matched = items
+        .iter_mut()
+        .filter_map(|impl_item| {
+            let f = match impl_item {
+                ImplItem::Fn(f) => f,
+                _ => return None,
+            };
 
-        if impl_item_fn.is_some() {
-            let err = syn::Error::new(f.span(), "duplicate associated function");
-            errors.push(err);
-        } else {
-            impl_item_fn = Some(f);
-        }
-    });
-
-    let default_provider_impl = match impl_item_fn {
-        None => {
-            return Err(syn::Error::new(
-                impl_span.span(),
-                "there must be an associated function",
-            ))
-        }
-        Some(f) => {
-            if let Some(e) = errors.into_iter().reduce(|mut a, b| {
-                a.combine(b);
-                a
-            }) {
-                return Err(e);
+            match ImplFnOrEnumVariantAttr::parse_attrs(&mut f.attrs) {
+                Ok(None) => None,
+                Ok(Some(AttrSpansValue {
+                    attr_spans,
+                    value: _,
+                })) => Some((f, attr_spans)),
+                Err(AttrSpansValue {
+                    attr_spans,
+                    value: e,
+                }) => {
+                    parse_errors.push(e);
+                    Some((f, attr_spans))
+                }
             }
+        })
+        .reduce(|first, (_, attr_spans)| {
+            attr_spans.into_iter().for_each(|span| {
+                let err = syn::Error::new(span, "duplicate `#[di]` attribute");
+                duplicate_errors.push(err);
+            });
 
-            generate_default_provider_impl(f, self_ty, generics, &simple, scope, rudi_path)?
-        }
-    };
+            first
+        });
+
+    if matched.is_none() {
+        no_matched_fn_errors.push(syn::Error::new(
+            impl_span.span(),
+            "there must be an associated function annotated by `#[di]`",
+        ));
+    }
+
+    if let Some(e) = parse_errors
+        .into_iter()
+        .chain(duplicate_errors)
+        .chain(no_matched_fn_errors)
+        .reduce(|mut a, b| {
+            a.combine(b);
+            a
+        })
+    {
+        return Err(e);
+    }
+
+    let (f, _) = matched.unwrap();
+
+    let default_provider_impl =
+        generate_default_provider_impl(f, self_ty, generics, &simple, scope, rudi_path)?;
 
     let expand = quote! {
         #item_impl

@@ -31,6 +31,7 @@ struct B(A);
 // Register `fn(cx) -> B { B::new(cx.resolve::<A>()) }` as the constructor for `B`
 #[Transient]
 impl B {
+    #[di]
     fn new(a: A) -> B {
         B(a)
     }

@@ -14,6 +14,7 @@ fn auto_register() {
 
     #[Transient]
     impl B {
+        #[di]
         fn new(i: i32) -> B {
             B(i)
         }
@@ -39,6 +40,7 @@ async fn auto_register_async() {
 
     #[Transient]
     impl B {
+        #[di]
         async fn new(i: i32) -> B {
             B(i)
         }

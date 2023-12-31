@@ -9,6 +9,7 @@ struct Environment {
 
 #[Singleton(eager_create)]
 impl Environment {
+    #[di]
     fn new() -> Self {
         Self {
             map: env::vars().collect(),

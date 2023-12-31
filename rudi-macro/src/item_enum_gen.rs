@@ -4,7 +4,9 @@ use rudi_core::{Color, Scope};
 use syn::{spanned::Spanned, ItemEnum};
 
 use crate::{
+    attr_spans_value::AttrSpansValue,
     commons::{self, FieldResolveStmts, ResolvedFields},
+    impl_fn_or_enum_variant_attr::ImplFnOrEnumVariantAttr,
     rudi_path_attribute,
     struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
 };
@@ -40,55 +42,64 @@ pub(crate) fn generate(
 
     let color = if async_ { Color::Async } else { Color::Sync };
 
-    let mut annotated_di_variant = None;
-    let mut errors = Vec::new();
-    let mut di_already_appeared = false;
     let mut variant_spans = Vec::new();
 
-    item_enum.variants.iter_mut().for_each(|variant| {
-        variant_spans.push(variant.span());
+    let mut parse_errors = Vec::new();
+    let mut duplicate_errors = Vec::new();
+    let mut no_matched_variant_errors = Vec::new();
 
-        variant.attrs.retain(|attr| {
-            if !attr.path().is_ident("di") {
-                return true;
-            }
+    let matched = item_enum
+        .variants
+        .iter_mut()
+        .filter_map(|variant| {
+            variant_spans.push(variant.span());
 
-            if di_already_appeared {
-                let err = syn::Error::new(attr.span(), "duplicate `#[di]` attribute");
-                errors.push(err);
-            } else {
-                di_already_appeared = true;
-
-                if let Err(e) = attr.meta.require_path_only() {
-                    errors.push(e);
+            match ImplFnOrEnumVariantAttr::parse_attrs(&mut variant.attrs) {
+                Ok(None) => None,
+                Ok(Some(AttrSpansValue {
+                    attr_spans,
+                    value: _,
+                })) => Some((variant, attr_spans)),
+                Err(AttrSpansValue {
+                    attr_spans,
+                    value: e,
+                }) => {
+                    parse_errors.push(e);
+                    Some((variant, attr_spans))
                 }
             }
+        })
+        .reduce(|first, (_, attr_spans)| {
+            attr_spans.into_iter().for_each(|span| {
+                let err = syn::Error::new(span, "duplicate `#[di]` attribute");
+                duplicate_errors.push(err);
+            });
 
-            false
+            first
         });
 
-        if annotated_di_variant.is_none() && di_already_appeared {
-            annotated_di_variant = Some(variant);
-        }
-    });
-
-    if annotated_di_variant.is_none() {
-        variant_spans.into_iter().for_each(|span| {
-            errors.push(syn::Error::new(
-                span,
+    if matched.is_none() {
+        variant_spans.iter().for_each(|span| {
+            no_matched_variant_errors.push(syn::Error::new(
+                *span,
                 "there must be a variant annotated by `#[di]`",
             ));
         });
     }
 
-    if let Some(e) = errors.into_iter().reduce(|mut a, b| {
-        a.combine(b);
-        a
-    }) {
+    if let Some(e) = parse_errors
+        .into_iter()
+        .chain(duplicate_errors)
+        .chain(no_matched_variant_errors)
+        .reduce(|mut a, b| {
+            a.combine(b);
+            a
+        })
+    {
         return Err(e);
     }
 
-    let variant = annotated_di_variant.unwrap();
+    let (variant, _) = matched.unwrap();
 
     let FieldResolveStmts {
         ref_mut_cx_stmts,

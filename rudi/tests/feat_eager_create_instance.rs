@@ -42,6 +42,7 @@ fn eager_create_provider() {
 
     #[Singleton(eager_create)]
     impl A {
+        #[di]
         fn new() -> A {
             CREATED.set(true);
 
@@ -75,6 +76,7 @@ fn eager_create_module() {
 
     #[Singleton(eager_create)]
     impl A {
+        #[di]
         fn new() -> A {
             COUNT.with_borrow_mut(|c| {
                 *c += 1;
@@ -120,6 +122,7 @@ fn eager_create_module_twice() {
 
     #[Singleton(eager_create)]
     impl A {
+        #[di]
         fn new() -> A {
             COUNT.with_borrow_mut(|c| {
                 *c += 1;
@@ -161,6 +164,7 @@ fn eager_create_two_modules() {
 
     #[Singleton(eager_create)]
     impl A {
+        #[di]
         fn new() -> A {
             COUNT.with_borrow_mut(|c| {
                 *c += 1;
@@ -175,6 +179,7 @@ fn eager_create_two_modules() {
 
     #[Singleton(eager_create)]
     impl B {
+        #[di]
         fn new(a: A) -> B {
             COUNT.with_borrow_mut(|c| {
                 *c += 1;
@@ -253,6 +258,7 @@ fn only_singleton_or_all_scope_eager_create() {
 
     #[Singleton]
     impl A {
+        #[di]
         fn new() -> A {
             COUNT.with_borrow_mut(|c| {
                 *c += 1;
@@ -266,6 +272,7 @@ fn only_singleton_or_all_scope_eager_create() {
 
     #[Transient]
     impl B {
+        #[di]
         fn new() -> B {
             COUNT.with_borrow_mut(|c| {
                 *c += 1;
@@ -331,6 +338,7 @@ async fn eager_create_provider_async() {
 
     #[Singleton(eager_create)]
     impl A {
+        #[di]
         async fn new() -> A {
             CREATED.set(true);
 
@@ -364,6 +372,7 @@ async fn eager_create_module_async() {
 
     #[Singleton(eager_create)]
     impl A {
+        #[di]
         async fn new() -> A {
             COUNT.with_borrow_mut(|c| {
                 *c += 1;
@@ -409,6 +418,7 @@ async fn eager_create_module_twice_async() {
 
     #[Singleton(eager_create)]
     impl A {
+        #[di]
         async fn new() -> A {
             COUNT.with_borrow_mut(|c| {
                 *c += 1;
@@ -450,6 +460,7 @@ async fn eager_create_two_modules_async() {
 
     #[Singleton(eager_create)]
     impl A {
+        #[di]
         async fn new() -> A {
             COUNT.with_borrow_mut(|c| {
                 *c += 1;
@@ -464,6 +475,7 @@ async fn eager_create_two_modules_async() {
 
     #[Singleton(eager_create)]
     impl B {
+        #[di]
         async fn new(a: A) -> B {
             COUNT.with_borrow_mut(|c| {
                 *c += 1;
@@ -542,6 +554,7 @@ async fn only_singleton_or_all_scope_eager_create_async() {
 
     #[Singleton]
     impl A {
+        #[di]
         async fn new() -> A {
             COUNT.with_borrow_mut(|c| {
                 *c += 1;
@@ -555,6 +568,7 @@ async fn only_singleton_or_all_scope_eager_create_async() {
 
     #[Transient]
     impl B {
+        #[di]
         async fn new() -> B {
             COUNT.with_borrow_mut(|c| {
                 *c += 1;

@@ -21,6 +21,7 @@ struct B(A);
 // Register `fn(cx) -> B { B::new(cx.resolve::<A>()) }` as the constructor for `B`
 #[Transient]
 impl B {
+    #[di]
     fn new(a: A) -> B {
         B(a)
     }
@@ -105,6 +106,7 @@ impl Bar {
 // as the constructor for `Rc<dyn Debug>`.
 #[Transient(binds = [Self::into_debug])]
 impl Bar {
+    #[di]
     async fn new(#[di(name = "foo")] f: Foo) -> Bar {
         Bar(f)
     }
