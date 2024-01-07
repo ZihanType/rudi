@@ -32,8 +32,8 @@ tokio = { version = "1", default-features = false, features = [
     "macros",
     "rt-multi-thread",
 ] }
-poem = { version = "1", default-features = false }
-poem-openapi = { version = "3", default-features = false }
+poem = { version = "2", default-features = false }
+poem-openapi = { version = "4", default-features = false }
 axum = { version = "0.7", default-features = false }
 tracing-subscriber = { version = "0.3", default-features = false, features = [
     "fmt",
