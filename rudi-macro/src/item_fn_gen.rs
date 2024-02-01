@@ -1,3 +1,4 @@
+use from_attr::{AttrsValue, FlagOrValue, FromAttr};
 use proc_macro2::TokenStream;
 use quote::quote;
 use rudi_core::{Color, Scope};
@@ -5,8 +6,8 @@ use syn::{GenericParam, ItemFn, ReturnType};
 
 use crate::{
     commons::{self, ArgumentResolveStmts},
-    rudi_path_attribute,
-    struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
+    rudi_path_attribute::DiAttr,
+    struct_or_function_attribute::{ClosureOrPath, StructOrFunctionAttribute},
 };
 
 // #[Singleton]
@@ -19,16 +20,23 @@ pub(crate) fn generate(
     mut item_fn: ItemFn,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
-    let rudi_path = rudi_path_attribute::rudi_path(&mut item_fn.attrs)?;
+    let DiAttr { rudi_path } = match DiAttr::remove_attributes(&mut item_fn.attrs) {
+        Ok(Some(AttrsValue { value: attr, .. })) => attr,
+        Ok(None) => DiAttr::default(),
+        Err(AttrsValue { value: e, .. }) => return Err(e),
+    };
 
-    if let Some((async_, _)) = attr.async_ {
-        return Err(syn::Error::new(
-            async_,
-            "`async` only support in struct and enum, please use async fn instead",
-        ));
+    match attr.async_ {
+        FlagOrValue::Flag { path } | FlagOrValue::Value { path, .. } => {
+            return Err(syn::Error::new(
+                path,
+                "`async` only support in struct and enum, please use async fn or sync fn instead",
+            ));
+        }
+        FlagOrValue::None => {}
     }
 
-    let SimpleStructOrFunctionAttribute {
+    let StructOrFunctionAttribute {
         name,
         eager_create,
         condition,
@@ -36,7 +44,7 @@ pub(crate) fn generate(
         async_: _,
         #[cfg(feature = "auto-register")]
         auto_register,
-    } = attr.simplify();
+    } = attr;
 
     #[cfg(feature = "auto-register")]
     commons::check_generics_when_enable_auto_register(
@@ -50,6 +58,10 @@ pub(crate) fn generate(
         Some(_) => Color::Async,
         None => Color::Sync,
     };
+
+    let condition = condition
+        .map(|ClosureOrPath(expr)| quote!(Some(#expr)))
+        .unwrap_or_else(|| quote!(None));
 
     let ArgumentResolveStmts {
         ref_mut_cx_stmts,
@@ -159,7 +171,9 @@ pub(crate) fn generate(
                         .name(#name)
                         .eager_create(#eager_create)
                         .condition(#condition)
-                        #binds
+                        #(
+                            .bind(#binds)
+                        )*
                 )
             }
         }

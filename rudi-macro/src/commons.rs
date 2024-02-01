@@ -1,3 +1,4 @@
+use from_attr::{AttrsValue, FlagOrValue, FromAttr};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use rudi_core::{Color, Scope};
@@ -192,24 +193,29 @@ fn generate_only_one_field_or_argument_resolve_stmt(
         default,
         vec,
         ref_,
-    } = FieldOrArgumentAttr::parse_attrs(attrs)?.unwrap_or_default();
+    } = match FieldOrArgumentAttr::remove_attributes(attrs) {
+        Ok(Some(AttrsValue { value, .. })) => value,
+        Ok(None) => FieldOrArgumentAttr::default(),
+        Err(AttrsValue { value, .. }) => return Err(value),
+    };
 
-    let ident = if ref_.is_some() {
-        format_ident!("ref_{}", index)
-    } else {
-        format_ident!("owned_{}", index)
+    let ident = match ref_ {
+        FlagOrValue::None => format_ident!("owned_{}", index),
+        FlagOrValue::Flag { .. } | FlagOrValue::Value { .. } => format_ident!("ref_{}", index),
     };
 
     if option {
-        return match ref_ {
-            Some(ref_ty) => {
-                let ty = if let Some(ty) = ref_ty {
-                    quote!(#ty)
-                } else {
-                    let ty = extract_option_type(field_or_argument_ty)?;
-                    quote!(#ty)
-                };
+        let ty = match ref_ {
+            FlagOrValue::None => None,
+            FlagOrValue::Flag { .. } => {
+                let ty = extract_option_type(field_or_argument_ty)?;
+                Some(quote!(#ty))
+            }
+            FlagOrValue::Value { value: ty, .. } => Some(quote!(#ty)),
+        };
 
+        return match ty {
+            Some(ty) => {
                 let create_single = match color {
                     Color::Async => parse_quote! {
                         cx.try_just_create_single_with_name_async::<#ty>(#name).await;
@@ -249,16 +255,24 @@ fn generate_only_one_field_or_argument_resolve_stmt(
         };
     }
 
-    if let Some(default) = default {
-        return match ref_ {
-            Some(ref_ty) => {
-                let ty = if let Some(ty) = ref_ty {
-                    quote!(#ty)
-                } else {
-                    let ty = extract_ref_type(field_or_argument_ty)?;
-                    quote!(#ty)
-                };
+    let default = match default {
+        FlagOrValue::None => None,
+        FlagOrValue::Flag { .. } => Some(parse_quote!(::core::default::Default::default())),
+        FlagOrValue::Value { value: expr, .. } => Some(expr),
+    };
 
+    if let Some(default) = default {
+        let ty = match ref_ {
+            FlagOrValue::None => None,
+            FlagOrValue::Flag { .. } => {
+                let ty = extract_ref_type(field_or_argument_ty)?;
+                Some(quote!(#ty))
+            }
+            FlagOrValue::Value { value: ty, .. } => Some(quote!(#ty)),
+        };
+
+        return match ty {
+            Some(ty) => {
                 let create_single = match color {
                     Color::Async => parse_quote! {
                         cx.try_just_create_single_with_name_async::<#ty>(#name).await;
@@ -308,15 +322,17 @@ fn generate_only_one_field_or_argument_resolve_stmt(
     }
 
     if vec {
-        return match ref_ {
-            Some(ref_ty) => {
-                let ty = if let Some(ty) = ref_ty {
-                    quote!(#ty)
-                } else {
-                    let ty = extract_vec_type(field_or_argument_ty)?;
-                    quote!(#ty)
-                };
+        let ty = match ref_ {
+            FlagOrValue::None => None,
+            FlagOrValue::Flag { .. } => {
+                let ty = extract_vec_type(field_or_argument_ty)?;
+                Some(quote!(#ty))
+            }
+            FlagOrValue::Value { value: ty, .. } => Some(quote!(#ty)),
+        };
 
+        return match ty {
+            Some(ty) => {
                 let create_single = match color {
                     Color::Async => parse_quote! {
                         cx.try_just_create_singles_by_type_async::<#ty>().await;
@@ -356,15 +372,17 @@ fn generate_only_one_field_or_argument_resolve_stmt(
         };
     }
 
-    match ref_ {
-        Some(ref_ty) => {
-            let ty = if let Some(ty) = ref_ty {
-                quote!(#ty)
-            } else {
-                let ty = extract_ref_type(field_or_argument_ty)?;
-                quote!(#ty)
-            };
+    let ty = match ref_ {
+        FlagOrValue::None => None,
+        FlagOrValue::Flag { .. } => {
+            let ty = extract_ref_type(field_or_argument_ty)?;
+            Some(quote!(#ty))
+        }
+        FlagOrValue::Value { value: ty, .. } => Some(quote!(#ty)),
+    };
 
+    match ty {
+        Some(ty) => {
             let create_single = match color {
                 Color::Async => parse_quote! {
                     cx.just_create_single_with_name_async::<#ty>(#name).await;

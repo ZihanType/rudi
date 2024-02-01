@@ -1,3 +1,4 @@
+use from_attr::{AttrsValue, FlagOrValue, FromAttr};
 use proc_macro2::TokenStream;
 use quote::quote;
 use rudi_core::{Color, Scope};
@@ -5,8 +6,8 @@ use syn::ItemStruct;
 
 use crate::{
     commons::{self, FieldResolveStmts, ResolvedFields},
-    rudi_path_attribute,
-    struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
+    rudi_path_attribute::DiAttr,
+    struct_or_function_attribute::{ClosureOrPath, StructOrFunctionAttribute},
 };
 
 pub(crate) fn generate(
@@ -14,9 +15,13 @@ pub(crate) fn generate(
     mut item_struct: ItemStruct,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
-    let rudi_path = rudi_path_attribute::rudi_path(&mut item_struct.attrs)?;
+    let DiAttr { rudi_path } = match DiAttr::remove_attributes(&mut item_struct.attrs) {
+        Ok(Some(AttrsValue { value: attr, .. })) => attr,
+        Ok(None) => DiAttr::default(),
+        Err(AttrsValue { value: e, .. }) => return Err(e),
+    };
 
-    let SimpleStructOrFunctionAttribute {
+    let StructOrFunctionAttribute {
         name,
         eager_create,
         condition,
@@ -24,7 +29,7 @@ pub(crate) fn generate(
         async_,
         #[cfg(feature = "auto-register")]
         auto_register,
-    } = attr.simplify();
+    } = attr;
 
     #[cfg(feature = "auto-register")]
     commons::check_generics_when_enable_auto_register(
@@ -34,7 +39,17 @@ pub(crate) fn generate(
         scope,
     )?;
 
+    let async_ = match async_ {
+        FlagOrValue::None => false,
+        FlagOrValue::Flag { .. } => true,
+        FlagOrValue::Value { value, .. } => value,
+    };
+
     let color = if async_ { Color::Async } else { Color::Sync };
+
+    let condition = condition
+        .map(|ClosureOrPath(expr)| quote!(Some(#expr)))
+        .unwrap_or_else(|| quote!(None));
 
     let FieldResolveStmts {
         ref_mut_cx_stmts,
@@ -122,7 +137,9 @@ pub(crate) fn generate(
                         .name(#name)
                         .eager_create(#eager_create)
                         .condition(#condition)
-                        #binds
+                        #(
+                            .bind(#binds)
+                        )*
                 )
             }
         }

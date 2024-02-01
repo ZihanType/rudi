@@ -1,3 +1,4 @@
+use from_attr::{AttrsValue, FlagOrValue, FromAttr};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use rudi_core::{Color, Scope};
@@ -6,11 +7,10 @@ use syn::{
 };
 
 use crate::{
-    attr_spans_value::AttrSpansValue,
     commons::{self, ArgumentResolveStmts},
     impl_fn_or_enum_variant_attr::ImplFnOrEnumVariantAttr,
-    rudi_path_attribute,
-    struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
+    rudi_path_attribute::DiAttr,
+    struct_or_function_attribute::{ClosureOrPath, StructOrFunctionAttribute},
 };
 
 // struct A {
@@ -30,13 +30,20 @@ pub(crate) fn generate(
     mut item_impl: ItemImpl,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
-    let rudi_path = rudi_path_attribute::rudi_path(&mut item_impl.attrs)?;
+    let DiAttr { rudi_path } = match DiAttr::remove_attributes(&mut item_impl.attrs) {
+        Ok(Some(AttrsValue { value: attr, .. })) => attr,
+        Ok(None) => DiAttr::default(),
+        Err(AttrsValue { value: e, .. }) => return Err(e),
+    };
 
-    if let Some((async_, _)) = attr.async_ {
-        return Err(syn::Error::new(
-            async_,
-            "`async` only support in struct and enum, please use async fn instead",
-        ));
+    match attr.async_ {
+        FlagOrValue::Flag { path } | FlagOrValue::Value { path, .. } => {
+            return Err(syn::Error::new(
+                path,
+                "`async` only support in struct and enum, please use async fn or sync fn instead",
+            ));
+        }
+        FlagOrValue::None => {}
     }
 
     let impl_span = item_impl.span();
@@ -56,8 +63,6 @@ pub(crate) fn generate(
         ));
     }
 
-    let simple = attr.simplify();
-
     let mut parse_errors = Vec::new();
     let mut duplicate_errors = Vec::new();
     let mut no_matched_fn_errors = Vec::new();
@@ -70,24 +75,18 @@ pub(crate) fn generate(
                 _ => return None,
             };
 
-            match ImplFnOrEnumVariantAttr::parse_attrs(&mut f.attrs) {
+            match ImplFnOrEnumVariantAttr::remove_attributes(&mut f.attrs) {
                 Ok(None) => None,
-                Ok(Some(AttrSpansValue {
-                    attr_spans,
-                    value: _,
-                })) => Some((f, attr_spans)),
-                Err(AttrSpansValue {
-                    attr_spans,
-                    value: e,
-                }) => {
+                Ok(Some(AttrsValue { attrs, .. })) => Some((f, attrs)),
+                Err(AttrsValue { attrs, value: e }) => {
                     parse_errors.push(e);
-                    Some((f, attr_spans))
+                    Some((f, attrs))
                 }
             }
         })
-        .reduce(|first, (_, attr_spans)| {
-            attr_spans.into_iter().for_each(|span| {
-                let err = syn::Error::new(span, "duplicate `#[di]` attribute");
+        .reduce(|first, (_, attrs)| {
+            attrs.into_iter().for_each(|attr| {
+                let err = syn::Error::new(attr.span(), "duplicate `#[di]` attribute");
                 duplicate_errors.push(err);
             });
 
@@ -116,7 +115,7 @@ pub(crate) fn generate(
     let (f, _) = matched.unwrap();
 
     let default_provider_impl =
-        generate_default_provider_impl(f, self_ty, generics, &simple, scope, rudi_path)?;
+        generate_default_provider_impl(f, self_ty, generics, attr, scope, rudi_path)?;
 
     let expand = quote! {
         #item_impl
@@ -131,11 +130,11 @@ fn generate_default_provider_impl(
     impl_item_fn: &mut ImplItemFn,
     struct_type_with_generics: &Type,
     struct_generics: &Generics,
-    attr: &SimpleStructOrFunctionAttribute,
+    attr: StructOrFunctionAttribute,
     scope: Scope,
     rudi_path: Path,
 ) -> syn::Result<TokenStream> {
-    let SimpleStructOrFunctionAttribute {
+    let StructOrFunctionAttribute {
         name,
         eager_create,
         condition,
@@ -147,7 +146,7 @@ fn generate_default_provider_impl(
 
     #[cfg(feature = "auto-register")]
     commons::check_generics_when_enable_auto_register(
-        *auto_register,
+        auto_register,
         struct_generics,
         commons::ItemKind::StructOrEnum,
         scope,
@@ -191,6 +190,10 @@ fn generate_default_provider_impl(
         None => Color::Sync,
     };
 
+    let condition = condition
+        .map(|ClosureOrPath(expr)| quote!(Some(#expr)))
+        .unwrap_or_else(|| quote!(None));
+
     let ArgumentResolveStmts {
         ref_mut_cx_stmts,
         ref_cx_stmts,
@@ -230,7 +233,7 @@ fn generate_default_provider_impl(
     let auto_register = quote! {};
 
     #[cfg(feature = "auto-register")]
-    let auto_register = if *auto_register {
+    let auto_register = if auto_register {
         quote! {
             #rudi_path::register_provider!(<#struct_type_with_generics as #rudi_path::DefaultProvider>::provider());
         }
@@ -248,7 +251,9 @@ fn generate_default_provider_impl(
                         .name(#name)
                         .eager_create(#eager_create)
                         .condition(#condition)
-                        #binds
+                        #(
+                            .bind(#binds)
+                        )*
                 )
             }
         }

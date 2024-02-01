@@ -1,4 +1,3 @@
-mod attr_spans_value;
 mod commons;
 mod field_or_argument_attribute;
 mod impl_fn_or_enum_variant_attr;
@@ -9,6 +8,7 @@ mod item_struct_gen;
 mod rudi_path_attribute;
 mod struct_or_function_attribute;
 
+use from_attr::FromAttr;
 use proc_macro::TokenStream;
 use rudi_core::Scope;
 use syn::{parse_macro_input, spanned::Spanned, Item};
@@ -16,9 +16,10 @@ use syn::{parse_macro_input, spanned::Spanned, Item};
 use crate::struct_or_function_attribute::StructOrFunctionAttribute;
 
 fn generate(args: TokenStream, input: TokenStream, scope: Scope) -> TokenStream {
-    let mut attr = StructOrFunctionAttribute::default();
-    let parser = syn::meta::parser(|meta| attr.parse(meta));
-    parse_macro_input!(args with parser);
+    let attr = match StructOrFunctionAttribute::from_tokens(args.into()) {
+        Ok(attr) => attr,
+        Err(err) => return err.to_compile_error().into(),
+    };
 
     let item = parse_macro_input!(input as Item);
 

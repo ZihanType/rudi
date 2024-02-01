@@ -22,6 +22,7 @@ rudi-core = { version = "0.1.0", path = "./rudi-core", default-features = false 
 proc-macro2 = { version = "1", default-features = false }
 quote = { version = "1", default-features = false }
 syn = { version = "2", default-features = false }
+from-attr = { version = "0.1", default-features = false }
 
 # optional dependencies
 inventory = { version = "0.3", default-features = false }

@@ -1,14 +1,14 @@
+use from_attr::{AttrsValue, FlagOrValue, FromAttr};
 use proc_macro2::TokenStream;
 use quote::quote;
 use rudi_core::{Color, Scope};
 use syn::{spanned::Spanned, ItemEnum};
 
 use crate::{
-    attr_spans_value::AttrSpansValue,
     commons::{self, FieldResolveStmts, ResolvedFields},
     impl_fn_or_enum_variant_attr::ImplFnOrEnumVariantAttr,
-    rudi_path_attribute,
-    struct_or_function_attribute::{SimpleStructOrFunctionAttribute, StructOrFunctionAttribute},
+    rudi_path_attribute::DiAttr,
+    struct_or_function_attribute::{ClosureOrPath, StructOrFunctionAttribute},
 };
 
 pub(crate) fn generate(
@@ -16,13 +16,17 @@ pub(crate) fn generate(
     mut item_enum: ItemEnum,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
-    let rudi_path = rudi_path_attribute::rudi_path(&mut item_enum.attrs)?;
+    let DiAttr { rudi_path } = match DiAttr::remove_attributes(&mut item_enum.attrs) {
+        Ok(Some(AttrsValue { value: attr, .. })) => attr,
+        Ok(None) => DiAttr::default(),
+        Err(AttrsValue { value: e, .. }) => return Err(e),
+    };
 
     if item_enum.variants.is_empty() {
         return Err(syn::Error::new(item_enum.span(), "not support empty enum"));
     }
 
-    let SimpleStructOrFunctionAttribute {
+    let StructOrFunctionAttribute {
         name,
         eager_create,
         condition,
@@ -30,7 +34,7 @@ pub(crate) fn generate(
         async_,
         #[cfg(feature = "auto-register")]
         auto_register,
-    } = attr.simplify();
+    } = attr;
 
     #[cfg(feature = "auto-register")]
     commons::check_generics_when_enable_auto_register(
@@ -40,7 +44,17 @@ pub(crate) fn generate(
         scope,
     )?;
 
+    let async_ = match async_ {
+        FlagOrValue::None => false,
+        FlagOrValue::Flag { .. } => true,
+        FlagOrValue::Value { value, .. } => value,
+    };
+
     let color = if async_ { Color::Async } else { Color::Sync };
+
+    let condition = condition
+        .map(|ClosureOrPath(expr)| quote!(Some(#expr)))
+        .unwrap_or_else(|| quote!(None));
 
     let mut variant_spans = Vec::new();
 
@@ -54,24 +68,18 @@ pub(crate) fn generate(
         .filter_map(|variant| {
             variant_spans.push(variant.span());
 
-            match ImplFnOrEnumVariantAttr::parse_attrs(&mut variant.attrs) {
+            match ImplFnOrEnumVariantAttr::remove_attributes(&mut variant.attrs) {
                 Ok(None) => None,
-                Ok(Some(AttrSpansValue {
-                    attr_spans,
-                    value: _,
-                })) => Some((variant, attr_spans)),
-                Err(AttrSpansValue {
-                    attr_spans,
-                    value: e,
-                }) => {
+                Ok(Some(AttrsValue { attrs, .. })) => Some((variant, attrs)),
+                Err(AttrsValue { attrs, value: e }) => {
                     parse_errors.push(e);
-                    Some((variant, attr_spans))
+                    Some((variant, attrs))
                 }
             }
         })
-        .reduce(|first, (_, attr_spans)| {
-            attr_spans.into_iter().for_each(|span| {
-                let err = syn::Error::new(span, "duplicate `#[di]` attribute");
+        .reduce(|first, (_, attrs)| {
+            attrs.into_iter().for_each(|attr| {
+                let err = syn::Error::new(attr.span(), "duplicate `#[di]` attribute");
                 duplicate_errors.push(err);
             });
 
@@ -188,7 +196,9 @@ pub(crate) fn generate(
                         .name(#name)
                         .eager_create(#eager_create)
                         .condition(#condition)
-                        #binds
+                        #(
+                            .bind(#binds)
+                        )*
                 )
             }
         }
