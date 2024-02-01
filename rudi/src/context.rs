@@ -383,23 +383,26 @@ impl Context {
     ///
     /// This method has two purposes:
     ///
-    /// 1. Evaluate the conditions of providers whose [`condition`](crate::Provider::condition) is `Some`.
-    /// If the evaluation result is `true`, the provider will be loaded into the context,
-    /// otherwise it will be removed from the context.
+    /// 1. Evaluate the condition of providers whose [`condition`](crate::Provider::condition) is `Some`.
+    ///
+    ///    If the evaluation result is `true`, the provider will be loaded into the context,
+    ///    otherwise it will be removed from the context.
     ///
     /// 2. Construct instances that will be eagerly created.
-    /// When a provider is loaded into the context,
-    /// the `need_eager_create` is obtained by performing a logical OR operation on
-    /// the [`eager_create`](crate::Provider::eager_create) value of the provider,
-    /// the [`eager_create`](crate::ResolveModule::eager_create) value of the module to which the provider belongs,
-    /// and the [`eager_create`](crate::Context::eager_create) value of the `Context`.
-    /// Then, the `allow_eager_create` is obtained by evaluating
-    /// the `Context`'s [`allow_only_single_eager_create`](crate::Context::allow_only_single_eager_create)
-    /// and the provider's [`scope`](crate::Scope).
-    /// If the result of the logical AND operation of `need_eager_create` and `allow_eager_create` is `true`,
-    /// the provider's constructor will be pushed into a queue. When this method is called,
-    /// the queue will be traversed and each constructor in the queue will be called to construct
-    /// the instance of the provider.
+    ///
+    ///    Whether an instance need to be created eagerly depends on
+    ///    the [`eager_create`](crate::Provider::eager_create) field of the Provider that defines it,
+    ///    the [`eager_create`](crate::ResolveModule::eager_create) field of the Module to which this Provider belongs,
+    ///    and the [`eager_create`](crate::Context::eager_create) field of the Context to which this Module belongs.
+    ///    As long as one of these is true, the instance need to be created eagerly.
+    ///
+    ///    Whether an instance is allowed to be created eagerly depends on
+    ///    the [`scope`](crate::Definition::scope) field in the [`definition`](crate::Provider::definition) field of the Provider that defines it,
+    ///    and the [`allow_only_single_eager_create`](crate::Context::allow_only_single_eager_create) field of the Context to which this Provider belongs.
+    ///    If `allow_only_single_eager_create` is false, or `allow_only_single_eager_create` is true and `scope` is [`Singleton`](crate::Scope::Singleton) or [`SingleOwner`](crate::Scope::SingleOwner),
+    ///    the instance is allowed to be created eagerly.
+    ///
+    ///    When an instance need to be created eagerly and is allowed to be created eagerly, it will be created eagerly.
     ///
     /// # Panics
     ///
