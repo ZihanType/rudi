@@ -18,6 +18,7 @@ impl ServiceImpl {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 #[Singleton(async)]
 pub struct Controller(Arc<dyn Service>);

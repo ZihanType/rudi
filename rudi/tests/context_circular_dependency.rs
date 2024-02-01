@@ -17,12 +17,14 @@ fn circular_dependency() {
         Rc::new(t)
     }
 
+    #[allow(dead_code)]
     #[derive(Clone)]
     #[Singleton(binds = [a])]
     struct AImpl(Rc<dyn B>);
 
     impl A for AImpl {}
 
+    #[allow(dead_code)]
     #[derive(Clone)]
     #[Singleton(binds = [b])]
     struct BImpl(Rc<dyn A>);
@@ -56,12 +58,14 @@ async fn circular_dependency_async() {
         Rc::new(t)
     }
 
+    #[allow(dead_code)]
     #[derive(Clone)]
     #[Singleton(binds = [a], async)]
     struct AImpl(Rc<dyn B>);
 
     impl A for AImpl {}
 
+    #[allow(dead_code)]
     #[derive(Clone)]
     #[Singleton(binds = [b], async)]
     struct BImpl(Rc<dyn A>);

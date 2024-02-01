@@ -3,8 +3,8 @@ use std::{cell::RefCell, rc::Rc};
 use rudi::{components, modules, Context, DynProvider, Module, Singleton};
 
 thread_local! {
-    static COUNT: RefCell<u32> = RefCell::new(0);
-    static NAME: RefCell<&'static str> = RefCell::new("");
+    static COUNT: RefCell<u32> = const { RefCell::new(0) };
+    static NAME: RefCell<&'static str> = const { RefCell::new("") };
 }
 
 trait Trait {}

@@ -34,7 +34,7 @@ fn eager_create_context() {
 #[test]
 fn eager_create_provider() {
     thread_local! {
-        static CREATED: RefCell<bool> = RefCell::new(false);
+        static CREATED: RefCell<bool> = const { RefCell::new(false) };
     }
 
     #[derive(Clone)]
@@ -68,7 +68,7 @@ fn eager_create_provider() {
 #[test]
 fn eager_create_module() {
     thread_local! {
-        static COUNT: RefCell<u32> = RefCell::new(0);
+        static COUNT: RefCell<u32> = const { RefCell::new(0) };
     }
 
     #[derive(Clone)]
@@ -114,7 +114,7 @@ fn eager_create_module() {
 #[test]
 fn eager_create_module_twice() {
     thread_local! {
-        static COUNT: RefCell<u32> = RefCell::new(0);
+        static COUNT: RefCell<u32> = const { RefCell::new(0) };
     }
 
     #[derive(Clone)]
@@ -156,7 +156,7 @@ fn eager_create_module_twice() {
 #[test]
 fn eager_create_two_modules() {
     thread_local! {
-        static COUNT: RefCell<u32> = RefCell::new(0);
+        static COUNT: RefCell<u32> = const { RefCell::new(0) };
     }
 
     #[derive(Clone)]
@@ -250,7 +250,7 @@ fn create_eager_instances_async_in_sync_context() {
 #[test]
 fn only_singleton_or_all_scope_eager_create() {
     thread_local! {
-        static COUNT: RefCell<u32> = RefCell::new(0);
+        static COUNT: RefCell<u32> = const { RefCell::new(0) };
     }
 
     #[derive(Clone)]
@@ -330,7 +330,7 @@ async fn eager_create_context_async() {
 #[tokio::test]
 async fn eager_create_provider_async() {
     thread_local! {
-        static CREATED: RefCell<bool> = RefCell::new(false);
+        static CREATED: RefCell<bool> = const { RefCell::new(false) };
     }
 
     #[derive(Clone)]
@@ -364,7 +364,7 @@ async fn eager_create_provider_async() {
 #[tokio::test]
 async fn eager_create_module_async() {
     thread_local! {
-        static COUNT: RefCell<u32> = RefCell::new(0);
+        static COUNT: RefCell<u32> = const { RefCell::new(0) };
     }
 
     #[derive(Clone)]
@@ -410,7 +410,7 @@ async fn eager_create_module_async() {
 #[tokio::test]
 async fn eager_create_module_twice_async() {
     thread_local! {
-        static COUNT: RefCell<u32> = RefCell::new(0);
+        static COUNT: RefCell<u32> = const { RefCell::new(0) };
     }
 
     #[derive(Clone)]
@@ -452,7 +452,7 @@ async fn eager_create_module_twice_async() {
 #[tokio::test]
 async fn eager_create_two_modules_async() {
     thread_local! {
-        static COUNT: RefCell<u32> = RefCell::new(0);
+        static COUNT: RefCell<u32> = const { RefCell::new(0) };
     }
 
     #[derive(Clone)]
@@ -546,7 +546,7 @@ async fn create_eager_instances_sync_in_async_context() {
 #[tokio::test]
 async fn only_singleton_or_all_scope_eager_create_async() {
     thread_local! {
-        static COUNT: RefCell<u32> = RefCell::new(0);
+        static COUNT: RefCell<u32> = const { RefCell::new(0) };
     }
 
     #[derive(Clone)]

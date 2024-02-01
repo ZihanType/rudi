@@ -10,6 +10,7 @@ fn auto_register() {
         1
     }
 
+    #[allow(dead_code)]
     struct B(i32);
 
     #[Transient]
@@ -36,6 +37,7 @@ async fn auto_register_async() {
         1
     }
 
+    #[allow(dead_code)]
     struct B(i32);
 
     #[Transient]
