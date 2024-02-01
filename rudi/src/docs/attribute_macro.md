@@ -148,6 +148,10 @@ fn main() {
   - default: **::rudi**
   - description: Specifies the path to the `rudi` crate. This argument is used when the `rudi` crate is not in the root of the crate.
 
+### `#[di]`: used on `fn` of `impl block`
+
+Use `#[di]` to specify which function of the impl block will be called to construct an instance.
+
 ### `#[di]`: used on `variant` of enum
 
 Use `#[di]` to specify which variant of the enum will be constructed.
