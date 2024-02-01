@@ -6,8 +6,8 @@ use syn::{GenericParam, ItemFn, ReturnType};
 
 use crate::{
     commons::{self, ArgumentResolveStmts},
-    rudi_path_attribute::DiAttr,
-    struct_or_function_attribute::{ClosureOrPath, StructOrFunctionAttribute},
+    di_attr::DiAttr,
+    struct_or_function_attr::{ClosureOrPath, StructOrFunctionAttr},
 };
 
 // #[Singleton]
@@ -16,7 +16,7 @@ use crate::{
 // }
 
 pub(crate) fn generate(
-    attr: StructOrFunctionAttribute,
+    attr: StructOrFunctionAttr,
     mut item_fn: ItemFn,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
@@ -36,7 +36,7 @@ pub(crate) fn generate(
         FlagOrValue::None => {}
     }
 
-    let StructOrFunctionAttribute {
+    let StructOrFunctionAttr {
         name,
         eager_create,
         condition,

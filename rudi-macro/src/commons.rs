@@ -8,7 +8,7 @@ use syn::{
     Path, PathArguments, PathSegment, Stmt, Token, Type, TypePath, TypeReference,
 };
 
-use crate::field_or_argument_attribute::FieldOrArgumentAttr;
+use crate::field_or_argument_attr::FieldOrArgumentAttr;
 
 pub(crate) fn generate_create_provider(scope: Scope, color: Color) -> TokenStream {
     match (scope, color) {

@@ -3,7 +3,7 @@ use syn::{parse_quote, spanned::Spanned, Expr, ExprPath};
 
 #[derive(FromAttr)]
 #[attribute(idents = [di])]
-pub(crate) struct StructOrFunctionAttribute {
+pub(crate) struct StructOrFunctionAttr {
     #[attribute(default = default_name())]
     pub(crate) name: Expr,
 

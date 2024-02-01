@@ -1,27 +1,27 @@
 mod commons;
-mod field_or_argument_attribute;
+mod di_attr;
+mod field_or_argument_attr;
 mod impl_fn_or_enum_variant_attr;
 mod item_enum_gen;
 mod item_fn_gen;
 mod item_impl_gen;
 mod item_struct_gen;
-mod rudi_path_attribute;
-mod struct_or_function_attribute;
+mod struct_or_function_attr;
 
 use from_attr::FromAttr;
 use proc_macro::TokenStream;
 use rudi_core::Scope;
 use syn::{parse_macro_input, spanned::Spanned, Item};
 
-use crate::struct_or_function_attribute::StructOrFunctionAttribute;
+use crate::struct_or_function_attr::StructOrFunctionAttr;
 
-fn generate(args: TokenStream, input: TokenStream, scope: Scope) -> TokenStream {
-    let attr = match StructOrFunctionAttribute::from_tokens(args.into()) {
+fn generate(attr: TokenStream, item: TokenStream, scope: Scope) -> TokenStream {
+    let attr = match StructOrFunctionAttr::from_tokens(attr.into()) {
         Ok(attr) => attr,
         Err(err) => return err.to_compile_error().into(),
     };
 
-    let item = parse_macro_input!(input as Item);
+    let item = parse_macro_input!(item as Item);
 
     let result = match item {
         Item::Struct(item_struct) => item_struct_gen::generate(attr, item_struct, scope),
@@ -39,18 +39,18 @@ fn generate(args: TokenStream, input: TokenStream, scope: Scope) -> TokenStream 
 
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
-pub fn Singleton(args: TokenStream, input: TokenStream) -> TokenStream {
-    generate(args, input, Scope::Singleton)
+pub fn Singleton(attr: TokenStream, item: TokenStream) -> TokenStream {
+    generate(attr, item, Scope::Singleton)
 }
 
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
-pub fn Transient(args: TokenStream, input: TokenStream) -> TokenStream {
-    generate(args, input, Scope::Transient)
+pub fn Transient(attr: TokenStream, item: TokenStream) -> TokenStream {
+    generate(attr, item, Scope::Transient)
 }
 
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
-pub fn SingleOwner(args: TokenStream, input: TokenStream) -> TokenStream {
-    generate(args, input, Scope::SingleOwner)
+pub fn SingleOwner(attr: TokenStream, item: TokenStream) -> TokenStream {
+    generate(attr, item, Scope::SingleOwner)
 }

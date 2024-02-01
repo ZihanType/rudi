@@ -6,12 +6,12 @@ use syn::ItemStruct;
 
 use crate::{
     commons::{self, FieldResolveStmts, ResolvedFields},
-    rudi_path_attribute::DiAttr,
-    struct_or_function_attribute::{ClosureOrPath, StructOrFunctionAttribute},
+    di_attr::DiAttr,
+    struct_or_function_attr::{ClosureOrPath, StructOrFunctionAttr},
 };
 
 pub(crate) fn generate(
-    attr: StructOrFunctionAttribute,
+    attr: StructOrFunctionAttr,
     mut item_struct: ItemStruct,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
@@ -21,7 +21,7 @@ pub(crate) fn generate(
         Err(AttrsValue { value: e, .. }) => return Err(e),
     };
 
-    let StructOrFunctionAttribute {
+    let StructOrFunctionAttr {
         name,
         eager_create,
         condition,

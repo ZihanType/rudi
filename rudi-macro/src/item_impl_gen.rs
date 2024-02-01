@@ -8,9 +8,9 @@ use syn::{
 
 use crate::{
     commons::{self, ArgumentResolveStmts},
+    di_attr::DiAttr,
     impl_fn_or_enum_variant_attr::ImplFnOrEnumVariantAttr,
-    rudi_path_attribute::DiAttr,
-    struct_or_function_attribute::{ClosureOrPath, StructOrFunctionAttribute},
+    struct_or_function_attr::{ClosureOrPath, StructOrFunctionAttr},
 };
 
 // struct A {
@@ -26,7 +26,7 @@ use crate::{
 // }
 
 pub(crate) fn generate(
-    attr: StructOrFunctionAttribute,
+    attr: StructOrFunctionAttr,
     mut item_impl: ItemImpl,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
@@ -130,11 +130,11 @@ fn generate_default_provider_impl(
     impl_item_fn: &mut ImplItemFn,
     struct_type_with_generics: &Type,
     struct_generics: &Generics,
-    attr: StructOrFunctionAttribute,
+    attr: StructOrFunctionAttr,
     scope: Scope,
     rudi_path: Path,
 ) -> syn::Result<TokenStream> {
-    let StructOrFunctionAttribute {
+    let StructOrFunctionAttr {
         name,
         eager_create,
         condition,

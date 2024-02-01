@@ -6,13 +6,13 @@ use syn::{spanned::Spanned, ItemEnum};
 
 use crate::{
     commons::{self, FieldResolveStmts, ResolvedFields},
+    di_attr::DiAttr,
     impl_fn_or_enum_variant_attr::ImplFnOrEnumVariantAttr,
-    rudi_path_attribute::DiAttr,
-    struct_or_function_attribute::{ClosureOrPath, StructOrFunctionAttribute},
+    struct_or_function_attr::{ClosureOrPath, StructOrFunctionAttr},
 };
 
 pub(crate) fn generate(
-    attr: StructOrFunctionAttribute,
+    attr: StructOrFunctionAttr,
     mut item_enum: ItemEnum,
     scope: Scope,
 ) -> syn::Result<TokenStream> {
@@ -26,7 +26,7 @@ pub(crate) fn generate(
         return Err(syn::Error::new(item_enum.span(), "not support empty enum"));
     }
 
-    let StructOrFunctionAttribute {
+    let StructOrFunctionAttr {
         name,
         eager_create,
         condition,
