@@ -1,4 +1,4 @@
-use from_attr::{ConvertParsed, FlagOrValue, FromAttr, PathValue};
+use from_attr::{ConvertParsed, FromAttr, PathValue};
 use syn::{parse_quote, spanned::Spanned, Expr, ExprPath};
 
 #[derive(FromAttr)]
@@ -14,7 +14,7 @@ pub(crate) struct StructOrFunctionAttr {
     pub(crate) binds: Vec<ExprPath>,
 
     #[attribute(rename = "async")]
-    pub(crate) async_: FlagOrValue<bool>,
+    pub(crate) async_: Option<PathValue<bool>>,
 
     #[cfg(feature = "auto-register")]
     #[attribute(default = DEFAULT_AUTO_REGISTER)]

@@ -1,4 +1,4 @@
-use from_attr::{AttrsValue, FlagOrValue, FromAttr};
+use from_attr::{AttrsValue, FromAttr, PathValue};
 use proc_macro2::TokenStream;
 use quote::quote;
 use rudi_core::{Color, Scope};
@@ -39,13 +39,10 @@ pub(crate) fn generate(
         scope,
     )?;
 
-    let async_ = match async_ {
-        FlagOrValue::None => false,
-        FlagOrValue::Flag { .. } => true,
-        FlagOrValue::Value { value, .. } => value,
+    let color = match async_ {
+        Some(PathValue { value: true, .. }) => Color::Async,
+        _ => Color::Sync,
     };
-
-    let color = if async_ { Color::Async } else { Color::Sync };
 
     let condition = condition
         .map(|ClosureOrPath(expr)| quote!(Some(#expr)))

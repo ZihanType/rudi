@@ -1,4 +1,4 @@
-use from_attr::{AttrsValue, FlagOrValue, FromAttr};
+use from_attr::{AttrsValue, FromAttr, PathValue};
 use proc_macro2::TokenStream;
 use quote::quote;
 use rudi_core::{Color, Scope};
@@ -26,14 +26,11 @@ pub(crate) fn generate(
         Err(AttrsValue { value: e, .. }) => return Err(e),
     };
 
-    match attr.async_ {
-        FlagOrValue::Flag { path } | FlagOrValue::Value { path, .. } => {
-            return Err(syn::Error::new(
-                path,
-                "`async` only support in struct and enum, please use async fn or sync fn instead",
-            ));
-        }
-        FlagOrValue::None => {}
+    if let Some(PathValue { path, .. }) = attr.async_ {
+        return Err(syn::Error::new(
+            path,
+            "`async` only support in struct and enum, please use async fn or sync fn instead",
+        ));
     }
 
     let StructOrFunctionAttr {
