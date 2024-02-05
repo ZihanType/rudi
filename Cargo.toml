@@ -3,7 +3,7 @@ resolver = "2"
 members = ["rudi", "rudi-core", "rudi-macro", "examples/*"]
 
 [workspace.package]
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 authors = ["zihan <ZihanType@proton.me>"]
 license = "MIT/Apache-2.0"
@@ -14,8 +14,8 @@ readme = "README.md"
 
 [workspace.dependencies]
 # self
-rudi = { version = "0.7.0", path = "./rudi", default-features = false }
-rudi-macro = { version = "0.7.0", path = "./rudi-macro", default-features = false }
+rudi = { version = "0.8.0", path = "./rudi", default-features = false }
+rudi-macro = { version = "0.8.0", path = "./rudi-macro", default-features = false }
 rudi-core = { version = "0.1.0", path = "./rudi-core", default-features = false }
 
 # dependencies
