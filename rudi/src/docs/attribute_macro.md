@@ -109,10 +109,10 @@ fn main() {
     - [`SingleOwnerAsyncProvider::condition`]
 
 - binds
-  - type: Array of paths to functions of type `fn(T) -> R`, where `T` is current struct type or current function return type and `R` can be any type.
+  - type: array of paths to functions of type `fn(T) -> R`, where `T` is current struct type or current function return type and `R` can be any type.
   - example: `#[Singleton(binds = [Rc::new, Box::new])]`
   - optional: true
-  - default: **None**
+  - default: **Vec::new()**
   - description: Specifies the field `binding_providers` and `binding_definitions` of the defined `Provider`.
   - refer:
     - [`SingletonProvider::bind`]
