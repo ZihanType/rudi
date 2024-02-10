@@ -14,6 +14,7 @@ pub(crate) struct ComponentB {
 }
 
 pub(crate) trait Trait1 {
+    #[allow(dead_code)] // false positive
     fn as_any(&self) -> &dyn Any;
 }
 
@@ -57,8 +58,8 @@ impl Trait1 for Component2 {
     }
 }
 
+#[allow(dead_code)] // false positive
 #[derive(Clone)]
 pub(crate) struct Holder {
-    #[allow(dead_code)]
     pub(crate) id: usize,
 }
