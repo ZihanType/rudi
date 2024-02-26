@@ -301,6 +301,134 @@ impl Context {
         &self.dependency_chain.stack
     }
 
+    /// Appends a standalone [`Singleton`](crate::Scope::Singleton) instance to the context with default name `""`.
+    ///
+    /// # Panics
+    ///
+    /// - Panics if a `Provider<T>` with the same name as the inserted instance exists in the `Context` and the context's [`allow_override`](Context::allow_override) is false.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::Context;
+    ///
+    /// # fn main() {
+    /// let mut cx = Context::default();
+    /// cx.insert_singleton(42);
+    /// assert_eq!(cx.get_single::<i32>(), &42);
+    /// # }
+    /// ```
+    #[track_caller]
+    pub fn insert_singleton<T>(&mut self, instance: T)
+    where
+        T: 'static + Clone,
+    {
+        self.insert_singleton_with_name(instance, "");
+    }
+
+    /// Appends a standalone [`Singleton`](crate::Scope::Singleton) instance to the context with name.
+    ///
+    /// # Panics
+    ///
+    /// - Panics if a `Provider<T>` with the same name as the inserted instance exists in the `Context` and the context's [`allow_override`](Context::allow_override) is false.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::Context;
+    ///
+    /// # fn main() {
+    /// let mut cx = Context::default();
+    ///
+    /// cx.insert_singleton_with_name(1, "one");
+    /// cx.insert_singleton_with_name(2, "two");
+    ///
+    /// assert_eq!(cx.get_single_with_name::<i32>("one"), &1);
+    /// assert_eq!(cx.get_single_with_name::<i32>("two"), &2);
+    /// # }
+    /// ```
+    #[track_caller]
+    pub fn insert_singleton_with_name<T, N>(&mut self, instance: T, name: N)
+    where
+        T: 'static + Clone,
+        N: Into<Cow<'static, str>>,
+    {
+        let provider: DynProvider =
+            Provider::<T>::never_construct(name.into(), Scope::Singleton).into();
+        let single = Single::new(instance, Some(Clone::clone)).into();
+
+        let key = provider.key().clone();
+        self.provider_registry.insert(provider, self.allow_override);
+        self.single_registry.insert(key, single);
+    }
+
+    /// Appends a standalone [`SingleOwner`](crate::Scope::SingleOwner) instance to the context with default name `""`.
+    ///
+    /// # Panics
+    ///
+    /// - Panics if a `Provider<T>` with the same name as the inserted instance exists in the `Context` and the context's [`allow_override`](Context::allow_override) is false.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::Context;
+    ///
+    /// #[derive(PartialEq, Eq, Debug)]
+    /// struct NotClone(i32);
+    ///
+    /// # fn main() {
+    /// let mut cx = Context::default();
+    /// cx.insert_single_owner(NotClone(42));
+    /// assert_eq!(cx.get_single::<NotClone>(), &NotClone(42));
+    /// # }
+    /// ```
+    #[track_caller]
+    pub fn insert_single_owner<T>(&mut self, instance: T)
+    where
+        T: 'static,
+    {
+        self.insert_single_owner_with_name(instance, "");
+    }
+
+    /// Appends a standalone [`SingleOwner`](crate::Scope::SingleOwner) instance to the context with name.
+    ///
+    /// # Panics
+    ///
+    /// - Panics if a `Provider<T>` with the same name as the inserted instance exists in the `Context` and the context's [`allow_override`](Context::allow_override) is false.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rudi::Context;
+    ///
+    /// #[derive(PartialEq, Eq, Debug)]
+    /// struct NotClone(i32);
+    ///
+    /// # fn main() {
+    /// let mut cx = Context::default();
+    ///
+    /// cx.insert_single_owner_with_name(NotClone(1), "one");
+    /// cx.insert_single_owner_with_name(NotClone(2), "two");
+    ///
+    /// assert_eq!(cx.get_single_with_name::<NotClone>("one"), &NotClone(1));
+    /// assert_eq!(cx.get_single_with_name::<NotClone>("two"), &NotClone(2));
+    /// # }
+    /// ```
+    #[track_caller]
+    pub fn insert_single_owner_with_name<T, N>(&mut self, instance: T, name: N)
+    where
+        T: 'static,
+        N: Into<Cow<'static, str>>,
+    {
+        let provider: DynProvider =
+            Provider::<T>::never_construct(name.into(), Scope::SingleOwner).into();
+        let single = Single::new(instance, None).into();
+
+        let key = provider.key().clone();
+        self.provider_registry.insert(provider, self.allow_override);
+        self.single_registry.insert(key, single);
+    }
+
     /// Load the given modules.
     ///
     /// This method first flattens all the given modules together with their submodules
@@ -2267,6 +2395,7 @@ impl ContextOptions {
         self
     }
 
+    #[track_caller]
     fn inner_create<F>(self, init: F) -> Context
     where
         F: FnOnce(&mut Context),
