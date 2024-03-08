@@ -29,6 +29,10 @@ syn = { workspace = true, features = [
     "full",
 ] }
 
+[dev-dependencies]
+rudi = { workspace = true, features = ["rudi-macro", "auto-register"] }
+tokio = { workspace = true }
+
 [features]
 default = ["auto-register"]
 auto-register = []
