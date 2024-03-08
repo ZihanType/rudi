@@ -24,32 +24,8 @@ pub use module::*;
 pub use provider::*;
 pub(crate) use registry::*;
 pub use rudi_core::*;
+#[cfg_attr(docsrs, doc(cfg(feature = "rudi-macro")))]
+#[cfg(feature = "rudi-macro")]
+pub use rudi_macro::*;
 pub use single::*;
 pub use ty::*;
-
-macro_rules! export_attribute_macros {
-    (
-        $(
-            #[$summary:meta]
-            $name:ident;
-        )*
-    ) => {
-        $(
-            #[cfg_attr(docsrs, doc(cfg(feature = "rudi-macro")))]
-            #[cfg(feature = "rudi-macro")]
-            #[$summary]
-            #[doc = ""]
-            #[doc = include_str!("./docs/attribute_macro.md")]
-            pub use rudi_macro::$name;
-        )*
-    };
-}
-
-export_attribute_macros! {
-    /// Define a singleton provider.
-    Singleton;
-    /// Define a transient provider.
-    Transient;
-    /// Define a single owner provider.
-    SingleOwner;
-}

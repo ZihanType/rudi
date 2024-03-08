@@ -37,18 +37,27 @@ fn generate(attr: TokenStream, item: TokenStream, scope: Scope) -> TokenStream {
     result.unwrap_or_else(|e| e.to_compile_error()).into()
 }
 
+/// Define a singleton provider.
+#[doc = ""]
+#[doc = include_str!("./docs/attribute_macro.md")]
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
 pub fn Singleton(attr: TokenStream, item: TokenStream) -> TokenStream {
     generate(attr, item, Scope::Singleton)
 }
 
+/// Define a transient provider.
+#[doc = ""]
+#[doc = include_str!("./docs/attribute_macro.md")]
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
 pub fn Transient(attr: TokenStream, item: TokenStream) -> TokenStream {
     generate(attr, item, Scope::Transient)
 }
 
+/// Define a single owner provider.
+#[doc = ""]
+#[doc = include_str!("./docs/attribute_macro.md")]
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
 pub fn SingleOwner(attr: TokenStream, item: TokenStream) -> TokenStream {

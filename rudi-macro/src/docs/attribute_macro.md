@@ -1,4 +1,4 @@
-[`#[Singleton]`](crate::Singleton), [`#[Transient]`](crate::Transient) and [`#[SingleOwner]`](crate::SingleOwner) are attribute macros used to define a [`Provider`], for the difference between the `Provider`s they defined, see [`Scope`].
+[`#[Singleton]`](macro@crate::Singleton), [`#[Transient]`](macro@crate::Transient) and [`#[SingleOwner]`](macro@crate::SingleOwner) are attribute macros used to define a [`Provider`], for the difference between the `Provider`s they defined, see [`Scope`].
 
 These three macros can be used on `struct`, `enum`, `impl block`, and `fn`.
 
@@ -128,7 +128,7 @@ fn main() {
   - example: `#[Singleton(auto_register)]` / `#[Transient(auto_register = true)]` / `#[SingleOwner(auto_register = false)]`
   - optional: true
   - default: **true**
-  - description: Specifies whether a defined `Provider` should be auto-registered to [`AutoRegisterModule`](crate::AutoRegisterModule). When the `auto-register` feature is enabled (which is enabled by default), this argument can be used if auto-registration is not desired, or if auto-registration is not possible due to the presence of generics.
+  - description: Specifies whether a defined `Provider` should be auto-registered to [`AutoRegisterModule`]. When the `auto-register` feature is enabled (which is enabled by default), this argument can be used if auto-registration is not desired, or if auto-registration is not possible due to the presence of generics.
 
 #### An argument that can only be used on `struct` and `enum`
 
@@ -171,7 +171,7 @@ Use `#[di]` to specify which variant of the enum will be constructed.
 
 - option
   - conflict: `default`, `vec`
-  - require: The current `field` or `argument`, which must be of type [`Option<T>`].
+  - require: The current `field` or `argument`, which must be of type [`Option<T>`][option].
   - type: bool.
   - example: `#[di(option)]`
   - optional: true
@@ -213,7 +213,7 @@ Use `#[di]` to specify which variant of the enum will be constructed.
 
 - vec
   - conflict: `name`, `option`, `default`
-  - require: The current `field` or `argument`, which must be of type [`Vec<T>`].
+  - require: The current `field` or `argument`, which must be of type [`Vec<T>`][vec].
   - type: bool.
   - example: `#[di(vec)]`
   - optional: true
@@ -234,8 +234,8 @@ Use `#[di]` to specify which variant of the enum will be constructed.
 
 - ref
   - require:
-    - exist `option` argument: The current `field` or `argument`, which must be of type [`Option<&T>`].
-    - exist `vec` argument: The current `field` or `argument`, which must be of type [`Vec<&T>`].
+    - exist `option` argument: The current `field` or `argument`, which must be of type [`Option<&T>`][option].
+    - exist `vec` argument: The current `field` or `argument`, which must be of type [`Vec<&T>`][vec].
     - exist `default` argument or not, the current `field` or `argument`, which must be of type `&T`.
     - if using a type alias, specify the original type using `#[di(ref = T)]`, where `T` is a non-reference type.
   - type: `Option<Type>`
@@ -619,3 +619,51 @@ fn main() {
     cx.resolve_with_name::<()>("ref alias");
 }
 ```
+
+[`Provider`]: https://docs.rs/rudi/latest/rudi/struct.Provider.html
+[`Scope`]: https://docs.rs/rudi/latest/rudi/enum.Scope.html
+[`DefaultProvider`]: https://docs.rs/rudi/latest/rudi/trait.DefaultProvider.html
+[`DefaultProvider::Type`]: https://docs.rs/rudi/latest/rudi/trait.DefaultProvider.html#associatedtype.Type
+[`SingletonProvider::name`]: https://docs.rs/rudi/latest/rudi/struct.SingletonProvider.html#method.name
+[`TransientProvider::name`]: https://docs.rs/rudi/latest/rudi/struct.TransientProvider.html#method.name
+[`SingleOwnerProvider::name`]: https://docs.rs/rudi/latest/rudi/struct.SingleOwnerProvider.html#method.name
+[`SingletonAsyncProvider::name`]: https://docs.rs/rudi/latest/rudi/struct.SingletonAsyncProvider.html#method.name
+[`TransientAsyncProvider::name`]: https://docs.rs/rudi/latest/rudi/struct.TransientAsyncProvider.html#method.name
+[`SingleOwnerAsyncProvider::name`]: https://docs.rs/rudi/latest/rudi/struct.SingleOwnerAsyncProvider.html#method.name
+[`SingletonProvider::eager_create`]: https://docs.rs/rudi/latest/rudi/struct.SingletonProvider.html#method.eager_create
+[`TransientProvider::eager_create`]: https://docs.rs/rudi/latest/rudi/struct.TransientProvider.html#method.eager_create
+[`SingleOwnerProvider::eager_create`]: https://docs.rs/rudi/latest/rudi/struct.SingleOwnerProvider.html#method.eager_create
+[`SingletonAsyncProvider::eager_create`]: https://docs.rs/rudi/latest/rudi/struct.SingletonAsyncProvider.html#method.eager_create
+[`TransientAsyncProvider::eager_create`]: https://docs.rs/rudi/latest/rudi/struct.TransientAsyncProvider.html#method.eager_create
+[`SingleOwnerAsyncProvider::eager_create`]: https://docs.rs/rudi/latest/rudi/struct.SingleOwnerAsyncProvider.html#method.eager_create
+[`SingletonProvider::condition`]: https://docs.rs/rudi/latest/rudi/struct.SingletonProvider.html#method.condition
+[`TransientProvider::condition`]: https://docs.rs/rudi/latest/rudi/struct.TransientProvider.html#method.condition
+[`SingleOwnerProvider::condition`]: https://docs.rs/rudi/latest/rudi/struct.SingleOwnerProvider.html#method.condition
+[`SingletonAsyncProvider::condition`]: https://docs.rs/rudi/latest/rudi/struct.SingletonAsyncProvider.html#method.condition
+[`TransientAsyncProvider::condition`]: https://docs.rs/rudi/latest/rudi/struct.TransientAsyncProvider.html#method.condition
+[`SingleOwnerAsyncProvider::condition`]: https://docs.rs/rudi/latest/rudi/struct.SingleOwnerAsyncProvider.html#method.condition
+[`SingletonProvider::bind`]: https://docs.rs/rudi/latest/rudi/struct.SingletonProvider.html#method.bind
+[`TransientProvider::bind`]: https://docs.rs/rudi/latest/rudi/struct.TransientProvider.html#method.bind
+[`SingleOwnerProvider::bind`]: https://docs.rs/rudi/latest/rudi/struct.SingleOwnerProvider.html#method.bind
+[`SingletonAsyncProvider::bind`]: https://docs.rs/rudi/latest/rudi/struct.SingletonAsyncProvider.html#method.bind
+[`TransientAsyncProvider::bind`]: https://docs.rs/rudi/latest/rudi/struct.TransientAsyncProvider.html#method.bind
+[`SingleOwnerAsyncProvider::bind`]: https://docs.rs/rudi/latest/rudi
+[`AutoRegisterModule`]: https://docs.rs/rudi/latest/rudi/struct.AutoRegisterModule.html
+[`Context::resolve_with_name`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.resolve_with_name
+[`Context::resolve_with_name_async`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.resolve_with_name_async
+[option]: https://doc.rust-lang.org/stable/std/option/enum.Option.html
+[`Context::resolve_option_with_name`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.resolve_option_with_name
+[`Context::resolve_option_with_name_async`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.resolve_option_with_name_async
+[`Default`]: https://doc.rust-lang.org/stable/std/default/trait.Default.html
+[vec]: https://doc.rust-lang.org/stable/std/vec/struct.Vec.html
+[`Context::resolve_by_type`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.resolve_by_type
+[`Context::resolve_by_type_async`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.resolve_by_type_async
+[`Context::just_create_single_with_name_async`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.just_create_single_with_name_async
+[`Context::just_create_single_with_name`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.just_create_single_with_name
+[`Context::try_just_create_single_with_name_async`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.try_just_create_single_with_name_async
+[`Context::try_just_create_single_with_name`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.try_just_create_single_with_name
+[`Context::try_just_create_singles_by_type_async`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.try_just_create_singles_by_type_async
+[`Context::try_just_create_singles_by_type`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.try_just_create_singles_by_type
+[`Context::get_single_with_name`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.get_single_with_name
+[`Context::get_single_option_with_name`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.get_single_option_with_name
+[`Context::get_singles_by_type`]: https://docs.rs/rudi/latest/rudi/struct.Context.html#method.get_singles_by_type
