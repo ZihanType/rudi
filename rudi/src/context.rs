@@ -2240,12 +2240,13 @@ impl ContextOptions {
     /// # Example
     ///
     /// ```rust
-    /// use rudi::{Context, ContextOptions};
+    /// use rudi::{modules, Context, ContextOptions};
     ///
     /// # fn main() {
-    /// let _cx: Context = ContextOptions::default()
+    /// let cx: Context = ContextOptions::default()
     ///     .allow_override(true)
-    ///     .auto_register();
+    ///     .create(modules![]);
+    /// assert!(cx.allow_override());
     /// # }
     /// ```
     pub fn allow_override(mut self, allow_override: bool) -> Self {
@@ -2260,12 +2261,13 @@ impl ContextOptions {
     /// # Example
     ///
     /// ```rust
-    /// use rudi::{Context, ContextOptions};
+    /// use rudi::{modules, Context, ContextOptions};
     ///
     /// # fn main() {
-    /// let _cx: Context = ContextOptions::default()
+    /// let cx: Context = ContextOptions::default()
     ///     .allow_only_single_eager_create(false)
-    ///     .auto_register();
+    ///     .create(modules![]);
+    /// assert!(!cx.allow_only_single_eager_create());
     /// # }
     /// ```
     pub fn allow_only_single_eager_create(mut self, allow_only_single_eager_create: bool) -> Self {
@@ -2280,12 +2282,13 @@ impl ContextOptions {
     /// # Example
     ///
     /// ```rust
-    /// use rudi::{Context, ContextOptions};
+    /// use rudi::{modules, Context, ContextOptions};
     ///
     /// # fn main() {
-    /// let _cx: Context = ContextOptions::default()
+    /// let cx: Context = ContextOptions::default()
     ///     .eager_create(false)
-    ///     .auto_register();
+    ///     .create(modules![]);
+    /// assert!(!cx.eager_create());
     /// # }
     /// ```
     pub fn eager_create(mut self, eager_create: bool) -> Self {
@@ -2437,6 +2440,23 @@ impl ContextOptions {
         cx
     }
 
+    #[track_caller]
+    fn inner_create_with_modules(self, modules: Vec<ResolveModule>) -> Context {
+        self.inner_create(|cx| cx.load_modules(modules))
+    }
+
+    #[cfg(feature = "auto-register")]
+    #[track_caller]
+    fn inner_create_with_auto(self) -> Context {
+        use crate::AutoRegisterModule;
+
+        self.inner_create(|cx| {
+            let module = ResolveModule::new::<AutoRegisterModule>();
+            cx.loaded_modules.push(module.ty());
+            cx.load_providers(module.eager_create(), module.providers())
+        })
+    }
+
     /// Creates a new context with the given modules.
     ///
     /// # Panics
@@ -2468,7 +2488,7 @@ impl ContextOptions {
     /// ```
     #[track_caller]
     pub fn create(self, modules: Vec<ResolveModule>) -> Context {
-        let mut cx = self.inner_create(|cx| cx.load_modules(modules));
+        let mut cx = self.inner_create_with_modules(modules);
         cx.flush();
         cx
     }
@@ -2490,14 +2510,7 @@ impl ContextOptions {
     #[cfg(feature = "auto-register")]
     #[track_caller]
     pub fn auto_register(self) -> Context {
-        use crate::AutoRegisterModule;
-
-        let mut cx = self.inner_create(|cx| {
-            let module = ResolveModule::new::<AutoRegisterModule>();
-            cx.loaded_modules.push(module.ty());
-            cx.load_providers(module.eager_create(), module.providers())
-        });
-
+        let mut cx = self.inner_create_with_auto();
         cx.flush();
         cx
     }
@@ -2514,7 +2527,7 @@ impl ContextOptions {
     /// - Panics if there are multiple providers with the same key and the context's [`allow_override`](Context::allow_override) is false.
     /// - Panics if there is a provider that panics on construction.
     pub async fn create_async(self, modules: Vec<ResolveModule>) -> Context {
-        let mut cx = self.inner_create(|cx| cx.load_modules(modules));
+        let mut cx = self.inner_create_with_modules(modules);
         cx.flush_async().await;
         cx
     }
@@ -2533,14 +2546,7 @@ impl ContextOptions {
     #[cfg_attr(docsrs, doc(cfg(feature = "auto-register")))]
     #[cfg(feature = "auto-register")]
     pub async fn auto_register_async(self) -> Context {
-        use crate::AutoRegisterModule;
-
-        let mut cx = self.inner_create(|cx| {
-            let module = ResolveModule::new::<AutoRegisterModule>();
-            cx.loaded_modules.push(module.ty());
-            cx.load_providers(module.eager_create(), module.providers())
-        });
-
+        let mut cx = self.inner_create_with_auto();
         cx.flush_async().await;
         cx
     }
