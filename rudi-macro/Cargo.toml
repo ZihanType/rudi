@@ -30,7 +30,12 @@ syn = { workspace = true, features = [
 ] }
 
 [dev-dependencies]
-rudi = { workspace = true, features = ["rudi-macro", "auto-register"] }
+# cannot contain `workspace = true` to avoid circular dependencies.
+rudi = { path = "../rudi", default-features = false, features = [
+    "rudi-macro",
+    "auto-register",
+] }
+
 tokio = { workspace = true }
 
 [features]
