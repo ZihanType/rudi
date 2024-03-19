@@ -460,9 +460,11 @@ impl Context {
     /// ```
     #[track_caller]
     pub fn load_modules(&mut self, modules: Vec<ResolveModule>) {
-        let Some(modules) = flatten(modules, ResolveModule::submodules) else {
+        if modules.is_empty() {
             return;
-        };
+        }
+
+        let modules = flatten(modules, ResolveModule::submodules);
 
         modules.into_iter().for_each(|module| {
             self.loaded_modules.push(module.ty());
@@ -497,9 +499,11 @@ impl Context {
     /// # }
     /// ```
     pub fn unload_modules(&mut self, modules: Vec<ResolveModule>) {
-        let Some(modules) = flatten(modules, ResolveModule::submodules) else {
+        if modules.is_empty() {
             return;
-        };
+        }
+
+        let modules = flatten(modules, ResolveModule::submodules);
 
         modules.into_iter().for_each(|module| {
             self.loaded_modules.retain(|ty| ty != &module.ty());
@@ -1782,9 +1786,11 @@ impl Context {
 
     #[track_caller]
     fn load_providers(&mut self, eager_create: bool, providers: Vec<DynProvider>) {
-        let Some(providers) = flatten(providers, DynProvider::binding_providers) else {
+        if providers.is_empty() {
             return;
-        };
+        }
+
+        let providers = flatten(providers, DynProvider::binding_providers);
 
         providers.into_iter().for_each(|provider| {
             if provider.condition().is_some() {
@@ -1797,9 +1803,11 @@ impl Context {
     }
 
     fn unload_providers(&mut self, providers: Vec<DynProvider>) {
-        let Some(providers) = flatten(providers, DynProvider::binding_providers) else {
+        if providers.is_empty() {
             return;
-        };
+        }
+
+        let providers = flatten(providers, DynProvider::binding_providers);
 
         providers.into_iter().for_each(|provider| {
             let key = provider.key();
@@ -2119,13 +2127,11 @@ fn not_singleton_or_transient_panic(definition: Definition) -> ! {
     )
 }
 
-fn flatten<T, F>(mut unresolved: Vec<T>, get_sublist: F) -> Option<Vec<T>>
+fn flatten<T, F>(mut unresolved: Vec<T>, get_sublist: F) -> Vec<T>
 where
     F: Fn(&mut T) -> Option<Vec<T>>,
 {
-    if unresolved.is_empty() {
-        return None;
-    }
+    debug_assert!(!unresolved.is_empty());
 
     let mut resolved = Vec::with_capacity(unresolved.len());
 
@@ -2143,7 +2149,7 @@ where
         resolved.push(element);
     }
 
-    Some(resolved)
+    resolved
 }
 
 /// Options and flags which can be used to configure how a context is created.
