@@ -3,7 +3,8 @@ use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use rudi_core::{Color, Scope};
 use syn::{
-    spanned::Spanned, Generics, ImplItem, ImplItemFn, ItemImpl, Path, ReturnType, Type, TypePath,
+    parse_quote, spanned::Spanned, Generics, ImplItem, ImplItemFn, ItemImpl, Path, ReturnType,
+    Type, TypePath,
 };
 
 use crate::{
@@ -53,12 +54,7 @@ pub(crate) fn generate(
         ..
     } = &mut item_impl;
 
-    if let Some((_, path, _)) = trait_ {
-        return Err(syn::Error::new(
-            path.span(),
-            "not support impl trait for struct or enum",
-        ));
-    }
+    let trait_ = trait_.as_mut().map(|(_, path, _)| path);
 
     let mut parse_errors = Vec::new();
     let mut duplicate_errors = Vec::new();
@@ -112,7 +108,7 @@ pub(crate) fn generate(
     let (f, _) = matched.unwrap();
 
     let default_provider_impl =
-        generate_default_provider_impl(f, self_ty, generics, attr, scope, rudi_path)?;
+        generate_default_provider_impl(f, &trait_, self_ty, generics, attr, scope, rudi_path)?;
 
     let expand = quote! {
         #item_impl
@@ -123,10 +119,11 @@ pub(crate) fn generate(
     Ok(expand)
 }
 
-fn generate_default_provider_impl(
-    impl_item_fn: &mut ImplItemFn,
-    struct_type_with_generics: &Type,
-    struct_generics: &Generics,
+fn generate_default_provider_impl<'a>(
+    impl_item_fn: &'a mut ImplItemFn,
+    trait_: &'a Option<&'a mut Path>,
+    type_with_generics: &'a Type,
+    generics: &'a Generics,
     attr: StructOrFunctionAttr,
     scope: Scope,
     rudi_path: Path,
@@ -144,40 +141,37 @@ fn generate_default_provider_impl(
     #[cfg(feature = "auto-register")]
     commons::check_generics_when_enable_auto_register(
         auto_register,
-        struct_generics,
+        generics,
         commons::ItemKind::StructOrEnum,
         scope,
     )?;
 
-    let (return_type_eq_struct_type, return_type_eq_self_type) = match &impl_item_fn.sig.output {
-        ReturnType::Type(_, fn_return_type) => {
-            let return_type_eq_struct_type = &**fn_return_type == struct_type_with_generics;
-
-            let return_type_eq_self_type = if let Type::Path(TypePath {
-                qself: None,
-                path:
-                    Path {
-                        leading_colon: None,
-                        segments,
-                    },
-            }) = &**fn_return_type
-            {
-                segments.len() == 1 && segments.first().unwrap().ident == "Self"
-            } else {
-                false
-            };
-
-            (return_type_eq_struct_type, return_type_eq_self_type)
-        }
-        _ => (false, false),
+    let return_type: Type = match &impl_item_fn.sig.output {
+        ReturnType::Default => parse_quote!(()),
+        ReturnType::Type(_, return_type) => *return_type.clone(),
     };
 
-    if !return_type_eq_struct_type && !return_type_eq_self_type {
+    let return_type_is_named = &return_type == type_with_generics;
+
+    let return_type_is_self = if let Type::Path(TypePath {
+        qself: None,
+        path: Path {
+            leading_colon: None,
+            segments,
+        },
+    }) = &return_type
+    {
+        segments.len() == 1 && segments.first().unwrap().ident == "Self"
+    } else {
+        false
+    };
+
+    if !return_type_is_named && !return_type_is_self {
         return Err(syn::Error::new(
             impl_item_fn.sig.span(),
             format!(
                 "return type must be `{}` or `Self`",
-                struct_type_with_generics.into_token_stream()
+                type_with_generics.into_token_stream()
             ),
         ));
     }
@@ -199,9 +193,14 @@ fn generate_default_provider_impl(
 
     let create_provider = commons::generate_create_provider(scope, color);
 
-    let (impl_generics, _, where_clause) = struct_generics.split_for_impl();
+    let (impl_generics, _, where_clause) = generics.split_for_impl();
 
     let fn_ident = &impl_item_fn.sig.ident;
+
+    let self_path = match trait_ {
+        Some(trait_) => quote! { <Self as #trait_> },
+        None => quote! { Self },
+    };
 
     let constructor = match color {
         Color::Async => {
@@ -210,7 +209,7 @@ fn generate_default_provider_impl(
                 |cx| ::std::boxed::Box::pin(async {
                     #(#ref_mut_cx_stmts)*
                     #(#ref_cx_stmts)*
-                    Self::#fn_ident(#(#args,)*).await
+                    #self_path::#fn_ident(#(#args,)*).await
                 })
             }
         }
@@ -220,7 +219,7 @@ fn generate_default_provider_impl(
                 |cx| {
                     #(#ref_mut_cx_stmts)*
                     #(#ref_cx_stmts)*
-                    Self::#fn_ident(#(#args,)*)
+                    #self_path::#fn_ident(#(#args,)*)
                 }
             }
         }
@@ -232,14 +231,14 @@ fn generate_default_provider_impl(
     #[cfg(feature = "auto-register")]
     let auto_register = if auto_register {
         quote! {
-            #rudi_path::register_provider!(<#struct_type_with_generics as #rudi_path::DefaultProvider>::provider());
+            #rudi_path::register_provider!(<#type_with_generics as #rudi_path::DefaultProvider>::provider());
         }
     } else {
         quote! {}
     };
 
     let expand = quote! {
-        impl #impl_generics #rudi_path::DefaultProvider for #struct_type_with_generics #where_clause {
+        impl #impl_generics #rudi_path::DefaultProvider for #type_with_generics #where_clause {
             type Type = Self;
 
             fn provider() -> #rudi_path::Provider<Self> {
