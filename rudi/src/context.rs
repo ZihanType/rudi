@@ -1876,13 +1876,14 @@ please use instead:
         self.conditional_providers.reverse();
 
         while let Some((eager_create, provider)) = self.conditional_providers.pop() {
-            if !(provider.condition().unwrap())(self) {
+            let evaluate = provider.condition().expect("unreachable: a provider in `conditional_providers`, its `condition()` method must return `Some(_)`");
+
+            if evaluate(self) {
+                self.load_provider(eager_create, provider);
+            } else {
                 #[cfg(feature = "tracing")]
                 tracing::warn!("(×) condition not met: {:?}", provider.definition());
-                continue;
             }
-
-            self.load_provider(eager_create, provider);
         }
     }
 
