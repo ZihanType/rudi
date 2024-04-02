@@ -12,6 +12,7 @@ include.workspace = true
 
 [dependencies]
 rudi = { workspace = true, features = ["rudi-macro", "auto-register"] }
+async-trait = { workspace = true }
 poem = { workspace = true }
 poem-openapi = { workspace = true, features = ["swagger-ui"] }
 tokio = { workspace = true }
