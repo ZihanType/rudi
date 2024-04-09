@@ -14,18 +14,13 @@ mod registry;
 mod single;
 mod ty;
 
-#[cfg_attr(docsrs, doc(cfg(feature = "auto-register")))]
-#[cfg(feature = "auto-register")]
-pub use auto_register::*;
-pub use context::*;
-pub use definition::*;
-pub use future::*;
-pub use module::*;
-pub use provider::*;
-pub(crate) use registry::*;
 pub use rudi_core::*;
 #[cfg_attr(docsrs, doc(cfg(feature = "rudi-macro")))]
 #[cfg(feature = "rudi-macro")]
 pub use rudi_macro::*;
-pub use single::*;
-pub use ty::*;
+
+#[cfg_attr(docsrs, doc(cfg(feature = "auto-register")))]
+#[cfg(feature = "auto-register")]
+pub use self::auto_register::*;
+pub(crate) use self::registry::*;
+pub use self::{context::*, definition::*, future::*, module::*, provider::*, single::*, ty::*};
