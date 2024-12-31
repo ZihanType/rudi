@@ -1,9 +1,9 @@
-use leptos::*;
+use leptos::prelude::*;
 use rudi::{components, modules, Context, DynProvider, Module, Singleton};
 
 #[component]
 pub fn SimpleCounter(initial_value: i32, step: i32) -> impl IntoView {
-    let value = create_rw_signal(initial_value);
+    let value = RwSignal::new(initial_value);
 
     view! {
         <div>

@@ -12,4 +12,4 @@ include.workspace = true
 
 [dependencies]
 rudi = { workspace = true, features = ["rudi-macro"] }
-leptos = { workspace = true, features = ["serde", "csr"] }
+leptos = { workspace = true, features = ["csr"] }
