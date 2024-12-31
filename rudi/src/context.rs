@@ -2574,10 +2574,10 @@ impl DependencyChain {
                 if key == k {
                     buf.push_str(" --> ")
                 } else {
-                    buf.push_str("     ")
+                    buf.push_str("  |  ")
                 }
 
-                buf.push_str(format!("{:?}", k).as_str());
+                buf.push_str(&format!("{:?}", k));
                 buf.push('\n');
             });
 
